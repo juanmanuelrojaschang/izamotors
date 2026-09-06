@@ -344,7 +344,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v37</span>
+  <span class="demo-tag">v39</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -1016,7 +1016,7 @@ document.querySelectorAll('nav button').forEach(function(b){b.onclick=function()
 function limpiarHistorial(){
   if(!confirm('¿Borrar las órdenes registradas en este dispositivo? Las de ejemplo del piso se mantienen.'))return;
   try{localStorage.removeItem(DB.K);localStorage.removeItem('iza_corr')}catch(e){}
-  OT_EST='';OT_NUM='';ORD=null;SESION=false;BITACORA={};
+  OT_EST='';OT_NUM='';ORD=null;SESION_ACT=false;BITACORA={};
   segLista();
 }
 function segEntrada(){
@@ -1040,7 +1040,7 @@ function segLista(){
       fE=selE?selE.value:'', fD=$('segDia')?$('segDia').value:'todos';
   var filas='';
   /* recepción a medias, todavía sin guardar */
-  if(SESION&&!OT_EST){
+  if(SESION_ACT&&!OT_EST){
     var v=ACTUAL,pl=v?v.placa:'(en curso)',cl=v?v.cliente:'—';
     var pj=(pl+cl).toLowerCase().replace(/-/g,'');
     if(!txt||pj.indexOf(txt)>-1){
@@ -1082,7 +1082,7 @@ function segLista(){
 }
 function reanudar(ot){
   var o=OTS.filter(function(x){return x.ot===ot})[0];if(!o)return;
-  SESION=true;ACTUAL=null;
+  SESION_ACT=true;ACTUAL=null;
   ORD={num:o.ot,placa:o.placa,veh:o.veh,cliente:o.cliente};
   OT_NUM=o.ot;$('gOT').textContent=o.ot;
   SEL={};[0,1,2].forEach(function(i){SEL[i]=true});
@@ -2261,7 +2261,7 @@ function guardarOrden(){
 }
 function abrirOrden(ot){
   var d=DB.get(ot);if(!d)return;
-  SESION=true;
+  SESION_ACT=true;
   OT_NUM=d.ot;$('gOT').textContent=d.ot;
   ORD={num:d.ot,placa:d.placa,veh:d.veh,cliente:d.cliente,tel:d.tel,creada:d.creada};
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
@@ -2320,9 +2320,9 @@ setInterval(function(){
 
 /* ============ CRONÓMETRO Y PASOS ============ */
 var t0=null,tint=null;
-var PASO_ACTUAL=1,SESION=false,ORD=null;
+var PASO_ACTUAL=1,SESION_ACT=false,ORD=null;   /* recepción en curso · distinto del usuario conectado */
 function iniciar(){
-  SESION=true;
+  SESION_ACT=true;
   $('segHome').style.display='none';$('flujo').style.display='block';
   t0=Date.now();$('crono').classList.add('on');$('crono').classList.remove('listo');
   $('cronoL').textContent='Recepción en curso';
@@ -2842,7 +2842,7 @@ function irDiagnostico(){
 function reset(){
   apagarCamara();try{fotoCerrar()}catch(e){}
   clearInterval(tint);$('crono').classList.remove('on');
-  SESION=false;ORD=null;PASO_ACTUAL=1;
+  SESION_ACT=false;ORD=null;PASO_ACTUAL=1;
   $('segHome').style.display='block';$('flujo').style.display='none';
   FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';estadoZ={};SEL={};OT_EST='';COBRADAS={};SEL_SERV={};LINEAS_SERV=[];LINEAS_REP=[];
   BITACORA={};renderBitacora();
@@ -3894,10 +3894,28 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
       document.body.classList.add('modo-cliente');
       ir('cliente');
     } else {
-      if(!restaurarSesion())pintarUsuarios();
+      pintarUsuarios();
       segLista();
     }
   }catch(e){}
+})();
+
+/* ============ RESTAURACIÓN DE SESIÓN ============
+   Va aparte y con su propio control de errores: si algo falla en el
+   arranque, la sesión se restaura igual y no obliga a entrar de nuevo. */
+(function(){
+  try{
+    if(document.body.classList.contains('modo-cliente'))return;
+    if(location.search.indexOf('v=cliente')>-1||location.search.indexOf('v=caja')>-1)return;
+    var ok=restaurarSesion();
+    if(!ok){
+      var s=null;
+      try{s=localStorage.getItem('iza_sesion')}catch(e){}
+      if(s)conex('La sesión caducó: vuelve a ingresar tu PIN',true);
+    }
+  }catch(e){
+    try{conex('No se pudo restaurar la sesión: '+e.message,true)}catch(x){}
+  }
 })();
 </script>
 </body>
