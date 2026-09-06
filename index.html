@@ -240,7 +240,13 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .modo-cliente .demo-tag{display:none}
 .modo-cliente #cliBuscar{display:none!important}
 .modo-cliente .solo-admin{display:none!important}
-.modo-cliente header{justify-content:center}
+.modo-cliente .navproc{display:none!important}
+.modo-cliente #login{display:none!important}
+.modo-cliente #sesionBox{display:none!important}
+.modo-cliente header{justify-content:center;border-bottom:3px solid var(--rojo)}
+.modo-cliente main{max-width:470px;padding-top:18px}
+.modo-cliente .conex{display:none!important}
+.modo-cliente #crono{display:none!important}
 
 /* ===== kanban ===== */
 .kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;align-items:start}
@@ -338,7 +344,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v33</span>
+  <span class="demo-tag">v34</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -3717,6 +3723,12 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
     });
     var vi=(typeof VISTA_INICIAL!=='undefined')?VISTA_INICIAL:'';
     if(!vi&&q.v==='cliente')vi='cliente';
+    if(q.v==='cliente'){
+      /* el cliente entra por su link: no ve login ni el módulo del taller */
+      var lg=document.getElementById('login'); if(lg)lg.style.display='none';
+      var sb2=document.getElementById('sesionBox'); if(sb2)sb2.innerHTML='';
+      document.body.classList.add('modo-cliente');
+    }
     if(q.v==='caja'){
       document.body.classList.add('modo-caja');
       ir('caja');
