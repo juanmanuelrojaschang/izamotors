@@ -344,7 +344,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v34</span>
+  <span class="demo-tag">v35</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -1009,15 +1009,7 @@ var APP_URL='';
   }
   // si es archivo local (file://) APP_URL queda vacío y el mensaje sale sin link
 })();
-function linkCliente(){
-  if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
-  var v=ACTUAL||VEH['CTS009'];
-  var sel=[];CATALOGO.forEach(function(s,i){if(SEL[i])sel.push(i)});
-  var q='v=cliente&ot=OT-2026-00184'+
-    '&p='+encodeURIComponent(Object.keys(VEH).filter(function(k){return VEH[k]===v})[0]||'CTS009')+
-    '&s='+sel.join('.');
-  return APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+q;
-}
+
 
 /* ============ NAVEGACIÓN ============ */
 document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){ir(b.dataset.v)}});
@@ -2956,6 +2948,34 @@ function pintarProd(){
    '<td class="num der">—</td></tr>';
 }
 
+function linkCliente(fase){
+  if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
+  var d=datosOrden(),t=totalesV2();
+  /* el detalle viaja dentro del link: el cliente no lee la base */
+  var ln=LINEAS_SERV.map(function(l){
+      return l.desc.replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.precio*(l.cant||1));
+    }).concat(LINEAS_REP.map(function(l){
+      return (l.cant+'x '+l.desc).replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.precio*l.cant);
+    })).join('|');
+  var q='v=cliente&ot='+encodeURIComponent(OT_NUM||d.num)+
+    '&pl='+encodeURIComponent(d.placa)+'&vh='+encodeURIComponent(d.veh)+
+    '&cl='+encodeURIComponent(d.cliente)+
+    '&tf='+t.tot+'&ln='+encodeURIComponent(ln)+
+    '&f='+(fase==='recepcion'?'r':'p');
+  var base=APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+q;
+  /* miniaturas de la recepción, mientras quepan en el enlace */
+  if(fase==='recepcion'){
+    var img='';
+    for(var i=0;i<FOTOS_MINI.length&&i<3;i++){
+      var cand=img+(img?'~':'')+FOTOS_MINI[i].replace('data:image/jpeg;base64,','');
+      if((base.length+encodeURIComponent(cand).length)>7000)break;
+      img=cand;
+    }
+    if(img)base+='&im='+encodeURIComponent(img);
+  }
+  return base;
+}
+
 function datosOrden(){
   if(ORD)return ORD;
   var v=ACTUAL||VEH['CTS009'];
@@ -3054,8 +3074,13 @@ function mostrarFicha(){
 function mostrarBuscador(){ ir('recepcion'); }
 function filtrarOT(){}
 function fichaCheckin(fase){
-  var d=datosOrden(),t=totales(),lin=[];
-  CATALOGO.forEach(function(s,i){if(SEL[i])lin.push({d:s.d,p:s.p})});
+  var esCliente=document.body.classList.contains('modo-cliente');
+  var d=esCliente?{num:OT_NUM||'',placa:'—',veh:'',cliente:''}:datosOrden();
+  var t=esCliente?{tot:0}:totales(),lin=[];
+  if(!esCliente){
+    LINEAS_SERV.forEach(function(l){lin.push({d:l.desc,p:l.precio*(l.cant||1)})});
+    LINEAS_REP.forEach(function(l){lin.push({d:l.cant+'x '+l.desc,p:l.precio*l.cant})});
+  }
   var esRec=(fase==='r');
   return {ot:OT_NUM||d.num,placa:d.placa,veh:d.veh,cliente:d.cliente,
     estado:esRec?'Recibido · diagnóstico en curso':'Esperando tu aprobación del servicio',
@@ -3080,6 +3105,13 @@ function fichaDesdeOT(ot){
 }
 function renderFicha(){
   var f=FICHA;if(!f)return;
+  if(document.body.classList.contains('modo-cliente')&&(!f.placa||f.placa==='—')){
+    $('cliFicha').innerHTML='<div class="card" style="text-align:center;padding:30px">'+
+      '<h3 class="sinbar" style="justify-content:center">Enlace incompleto</h3>'+
+      '<p style="color:var(--mudo);margin-top:10px">Este enlace no trae los datos de tu orden. '+
+      'Pídele a tu asesor que te lo reenvíe.</p></div>';
+    return;
+  }
   $('cliOT').textContent='Orden de trabajo '+f.ot;
   $('cliPlaca').textContent=f.placa;
   $('cliVeh').textContent=f.veh+' · '+f.cliente;
@@ -3739,6 +3771,13 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
       if(q.s!==undefined){SEL={};q.s.split('.').forEach(function(i){if(i!=='')SEL[parseInt(i,10)]=true})}
       else {SEL={};[0,1,2].forEach(function(i){SEL[i]=true})}
       FICHA=fichaCheckin(q.f==='r'?'r':(q.f==='d'?'d':'p'));
+      /* nada de datos de ejemplo: si el link no trae el detalle, se avisa */
+      if(q.ln!==undefined&&q.f!=='r'){
+        FICHA.lineas=q.ln?q.ln.split('|').map(function(x){
+          var p=x.split('~');return {d:p[0],p:Number(p[1])||0};
+        }):[];
+      }
+      if(q.tf)FICHA.total=Number(q.tf)||0;
       if(q.f==='d'){
         FICHA.definitivo=true;
         FICHA.estado='Esperando tu aprobación del detalle final';
