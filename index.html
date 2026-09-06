@@ -344,7 +344,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v35</span>
+  <span class="demo-tag">v37</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -1102,7 +1102,10 @@ function reanudar(ot){
   if(o.estado==='EN_DIAGNOSTICO')pintarPresupuesto();
   setEstado(o.estado,'Orden abierta desde seguimiento');
 }
+var VISTA_ACT='recepcion';
 function ir(v){
+  VISTA_ACT=v;
+  if(SESION)guardarSesion();
   document.querySelectorAll('.vista').forEach(function(s){s.classList.toggle('on',s.id==='v-'+v)});
   document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.dataset.v===v)});
   window.scrollTo(0,0);
@@ -1199,6 +1202,7 @@ function entrar(){
     }
     SESION=r.data[0];
     SEDE_ACTIVA=Number(document.getElementById('loginSede').value)||1;
+    guardarSesion();
     SEDE_NOMBRE=SEDE_ACTIVA===2?'Óvalo':'Las Américas';
     document.getElementById('login').style.display='none';
     var rol=ROLES[SESION.rol]||{t:SESION.rol};
@@ -1214,7 +1218,44 @@ function entrar(){
     msg.innerHTML='<div class="aviso rojo" style="margin:0">No se pudo conectar: '+e.message+'</div>';
   });
 }
-function salir(){ SESION=null; location.reload(); }
+function salir(){
+  try{localStorage.removeItem('iza_sesion')}catch(e){}
+  SESION=null; location.reload();
+}
+/* La sesión dura 12 horas: cubre un turno completo sin volver a pedir PIN,
+   y caduca sola para que un equipo compartido no quede abierto de un día al otro. */
+var SESION_HORAS=12;
+function guardarSesion(){
+  try{
+    localStorage.setItem('iza_sesion',JSON.stringify({
+      u:SESION,sede:SEDE_ACTIVA,nom:SEDE_NOMBRE,ts:Date.now(),
+      ot:OT_NUM||'',vista:VISTA_ACT||'recepcion'
+    }));
+  }catch(e){}
+}
+function restaurarSesion(){
+  var s=null;
+  try{s=JSON.parse(localStorage.getItem('iza_sesion')||'null')}catch(e){}
+  if(!s||!s.u)return false;
+  if(Date.now()-s.ts > SESION_HORAS*3600*1000){
+    try{localStorage.removeItem('iza_sesion')}catch(e){}
+    return false;
+  }
+  SESION=s.u;SEDE_ACTIVA=s.sede||1;SEDE_NOMBRE=s.nom||'Las Américas';
+  var lg=document.getElementById('login'); if(lg)lg.style.display='none';
+  var rol=ROLES[SESION.rol]||{t:SESION.rol};
+  document.getElementById('sesionBox').innerHTML=
+    '<b>'+SESION.nombre+'</b> · '+rol.t+' · '+SEDE_NOMBRE+
+    ' <button class="btn chico sec" style="min-height:30px;font-size:13px;padding:0 10px;margin-left:8px" onclick="salir()">Salir</button>';
+  aplicarPermisos();
+  cargarCatalogoV2();cargarFlotas();
+  /* si había una orden abierta, se retoma donde quedó */
+  if(s.ot){
+    try{ if(DB.get(s.ot)) abrirOrden(s.ot); }catch(e){}
+  }
+  conex('Sesión activa · '+SESION.nombre);
+  return true;
+}
 
 function aplicarPermisos(){
   var permitidas=(ROLES[SESION.rol]||{}).vistas||['recepcion'];
@@ -2244,6 +2285,28 @@ function pintarSugerencias2(sel){
     totales();}
 }
 /* refresco: detecta cambios hechos en otra pestaña (cliente o caja) */
+/* la orden en curso se refresca desde la base: así llega la aprobación del cliente */
+setInterval(function(){
+  if(!sb||!OT_NUM)return;
+  if(document.body.classList.contains('modo-cliente'))return;
+  sb.from('ordenes').select('estado_taller,estado_ot').eq('numero',OT_NUM).maybeSingle()
+   .then(function(r){
+     if(!r.data)return;
+     var cambio=false;
+     if(r.data.estado_taller&&r.data.estado_taller!==EST_TALLER){
+       EST_TALLER=r.data.estado_taller;HITOS['T_'+EST_TALLER]=HITOS['T_'+EST_TALLER]||selloHora();cambio=true;
+     }
+     if(r.data.estado_ot&&r.data.estado_ot!==EST_OT_ACT){
+       EST_OT_ACT=r.data.estado_ot;HITOS['O_'+EST_OT_ACT]=HITOS['O_'+EST_OT_ACT]||selloHora();cambio=true;
+     }
+     if(cambio){
+       try{var dd=DB.get(OT_NUM);if(dd){dd.estado_taller=EST_TALLER;dd.estado_ot=EST_OT_ACT;DB.set(dd)}}catch(e){}
+       renderFlujos();renderGestion();
+       conex('Actualizado desde la base');
+     }
+   },function(){});
+},4000);
+
 setInterval(function(){
   if(!OT_NUM||!OT_EST)return;
   if(document.body.classList.contains('modo-cliente'))return;
@@ -2596,6 +2659,18 @@ function recibir(){
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
   var sel=$('gMec');
   sel.innerHTML=TECS.map(function(t){return '<option>'+t+'</option>'}).join('');
+  /* la orden nace en la base: sin esto no hay flujo entre aparatos */
+  if(sb&&v._id){
+    sb.from('ordenes').insert({
+      numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
+      estado:'RECIBIDO',estado_taller:'RECIBIDO',km_ingreso:kmIng,
+      combustible:$('cmb').textContent,danos:danosLista(),accesorios:accesoriosLista(),
+      recepcion_id:SESION?SESION.id:null
+    }).then(function(r){
+      if(r.error)conex('No se pudo crear la orden: '+r.error.message,true);
+      else auditar('CREA_OT','orden',OT_NUM,v.placa+' · '+kmIng.toLocaleString('es-PE')+' km');
+    },function(){});
+  }
   BITACORA={};
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};
   HITOS['T_RECIBIDO']=selloHora();
@@ -2656,13 +2731,19 @@ function setOT(k,nota){
   renderFlujos();renderGestion();
 }
 function guardarFlujos(){
+  if(SESION)guardarSesion();
   try{
     var d=DB.get(OT_NUM);
     if(d){d.estado_taller=EST_TALLER;d.estado_ot=EST_OT_ACT;d.hitos=HITOS;DB.set(d)}
   }catch(e){}
   if(sb&&OT_NUM){
-    sb.from('ordenes').update({estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null})
-      .eq('numero',OT_NUM).then(function(){},function(){});
+    var p={estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null};
+    if(EST_OT_ACT==='PRELIM_ENVIADA')p.ot_prelim_enviada=new Date().toISOString();
+    if(EST_OT_ACT==='DEF_ENVIADA')p.ot_def_enviada=new Date().toISOString();
+    if(EST_OT_ACT==='PAGADA')p.ot_pagada=new Date().toISOString();
+    sb.from('ordenes').update(p).eq('numero',OT_NUM).then(function(r){
+      if(r&&r.error)conex('No se pudo guardar el estado: '+r.error.message,true);
+    },function(){});
   }
 }
 function renderFlujos(){
@@ -3148,6 +3229,18 @@ function renderFicha(){
 function cliAprobar(){
   $('cliAcciones').style.display='none';
   var esDef=FICHA&&FICHA.definitivo;
+  /* se escribe en la base para que el taller lo vea desde cualquier aparato */
+  if(sb&&FICHA&&FICHA.ot){
+    var patch=esDef
+      ? {estado_ot:'DEF_APROBADA',estado:'LISTO',ot_def_aprobada:new Date().toISOString()}
+      : {estado_ot:'PRELIM_APROBADA',estado:'EN_PROCESO',estado_taller:'EN_PROCESO',
+         ot_prelim_aprobada:new Date().toISOString()};
+    sb.from('ordenes').update(patch).eq('numero',FICHA.ot).then(function(){},function(){});
+    sb.from('auditoria').insert({
+      usuario_nom:FICHA.cliente||'Cliente',rol:'cliente',accion:esDef?'APRUEBA_FINAL':'APRUEBA_SERVICIO',
+      entidad:'orden',referencia:FICHA.ot,detalle:'Aprobado desde el link',monto:FICHA.total||null
+    }).then(function(){},function(){});
+  }
   $('cliEstado').textContent=esDef?'Detalle aprobado · listo para facturar':'Servicio aprobado · en ejecución';
   var hora=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
   try{
@@ -3801,6 +3894,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
       document.body.classList.add('modo-cliente');
       ir('cliente');
     } else {
+      if(!restaurarSesion())pintarUsuarios();
       segLista();
     }
   }catch(e){}
