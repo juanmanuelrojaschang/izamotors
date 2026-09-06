@@ -122,8 +122,10 @@ main{max-width:1180px;margin:0 auto;padding:20px 16px 90px}
 #firma{background:#fff;border:1.5px solid var(--borde);border-radius:10px;width:100%;height:180px;touch-action:none;display:block}
 
 .kpi{background:var(--blanco);border:1px solid var(--borde);border-radius:12px;padding:14px}
-.kpi .v{font-family:'JetBrains Mono',monospace;font-size:23px;font-weight:700;color:var(--rojo)}
-.kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--mudo);margin-top:5px;font-weight:600}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--rojo);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mudo);margin-top:5px;font-weight:600;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:26px;line-height:1.3}
 .kpi.verde .v{color:var(--verde)}.kpi.tinta .v{color:var(--tinta)}
 
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -155,6 +157,17 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+/* ===== detalle del preliminar, sobre fondo propio ===== */
+.bloque-pres{background:var(--tinta);border-radius:12px;padding:14px;margin-top:18px}
+.bloque-pres label{color:#9AA5B4}
+.bloque-pres table{color:#E8ECF1}
+.bloque-pres th{color:#8A94A3;border-bottom-color:#333B47}
+.bloque-pres td{border-bottom-color:#2A313B}
+.bloque-pres .hint{color:#8A94A3}
+.bloque-pres input{background:#232A34;border-color:#39424F;color:#E8ECF1}
+.bloque-pres .cond{color:#fff}
+.bloque-pres tr[style*="var(--gris)"]{background:#232A34!important}
+
 /* ===== doble flujo ===== */
 .flujo2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 4px}
 .bloqF{background:var(--gris);border:1.5px solid var(--borde);border-radius:12px;padding:12px}
@@ -181,7 +194,9 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
   .flujo2{grid-template-columns:1fr}
   .kanban{grid-template-columns:1fr 1fr;gap:8px}
   .kb{padding:10px}.kb .n{font-size:24px}
-  .grid.g2,.grid.g3,.grid.g4{grid-template-columns:1fr}
+  .grid.g2,.grid.g4{grid-template-columns:1fr 1fr}
+  .grid.g3{grid-template-columns:1fr}
+  .kpi .v{font-size:18px}
   .fila>*{flex:1 1 100%}
   .fila>[style*="flex:0 0 auto"]{flex:1 1 100%!important}
   .btn{width:100%}
@@ -335,6 +350,7 @@ tr.sel td{background:var(--rojo-cl)}
       <button class="btn full sec" style="margin-top:8px" onclick="volverUsuarios()">Cambiar de usuario</button>
     </div>
     <div id="loginMsg" style="margin-top:12px"></div>
+    <div class="hint" id="loginDiag" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -344,7 +360,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v39</span>
+  <span class="demo-tag">v41</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -552,8 +568,10 @@ tr.sel td{background:var(--rojo-cl)}
         </div>
         <div class="aviso info" style="font-size:12.5px">Los repuestos van con <b>precio referencial</b>.
           El precio definitivo lo confirma el asesor de servicio con el cliente.</div>
-        <label style="margin-top:18px">Presupuesto</label>
-        <div id="presLista"></div>
+        <div class="bloque-pres">
+          <label style="margin:0 0 10px">Detalle de la OT preliminar</label>
+          <div id="presLista"></div>
+        </div>
 
         <div class="fila" style="margin-top:16px">
           <div style="min-width:190px"><label>Comprobante que pide el cliente</label>
@@ -585,19 +603,20 @@ tr.sel td{background:var(--rojo-cl)}
         <div style="margin-top:14px"><label>Comentario del preliminar · lo ve el cliente</label>
           <textarea id="sintoma" rows="2" placeholder="Ej. pastillas al 15%, discos con surcos. Repuestos sujetos a disponibilidad."></textarea></div>
         <div class="fila" style="margin-top:16px">
-          <div class="kpi tinta"><div class="v" id="totMO">S/ 0</div><div class="l">Mano de obra</div></div>
+          <div class="kpi tinta"><div class="v" id="totMO">S/ 0</div><div class="l">Servicios</div></div>
           <div class="kpi tinta"><div class="v" id="totREP">S/ 0</div><div class="l">Repuestos</div></div>
           <div class="kpi"><div class="v" id="totTOT">S/ 0</div><div class="l">Total con IGV</div></div>
         </div>
         <div class="fila" style="margin-top:16px">
-          <button class="btn chico" style="background:#25D366;color:#0A2E19" onclick="enviarWA('presupuesto')">Enviar servicio para aprobación</button>
+          
           
         </div>
       </div>
 
       <!-- fase 2: aprobacion y cierre -->
       <div class="card" id="gAvance" style="display:none">
-        <h3>Estado y acciones</h3>
+        <h3>Siguiente paso</h3>
+        <div class="hint" style="margin:-6px 0 12px">Qué corresponde hacer ahora según el punto en que está la orden.</div>
         <div id="gAvisos"></div>
         <div class="fila" style="margin-top:8px" id="gBotones"></div>
       </div>
@@ -845,7 +864,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div id="cliPres"></div>
     <div id="cliAcciones">
       <div class="fila" style="margin-top:14px">
-        <button class="btn chico ok" onclick="cliAprobar()">✓ Aprobar el servicio</button>
+        <button class="btn chico ok" onclick="cliAprobar()"><span id="txtAprobar">✓ Aprobar el servicio</span></button>
         <button class="btn chico sec" onclick="cliDevolver()">Tengo una observación</button>
       </div>
     </div>
@@ -1233,12 +1252,21 @@ function guardarSesion(){
     }));
   }catch(e){}
 }
+function diag(txt){
+  var d=document.getElementById('loginDiag');
+  if(d)d.innerHTML=txt;
+  try{console.log('[sesión]',txt)}catch(e){}
+}
 function restaurarSesion(){
-  var s=null;
-  try{s=JSON.parse(localStorage.getItem('iza_sesion')||'null')}catch(e){}
-  if(!s||!s.u)return false;
+  var s=null,crudo=null;
+  try{crudo=localStorage.getItem('iza_sesion')}catch(e){diag('El navegador bloquea el almacenamiento local.');return false}
+  if(!crudo){diag('No hay sesión guardada en este equipo.');return false}
+  try{s=JSON.parse(crudo)}catch(e){diag('Sesión guardada ilegible.');return false}
+  if(!s||!s.u){diag('Sesión guardada sin usuario.');return false}
+  var horas=Math.round((Date.now()-s.ts)/3600000*10)/10;
   if(Date.now()-s.ts > SESION_HORAS*3600*1000){
     try{localStorage.removeItem('iza_sesion')}catch(e){}
+    diag('La sesión caducó hace '+(horas-SESION_HORAS).toFixed(1)+' h.');
     return false;
   }
   SESION=s.u;SEDE_ACTIVA=s.sede||1;SEDE_NOMBRE=s.nom||'Las Américas';
@@ -1255,6 +1283,12 @@ function restaurarSesion(){
   }
   conex('Sesión activa · '+SESION.nombre);
   return true;
+}
+function estadoSesion(){
+  try{
+    var s=JSON.parse(localStorage.getItem('iza_sesion')||'null');
+    return s?('Guardada: '+s.u.nombre+' · hace '+Math.round((Date.now()-s.ts)/60000)+' min'):'Sin sesión guardada';
+  }catch(e){return 'Error: '+e.message}
 }
 
 function aplicarPermisos(){
@@ -1914,9 +1948,9 @@ function renderEditar(){
       '<div><label>Nota interna</label><input id="edSint" placeholder="No se envía al cliente"></div>'+
     '</div>'+
     '<div class="fila" style="margin-top:12px">'+
-      '<button class="btn chico sec" onclick="guardarCorreccion()">Guardar corrección</button>'+
+      '<button class="btn chico sec" onclick="guardarCorreccion()">Guardar nota interna</button>'+
       (puedeAnular()
-        ? '<button class="btn chico peligro" onclick="anularOrden()">Anular orden</button>'
+        ? '<button class="btn chico sec" onclick="anularOrden()">Anular orden</button>'
         : '<span class="hint" style="align-self:center">La anulación es exclusiva del administrador del taller.</span>')+
     '</div>'+
     '<div id="editMsg" style="margin-top:10px"></div>';
@@ -2844,7 +2878,7 @@ function reset(){
   clearInterval(tint);$('crono').classList.remove('on');
   SESION_ACT=false;ORD=null;PASO_ACTUAL=1;
   $('segHome').style.display='block';$('flujo').style.display='none';
-  FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';estadoZ={};SEL={};OT_EST='';COBRADAS={};SEL_SERV={};LINEAS_SERV=[];LINEAS_REP=[];
+  FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';estadoZ={};SEL={};OT_EST='';SEL_SERV={};LINEAS_SERV=[];LINEAS_REP=[];
   BITACORA={};renderBitacora();
   $('placa').value='';ACTUAL=null;ocrIdx=0;
   $('ocrBox').className='ocr vacio';$('ocrBox').textContent='Toca "Escanear placa": la cámara se abre dentro de este recuadro';
@@ -3123,6 +3157,7 @@ function enviarPreliminar(){
   a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
   a.target='_blank';a.rel='noopener';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
+  guardarDetalleBD();
   setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot));
   hint.innerHTML='<span style="color:var(--verde);font-weight:700">Preliminar enviada.</span> '+
     'La orden espera la aprobación del cliente.';
@@ -3287,73 +3322,55 @@ function cliDevolver(){
 }
 
 /* ============================================================
-   VENTANILLA · valida stock y codifica
+   VENTANILLA · valida stock y codifica · lee de la base
    ============================================================ */
 var VENT_OT=null,VENT_LIN=[];
 
-function ordenesPara(estados,porOT){
-  var r=[];
-  DB.lista().forEach(function(d){
-    var val=porOT?(d.estado_ot||''):(d.estado_taller||d.estado);
-    if(estados.indexOf(val)>-1)r.push({
-    ot:d.ot,placa:d.placa,cliente:d.cliente,estado:d.estado,
-    estado_taller:d.estado_taller,estado_ot:d.estado_ot,
-    total:d.total,sel:d.sel||[],real:true,ref:d}); });
-  OTS.filter(function(o){return estados.indexOf(o.estado)>-1}).slice(0,6).forEach(function(o){
-    r.push({ot:o.ot,placa:o.placa,cliente:o.cliente,estado:o.estado,total:o.importe,
-            tarea:o.tarea,sel:[0,1,2],demo:true});
-  });
-  return r;
-}
-function lineasDeOrden(o){
-  var lin=[];
-  (o.sel||[]).forEach(function(i){
-    var c=CATALOGO[i]; if(!c)return;
-    lin.push({codigo:c.c,desc:c.d,tipo:c.t,precio:Number(c.p),cant:1,
-              stock:(c.t==='MO'?true:null),cod_alm:''});
-  });
-  if(!lin.length&&o.tarea)lin.push({codigo:'',desc:o.tarea,tipo:'MO',precio:o.total||0,cant:1,stock:true,cod_alm:''});
-  return lin;
-}
 function enviarAVentanilla(){
-  setEstado('EN_VENTANILLA','Trabajo terminado · enviado a ventanilla');
-  auditar('ENVIA_VENTANILLA','orden',OT_NUM,'Trabajo terminado');
+  setTaller('LISTO','Trabajo terminado · pasa a ventanilla');
 }
+
 function pintarVentanilla(){
   VENT_OT=null;
-  var lista=ordenesPara(['PRELIM_APROBADA'],true);
-  $('ventLista').innerHTML=
-    '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-    '<th>Taller</th><th class="der">Estimado</th><th></th></tr>'+
-    (lista.length?lista.map(function(o){
-      return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-      '<td>'+o.cliente+'</td><td><span class="eti e3">'+(o.estado_taller||'—').replace('_',' ')+'</span></td>'+
-      '<td class="num der">'+S(o.total)+'</td>'+
-      '<td><button class="btn chico" onclick="ventAbrir(&quot;'+o.ot+'&quot;)">Validar stock</button></td></tr>';
-    }).join('')
-    :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes esperando validación de almacén.</td></tr>')+
-    '</table></div>';
+  $('ventLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
+  cargarOrdenesBD(['PRELIM_APROBADA'],function(lista){
+    $('ventLista').innerHTML=
+      '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Taller</th><th class="der">En taller</th><th class="der">Estimado</th><th></th></tr>'+
+      (lista.length?lista.map(function(o){
+        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td>'+
+        '<td><span class="eti e3">'+String(o.estado_taller||'').replace('_',' ')+'</span></td>'+
+        '<td class="num der'+(o.mins>1440?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
+        '<td class="num der">'+S(o.total)+'</td>'+
+        '<td><button class="btn chico" onclick="ventAbrir('+o.id+')">Validar stock</button></td></tr>';
+      }).join('')
+      :'<tr><td colspan="7" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado esperando almacén.</td></tr>')+
+      '</table></div>'+
+      '<div class="hint">Aparecen acá las órdenes cuyo servicio ya aprobó el cliente.</div>';
+  });
 }
-function ventAbrir(ot){
-  var o=ordenesPara(['PRELIM_APROBADA'],true).filter(function(x){return x.ot===ot})[0];
-  if(!o)return;
-  VENT_OT=o; VENT_LIN=lineasDeOrden(o);
-  ventRender();
-  window.scrollTo({top:0,behavior:'smooth'});
+function ventAbrir(id){
+  $('ventLista').innerHTML='<div class="hint">Abriendo…</div>';
+  cargarOrdenesBD(['PRELIM_APROBADA'],function(lista){
+    var o=lista.filter(function(x){return x.id===id})[0];
+    if(!o){pintarVentanilla();return}
+    VENT_OT=o;
+    cargarLineasBD(id,function(lin){ VENT_LIN=lin; ventRender(); });
+  });
 }
 function ventRender(){
   var o=VENT_OT;
   var reps=VENT_LIN.filter(function(l){return l.tipo==='REP'});
-  var pend=reps.filter(function(l){return l.stock===null}).length;
+  var pend=reps.filter(function(l){return l.stock===null||l.stock===undefined}).length;
   $('ventLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
     '<span class="donde">Orden <b>'+o.ot+'</b> · '+o.placa+' · '+o.cliente+'</span></div>'+
-    '<div class="aviso info" style="font-size:12.5px">Marca cada repuesto: <b>Hay</b> si está en almacén '+
-    'y le pones el código con el que sale, o <b>No hay</b> si no está disponible. '+
-    'Los servicios no requieren validación de stock.</div>'+
+    '<div class="aviso info" style="font-size:12.5px">Marca cada repuesto: <b>Hay</b> con su código de almacén, '+
+    'o <b>No hay</b> si no está disponible. Los servicios no requieren validación.</div>'+
     '<div style="overflow-x:auto"><table><tr><th>Tipo</th><th>Concepto</th><th class="der">Cant</th>'+
     '<th class="der">Referencial</th><th>Disponibilidad</th><th>Código almacén</th></tr>'+
-    VENT_LIN.map(function(l,i){
+    (VENT_LIN.length?VENT_LIN.map(function(l,i){
       if(l.tipo==='MO'){
         return '<tr><td><span class="eti e2">Servicio</span></td><td>'+l.desc+'</td>'+
         '<td class="der num">'+l.cant+'</td><td class="num der">'+S(l.precio)+'</td>'+
@@ -3361,8 +3378,7 @@ function ventRender(){
       }
       return '<tr'+(l.stock===false?' style="opacity:.5"':'')+'>'+
         '<td><span class="eti e3">Repuesto</span></td><td>'+l.desc+'</td>'+
-        '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:66px;text-align:right;padding:7px" '+
-          'oninput="ventCant('+i+',this.value)"></td>'+
+        '<td class="der num">'+l.cant+'</td>'+
         '<td class="num der">'+S(l.precio)+'</td>'+
         '<td><button class="btn chico '+(l.stock===true?'ok':'sec')+'" style="min-height:34px;padding:0 10px" '+
           'onclick="ventStock('+i+',true)">Hay</button> '+
@@ -3370,76 +3386,77 @@ function ventRender(){
           'onclick="ventStock('+i+',false)">No hay</button></td>'+
         '<td><input value="'+(l.cod_alm||'')+'" placeholder="cód. RS" style="width:120px;padding:7px" '+
           (l.stock===true?'':'disabled ')+'oninput="ventCod('+i+',this.value)"></td></tr>';
-    }).join('')+'</table></div>'+
+    }).join('')
+    :'<tr><td colspan="6" class="vacio"><b>Sin detalle</b>Esta orden no tiene líneas registradas.</td></tr>')+
+    '</table></div>'+
     '<div class="fila" style="margin-top:16px">'+
       (pend
         ? '<div class="aviso rojo" style="margin:0;flex:1">Faltan '+pend+' repuesto(s) por marcar.</div>'
-        : '<button class="btn chico" onclick="ventEnviarAsesor()">Enviar al asesor de servicio</button>')+
+        : '<button class="btn chico" onclick="ventEnviarAsesor()">Guardar y enviar al asesor</button>')+
     '</div><div id="ventMsg" style="margin-top:10px"></div>';
 }
 function ventStock(i,v){VENT_LIN[i].stock=v;if(!v)VENT_LIN[i].cod_alm='';ventRender()}
-function ventCant(i,v){VENT_LIN[i].cant=Math.max(1,Number(v)||1)}
 function ventCod(i,v){VENT_LIN[i].cod_alm=v}
 function ventEnviarAsesor(){
-  /* ventanilla arma la definitiva; el asesor cobra cuando el cliente la aprueba */
-  var o=VENT_OT;
+  var o=VENT_OT,msg=$('ventMsg');
   var sin=VENT_LIN.filter(function(l){return l.tipo==='REP'&&l.stock===false});
-  var conCodigo=VENT_LIN.filter(function(l){return l.stock===true&&l.tipo==='REP'&&!l.cod_alm}).length;
-  if(conCodigo&&!confirm(conCodigo+' repuesto(s) quedaron sin código de almacén. ¿Enviar igual?'))return;
-  try{
-    var d=DB.get(o.ot);
-    if(d){d.estado='CON_ASESOR';d.estado_ot='DEF_ENVIADA';d.lineas_vent=VENT_LIN;
-      d.bit=d.bit||{};
-      d.bit['CON_ASESOR']={hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}),
-        nota:'Stock validado por '+(SESION?SESION.nombre:'ventanilla')+
-             (sin.length?' · '+sin.length+' sin disponibilidad':'')};
-      DB.set(d);}
-  }catch(e){}
-  if(o.ot===OT_NUM){OT_EST='CON_ASESOR';EST_OT_ACT='DEF_ENVIADA';
-    HITOS['O_DEF_ENVIADA']=selloHora();
-    renderFlujos();renderGestion()}
-  auditar('VALIDA_STOCK','orden',o.ot,
-    VENT_LIN.filter(function(l){return l.tipo==='REP'}).length+' repuestos revisados'+
-    (sin.length?' · '+sin.length+' sin stock':''));
-  $('ventMsg').innerHTML='<div class="aviso ok">Enviada al asesor de servicio.</div>';
-  setTimeout(pintarVentanilla,900);
+  var sinCod=VENT_LIN.filter(function(l){return l.stock===true&&l.tipo==='REP'&&!l.cod_alm}).length;
+  if(sinCod&&!confirm(sinCod+' repuesto(s) sin código de almacén. ¿Enviar igual?'))return;
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  var pend=VENT_LIN.length,err=0;
+  VENT_LIN.forEach(function(l){
+    sb.from('orden_detalle').update({stock_ok:l.stock,codigo_almacen:l.cod_alm||null,
+      cobrado:(l.stock===false?false:true)}).eq('id',l.id)
+     .then(function(r){ if(r.error)err++; if(--pend===0)cerrar(); },function(){ err++; if(--pend===0)cerrar(); });
+  });
+  if(!VENT_LIN.length)cerrar();
+  function cerrar(){
+    sb.from('ordenes').update({estado_ot:'DEF_ENVIADA',ventanilla_id:SESION?SESION.id:null,
+      est_ventanilla:new Date().toISOString()}).eq('id',o.id)
+     .then(function(r){
+       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+       auditar('VALIDA_STOCK','orden',o.ot,
+         VENT_LIN.filter(function(l){return l.tipo==='REP'}).length+' repuestos revisados'+
+         (sin.length?' · '+sin.length+' sin stock':''));
+       msg.innerHTML='<div class="aviso ok">Enviada al asesor de servicio.</div>';
+       setTimeout(pintarVentanilla,900);
+     },function(){});
+  }
 }
 
 /* ============================================================
-   ASESOR DE SERVICIO · precio final y confirmación
-   SUPUESTO: si el total sube más de 10% sobre lo aprobado,
-   el sistema exige una nueva confirmación del cliente.
-   Cámbialo en TOLERANCIA si la regla del taller es otra.
+   ASESOR DE SERVICIO · precio final y cierre con el cliente
    ============================================================ */
 var TOLERANCIA=0.10;
 var ASE_OT=null,ASE_LIN=[],ASE_EST=0;
 
 function pintarAsesor(){
   ASE_OT=null;
-  var lista=ordenesPara(['DEF_ENVIADA','DEF_APROBADA'],true);
-  $('asesorLista').innerHTML=
-    '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-    '<th>Estado</th><th class="der">Estimado</th><th></th></tr>'+
-    (lista.length?lista.map(function(o){
-      return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-      '<td>'+o.cliente+'</td><td><span class="eti '+(o.estado_ot==='DEF_APROBADA'?'e4':'e3')+'">'+
-      (o.estado_ot==='DEF_APROBADA'?'Aprobada':'Enviada')+'</span></td>'+
-      '<td class="num der">'+S(o.total)+'</td>'+
-      '<td><button class="btn chico" onclick="aseAbrir(&quot;'+o.ot+'&quot;)">Atender</button></td></tr>';
-    }).join('')
-    :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes esperando confirmación.</td></tr>')+
-    '</table></div>';
+  $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
+  cargarOrdenesBD(['DEF_ENVIADA','DEF_APROBADA'],function(lista){
+    $('asesorLista').innerHTML=
+      '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Estado</th><th class="der">Estimado</th><th></th></tr>'+
+      (lista.length?lista.map(function(o){
+        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td>'+
+        '<td><span class="eti '+(o.estado_ot==='DEF_APROBADA'?'e4':'e3')+'">'+
+        (o.estado_ot==='DEF_APROBADA'?'Aprobada':'Por confirmar')+'</span></td>'+
+        '<td class="num der">'+S(o.total)+'</td>'+
+        '<td><button class="btn chico" onclick="aseAbrir('+o.id+')">Atender</button></td></tr>';
+      }).join('')
+      :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes validadas por ventanilla.</td></tr>')+
+      '</table></div>';
+  });
 }
-function aseAbrir(ot){
-  var o=ordenesPara(['DEF_ENVIADA','DEF_APROBADA'],true).filter(function(x){return x.ot===ot})[0];
-  if(!o)return;
-  ASE_OT=o;
-  var d=null; try{d=DB.get(ot)}catch(e){}
-  ASE_LIN=(d&&d.lineas_vent)?JSON.parse(JSON.stringify(d.lineas_vent)):lineasDeOrden(o);
-  ASE_LIN.forEach(function(l){ if(l.final===undefined)l.final=l.precio; if(l.incluir===undefined)l.incluir=(l.stock!==false); });
-  ASE_EST=Number(o.total)||0;
-  aseRender();
-  window.scrollTo({top:0,behavior:'smooth'});
+function aseAbrir(id){
+  $('asesorLista').innerHTML='<div class="hint">Abriendo…</div>';
+  cargarOrdenesBD(['DEF_ENVIADA','DEF_APROBADA'],function(lista){
+    var o=lista.filter(function(x){return x.id===id})[0];
+    if(!o){pintarAsesor();return}
+    ASE_OT=o;ASE_EST=Number(o.total)||0;
+    cargarLineasBD(id,function(lin){ ASE_LIN=lin; aseRender(); });
+  });
 }
 function aseTotales(){
   var sub=0;
@@ -3449,8 +3466,7 @@ function aseTotales(){
   return {sub:sub,igv:igv,tot:tot,dif:dif};
 }
 function aseRender(){
-  var o=ASE_OT,t=aseTotales();
-  var excede=t.dif>TOLERANCIA;
+  var o=ASE_OT,t=aseTotales(),excede=t.dif>TOLERANCIA;
   var cats=[];REPUESTOS.forEach(function(r){if(cats.indexOf(r.categoria)===-1&&r.categoria)cats.push(r.categoria)});
   $('asesorLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarAsesor()">← Volver a la lista</button>'+
@@ -3470,33 +3486,25 @@ function aseRender(){
          'oninput="aseFinal('+i+',this.value)"></td>'+
        '<td class="num der"><b>'+S((l.incluir?l.final*l.cant:0))+'</b></td></tr>';
     }).join('')+'</table></div>'+
-
     '<div class="fila" style="margin-top:14px">'+
       '<div style="min-width:170px"><label>Agregar producto</label><select id="aseCat" onchange="aseItems()">'+
         '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
       '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="aseItem"></select></div>'+
       '<div style="flex:0 0 auto;align-self:flex-end"><button class="btn chico sec" onclick="aseAgregar()">Agregar</button></div>'+
     '</div>'+
-
     '<div class="grid g4" style="margin-top:16px">'+
       kpi(S(ASE_EST),'Estimado aprobado','tinta')+
       kpi(S(t.tot),'Total a cobrar')+
       kpi((t.dif>=0?'+':'')+Math.round(t.dif*100)+'%','Variación',excede?'':'verde')+
       kpi(ASE_LIN.filter(function(l){return !l.incluir}).length,'Conceptos excluidos','tinta')+
     '</div>'+
-
     (excede
-      ? '<div class="aviso rojo" style="margin-top:14px"><b>El total supera en más de '+
-        Math.round(TOLERANCIA*100)+'% el estimado aprobado.</b><br>'+
-        'Conviene que el cliente apruebe el definitivo por WhatsApp, salvo que pague en el momento.</div>'
+      ? '<div class="aviso rojo" style="margin-top:14px"><b>Supera en más de '+Math.round(TOLERANCIA*100)+
+        '% el estimado aprobado.</b> Conviene que el cliente apruebe el definitivo, salvo que pague ahora.</div>'
       : '<div class="aviso ok" style="margin-top:14px">Dentro del margen aprobado por el cliente.</div>')+
-
     '<div class="fila" style="margin-top:14px">'+
-      '<div style="flex:0 0 auto;align-self:flex-end">'+
-        '<button class="btn chico ok" onclick="aseConformidad()">Cerrar con el cliente</button>'+
-      '</div>'+
-      '<div style="flex:0 0 auto;align-self:flex-end">'+
-        '<button class="btn chico sec" onclick="aseDevolver()">Devolver a ventanilla</button></div>'+
+      '<button class="btn chico ok" onclick="aseConformidad()">Cerrar con el cliente</button>'+
+      '<button class="btn chico sec" onclick="aseDevolver()">Devolver a ventanilla</button>'+
     '</div>'+
     '<div id="aseMsg" style="margin-top:10px"></div>';
   aseItems();
@@ -3512,25 +3520,27 @@ function aseItems(){
 function aseAgregar(){
   var cod=document.getElementById('aseItem').value;if(!cod)return;
   var r=REPUESTOS.filter(function(x){return x.codigo===cod})[0];if(!r)return;
-  ASE_LIN.push({codigo:r.codigo,desc:r.descripcion+' (agregado por asesor)',tipo:'REP',
-                precio:Number(r.precio),final:Number(r.precio),cant:1,stock:true,cod_alm:'',incluir:true});
-  auditar('AGREGA_ITEM','orden',ASE_OT.ot,r.descripcion+' · '+S(r.precio),r.precio);
-  aseRender();
+  sb.from('orden_detalle').insert({orden_id:ASE_OT.id,tipo:'REP',
+    descripcion:r.descripcion+' (agregado por asesor)',cantidad:1,
+    precio_taller:Number(r.precio),precio_caja:Number(r.precio),
+    stock_ok:true,cobrado:true,agregado_por:'asesor'}).select().single()
+   .then(function(res){
+     if(res.error){$('aseMsg').innerHTML='<div class="aviso rojo">'+res.error.message+'</div>';return}
+     ASE_LIN.push({id:res.data.id,tipo:'REP',desc:res.data.descripcion,cant:1,
+       precio:Number(r.precio),final:Number(r.precio),stock:true,cod_alm:'',incluir:true});
+     auditar('AGREGA_ITEM','orden',ASE_OT.ot,r.descripcion,r.precio);
+     aseRender();
+   },function(){});
 }
-function aseGuardarEstado(nuevoEstado,nota,estadoOT){
-  try{
-    var d=DB.get(ASE_OT.ot);
-    if(d){d.estado=nuevoEstado;d.lineas_asesor=ASE_LIN;d.total=aseTotales().tot;
-      if(estadoOT)d.estado_ot=estadoOT;
-      d.bit=d.bit||{};
-      d.bit[nuevoEstado]={hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}),nota:nota};
-      DB.set(d);}
-  }catch(e){}
-  if(ASE_OT.ot===OT_NUM){OT_EST=nuevoEstado;
-    if(estadoOT){EST_OT_ACT=estadoOT;
-      HITOS['O_'+estadoOT]=selloHora();}
-    renderFlujos();renderGestion()}
+function aseGuardarLineas(cb){
+  var pend=ASE_LIN.length;
+  if(!pend){cb();return}
+  ASE_LIN.forEach(function(l){
+    sb.from('orden_detalle').update({precio_caja:l.final,cobrado:l.incluir}).eq('id',l.id)
+     .then(function(){ if(--pend===0)cb() },function(){ if(--pend===0)cb() });
+  });
 }
+
 function aseConformidad(){
   var t=aseTotales(),o=ASE_OT;
   var incl=ASE_LIN.filter(function(l){return l.incluir});
@@ -3552,24 +3562,23 @@ function aseConformidad(){
      kpi(S(ASE_EST),'Aprobó inicialmente','tinta')+
      kpi((t.dif>=0?'+':'')+S(t.tot-ASE_EST),'Diferencia')+
    '</div>'+
-
    '<div class="grid g2" style="margin-top:18px;gap:14px">'+
      '<div class="card" style="margin:0">'+
-       '<h3 style="font-size:15px">A · El cliente no paga ahora</h3>'+
-       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">Se lleva el detalle definitivo por '+
-       'WhatsApp y lo aprueba desde su celular. La orden espera esa aprobación.</p>'+
+       '<h3 style="font-size:15px">A · No paga ahora</h3>'+
+       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">Se le envía el definitivo por WhatsApp '+
+       'y lo aprueba desde su celular.</p>'+
        '<div class="fila" style="align-items:center">'+
          '<div style="flex:1;min-width:150px"><div style="display:flex;align-items:center;gap:7px">'+
            '<span class="num" style="color:var(--mudo);font-weight:700">+51</span>'+
-           '<input id="aseWA" maxlength="9" inputmode="numeric" value="944255192"></div></div>'+
+           '<input id="aseWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'"></div></div>'+
          '<button class="btn chico" style="flex:0 0 auto;background:#25D366;color:#0A2E19" '+
            'onclick="aseEnviarFinal()">Enviar definitivo</button>'+
        '</div>'+
      '</div>'+
      '<div class="card" style="margin:0;border-color:var(--verde)">'+
-       '<h3 style="font-size:15px">B · El cliente paga ahora</h3>'+
-       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">El pago es la confirmación: no hace falta '+
-       'aprobación aparte. Elige la forma de pago y pasa a caja.</p>'+
+       '<h3 style="font-size:15px">B · Paga ahora</h3>'+
+       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">El pago es la confirmación. '+
+       'Elige la forma de pago y pasa a caja.</p>'+
        '<div class="fila" style="align-items:flex-end">'+
          '<div style="flex:1;min-width:150px"><label>Forma de pago</label>'+
            '<select id="asePago2"><option value="">— elegir —</option>'+
@@ -3579,7 +3588,6 @@ function aseConformidad(){
        '</div>'+
      '</div>'+
    '</div>'+
-
    '<div class="fila" style="margin-top:14px">'+
      '<button class="btn chico sec" onclick="imprimirConformidad()">🖨️ Imprimir detalle</button>'+
      '<button class="btn chico peligro" onclick="aseNoConforme()">El cliente no acepta</button>'+
@@ -3588,14 +3596,14 @@ function aseConformidad(){
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 }
 
-/* --- camino A · aprobación remota del detalle definitivo --- */
 function linkFinal(){
   if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
   var o=ASE_OT,t=aseTotales();
   var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var ln=incl.map(function(l){return l.desc.replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.final*l.cant)}).join('|');
+  var ln=incl.map(function(l){return (l.cant+'x '+l.desc).replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.final*l.cant)}).join('|');
   var q='v=cliente&f=d&ot='+encodeURIComponent(o.ot)+
-        '&pl='+encodeURIComponent(o.placa)+'&cl='+encodeURIComponent(o.cliente)+
+        '&pl='+encodeURIComponent(o.placa)+'&vh='+encodeURIComponent(o.veh||'')+
+        '&cl='+encodeURIComponent(o.cliente)+
         '&tf='+t.tot+'&ln='+encodeURIComponent(ln);
   return APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+q;
 }
@@ -3605,228 +3613,221 @@ function aseEnviarFinal(){
   if(num.length<9){msg.innerHTML='<div class="aviso rojo" style="margin:0">Ingresa el número del cliente.</div>';return}
   var t=aseTotales(),o=ASE_OT;
   var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var texto='*IZA MOTORS* — Detalle definitivo '+o.ot+'\n'+
-    'Hola '+o.cliente+', ya validamos los repuestos de su '+o.placa+'.\n\n'+
-    '*Detalle final*\n'+
-    incl.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.final*l.cant)}).join('\n')+'\n'+
-    '*Total con IGV: '+S(t.tot)+'*\n'+
-    (ASE_EST?'_Estimado inicial: '+S(ASE_EST)+' · diferencia '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'_\n':'')+
-    (linkFinal()?'\nApruebe el detalle definitivo acá:\n'+linkFinal()+'\n':'')+
-    '\nUna vez aprobado pasamos a facturación.';
-  var a=document.createElement('a');
-  a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
-  a.target='_blank';a.rel='noopener';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-
-  aseGuardarEstado('CON_ASESOR','Detalle definitivo enviado al cliente · '+S(t.tot),'DEF_ENVIADA');
-  auditar('ENVIA_DEFINITIVO','orden',o.ot,
-    'Estimado '+S(ASE_EST)+' → definitivo '+S(t.tot)+' · esperando aprobación remota',t.tot);
-  msg.innerHTML='<div class="aviso info" style="margin:0">Enviado. La orden queda con el asesor hasta que '+
-    'el cliente apruebe desde su celular.</div>';
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  aseGuardarLineas(function(){
+    sb.from('ordenes').update({total_taller:t.tot,asesor_id:SESION?SESION.id:null,
+      est_asesor:new Date().toISOString(),ot_def_enviada:new Date().toISOString()})
+     .eq('id',o.id).then(function(){
+      var texto='*IZA MOTORS* — Detalle definitivo '+o.ot+'\n'+
+        'Hola '+o.cliente+', ya validamos los repuestos de su '+o.placa+'.\n\n'+
+        '*Detalle final*\n'+
+        incl.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.final*l.cant)}).join('\n')+'\n'+
+        '*Total con IGV: '+S(t.tot)+'*\n'+
+        (ASE_EST?'_Estimado inicial: '+S(ASE_EST)+' · diferencia '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'_\n':'')+
+        (linkFinal()?'\nApruebe el detalle definitivo acá:\n'+linkFinal()+'\n':'')+
+        '\nUna vez aprobado pasamos a facturación.';
+      var a=document.createElement('a');
+      a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
+      a.target='_blank';a.rel='noopener';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      auditar('ENVIA_DEFINITIVO','orden',o.ot,'Definitivo '+S(t.tot),t.tot);
+      msg.innerHTML='<div class="aviso info" style="margin:0">Enviado. La orden espera la aprobación del cliente.</div>';
+      setTimeout(pintarAsesor,1400);
+    },function(){});
+  });
 }
-
-/* --- camino B · paga ahora, el pago es la confirmación --- */
 function asePagaAhora(){
   var pago=document.getElementById('asePago2').value;
   var msg=document.getElementById('aseFirmaMsg');
   if(!pago){msg.innerHTML='<div class="aviso rojo" style="margin:0">Elige la forma de pago.</div>';return}
-  var t=aseTotales(),ot=ASE_OT.ot;
-  aseGuardarEstado('LISTO','Cliente paga en el momento · '+pago+' · '+S(t.tot),'DEF_APROBADA');
-  auditar('CONFIRMA_PAGO_DIRECTO','orden',ot,
-    'Pago inmediato ('+pago+') · estimado '+S(ASE_EST)+' → final '+S(t.tot)+
-    ' ('+(t.dif>=0?'+':'')+Math.round(t.dif*100)+'%)',t.tot);
-  msg.innerHTML='<div class="aviso ok" style="margin:0">Enviada a caja'+
-    (pago==='tarjeta'?'. Con tarjeta, caja solo valida que el monto coincida.':' para el cobro.')+'</div>';
-  setTimeout(pintarAsesor,1300);
+  var t=aseTotales(),o=ASE_OT;
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  aseGuardarLineas(function(){
+    sb.from('ordenes').update({estado_ot:'DEF_APROBADA',forma_pago:pago,total_taller:t.tot,
+      asesor_id:SESION?SESION.id:null,est_asesor:new Date().toISOString(),
+      ot_def_aprobada:new Date().toISOString()}).eq('id',o.id)
+     .then(function(r){
+       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+       auditar('CONFIRMA_PAGO_DIRECTO','orden',o.ot,'Pago '+pago+' · final '+S(t.tot),t.tot);
+       msg.innerHTML='<div class="aviso ok" style="margin:0">Enviada a caja'+
+         (pago==='tarjeta'?'. Con tarjeta, caja solo valida el monto.':'.')+'</div>';
+       setTimeout(pintarAsesor,1300);
+     },function(){});
+  });
 }
-
+function aseDevolver(){
+  var m=prompt('¿Por qué vuelve a ventanilla?');
+  if(m===null)return;
+  sb.from('ordenes').update({estado_ot:'PRELIM_APROBADA'}).eq('id',ASE_OT.id).then(function(){
+    auditar('DEVUELVE_VENTANILLA','orden',ASE_OT.ot,m||'sin motivo');
+    $('aseMsg').innerHTML='<div class="aviso rojo">Devuelta a ventanilla.</div>';
+    setTimeout(pintarAsesor,1100);
+  },function(){});
+}
+function aseNoConforme(){
+  var m=prompt('¿Qué observó el cliente?');
+  if(m===null)return;
+  auditar('RECHAZA_CLIENTE','orden',ASE_OT.ot,m||'sin detalle',aseTotales().tot);
+  document.getElementById('aseFirmaMsg').innerHTML=
+    '<div class="aviso rojo" style="margin:0">Registrado. Ajusta el detalle o devuélvela a ventanilla.</div>';
+}
 function imprimirConformidad(){
   var t=aseTotales(),o=ASE_OT;
   var incl=ASE_LIN.filter(function(l){return l.incluir});
   var w=window.open('','_blank','width=380,height=640');
   if(!w){alert('Permite las ventanas emergentes para imprimir.');return}
   w.document.write('<html><head><meta charset="utf-8"><title>'+o.ot+'</title>'+
-   '<style>body{font-family:-apple-system,Arial,sans-serif;width:76mm;margin:0;padding:8px;font-size:12px}'+
+   '<style>body{font-family:Arial,sans-serif;width:76mm;margin:0;padding:8px;font-size:12px}'+
    'h1{font-size:15px;text-align:center;margin:0 0 2px}.c{text-align:center}'+
    'table{width:100%;border-collapse:collapse;font-size:11px}td{padding:2px 0}'+
    '.r{text-align:right}hr{border:0;border-top:1px dashed #999;margin:6px 0}'+
    '.tot{font-size:14px;font-weight:700}.firma{margin-top:26px;border-top:1px solid #000;text-align:center;font-size:10px;padding-top:4px}'+
    '</style></head><body>'+
    '<h1>IZA MOTORS</h1><div class="c">'+SEDE_NOMBRE+'</div><hr>'+
-   '<div><b>'+o.ot+'</b> · '+new Date().toLocaleString('es-PE')+'<br>'+
-   'Placa: <b>'+o.placa+'</b><br>'+o.cliente+'</div><hr>'+
+   '<div><b>'+o.ot+'</b> · '+new Date().toLocaleString('es-PE')+'<br>Placa: <b>'+o.placa+'</b><br>'+o.cliente+'</div><hr>'+
    '<b>DETALLE DEFINITIVO</b><table>'+
    incl.map(function(l){return '<tr><td>'+l.cant+'x '+l.desc+'</td><td class="r">'+S(l.final*l.cant)+'</td></tr>'}).join('')+
    '</table><hr><table>'+
    '<tr><td>Subtotal</td><td class="r">'+S(t.sub)+'</td></tr>'+
    '<tr><td>IGV 18%</td><td class="r">'+S(t.igv)+'</td></tr>'+
    '<tr class="tot"><td>TOTAL</td><td class="r">'+S(t.tot)+'</td></tr></table><hr>'+
-   '<div style="font-size:10px">Estimado inicial: '+S(ASE_EST)+
-   ' · Diferencia: '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'</div>'+
+   '<div style="font-size:10px">Estimado inicial: '+S(ASE_EST)+' · Diferencia: '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'</div>'+
    '<div class="firma">Firma del cliente en conformidad</div>'+
    '<div style="font-size:9px;margin-top:8px">Atendido por '+(SESION?SESION.nombre:'')+'</div>'+
    '</body></html>');
   w.document.close();
   setTimeout(function(){w.print()},400);
-  auditar('IMPRIME_DEFINITIVO','orden',o.ot,'Detalle definitivo impreso',t.tot);
+  auditar('IMPRIME_DEFINITIVO','orden',o.ot,'Detalle impreso',t.tot);
 }
 
-function aseNoConforme(){
-  var m=prompt('¿Qué observó el cliente?');
-  if(m===null)return;
-  aseGuardarEstado('CON_ASESOR','Cliente no acepta el monto final: '+(m||'sin detalle'));
-  auditar('RECHAZA_CLIENTE','orden',ASE_OT.ot,m||'sin detalle',aseTotales().tot);
-  document.getElementById('aseFirmaMsg').innerHTML=
-    '<div class="aviso rojo" style="margin:0">Registrado. Ajusta el detalle o devuélvela a ventanilla.</div>';
-}
-function aseDevolver(){
-  var m=prompt('¿Por qué vuelve a ventanilla?');
-  if(m===null)return;
-  aseGuardarEstado('EN_VENTANILLA','Devuelta por el asesor: '+(m||'sin motivo'),'PRELIM_APROBADA');
-  auditar('DEVUELVE_VENTANILLA','orden',ASE_OT.ot,m||'sin motivo');
-  $('aseMsg').innerHTML='<div class="aviso rojo">Devuelta a ventanilla.</div>';
-  setTimeout(pintarAsesor,1100);
-}
+/* ============================================================
+   CAJA · valida el cobro contra RS-TALLER · lee de la base
+   ============================================================ */
+var CAJEROS=[{u:'mrivera',n:'Mónica Rivera'},{u:'jcastro',n:'Julio Castro'},{u:'pvargas',n:'Paola Vargas'}];
+var CAJA_OT=null,CAJA_LIN=[];
 
-/* ============ CAJA ============ */
-var COBRADAS={},CAJA_OT=null,CAJA_LIN=[];
-var CAJEROS=[{u:'mrivera',n:'Mónica Rivera',c:'2481'},
-             {u:'jcastro',n:'Julio Castro',c:'1907'},
-             {u:'pvargas',n:'Paola Vargas',c:'5630'}];
-function cajaClaveReset(){
-  var e=$('cajaClave');if(e){e.value='';e.focus()}
-  var hint=$('cajaHint');
-  var c=CAJEROS.filter(function(x){return x.u===$('cajaUser').value})[0];
-  if(hint&&c)hint.innerHTML='Clave de demostración de '+c.n+': <b class="num">'+c.c+'</b>';
-}
 function linkCaja(){
   if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
   return APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+'v=caja';
 }
 function copiarLinkCaja(){
   var l=linkCaja();
-  if(!l){alert('El link de caja aparece cuando la app está publicada en línea.');return}
+  if(!l){alert('El link aparece cuando la app está publicada.');return}
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(l).then(function(){alert('Link de caja copiado:\n'+l)});
   } else alert(l);
 }
-function cajaLista(){
-  var lista=[];
-  DB.lista().forEach(function(d){
-    if(d.estado==='LISTO'){
-      var lin=(d.sel||[]).map(function(i){return {d:CATALOGO[i].d,p:CATALOGO[i].p,t:CATALOGO[i].t}});
-      lista.push({ot:d.ot,placa:d.placa,cliente:d.cliente,total:d.total,lineas:lin,real:true});
-    }
-  });
-  OTS.filter(function(o){return o.estado==='LISTO'&&!COBRADAS[o.ot]}).slice(0,6).forEach(function(o){
-    lista.push({ot:o.ot,placa:o.placa,cliente:o.cliente,total:o.importe,
-      lineas:[{d:o.tarea,p:Math.round(o.importe*0.6),t:'MO'},{d:'Repuestos del servicio',p:Math.round(o.importe*0.4),t:'REP'}]});
-  });
-  return lista.filter(function(o){return !COBRADAS[o.ot]});
-}
 function pintarCaja(){
   CAJA_OT=null;
-  var lista=cajaLista();
   $('cajaDetalle').style.display='none';
   $('cajaTabla').parentNode.style.display='block';
-  $('cajaTabla').innerHTML='<tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-    '<th class="der">Enviado por taller</th><th></th></tr>'+
-    (lista.length?lista.map(function(o){
-      return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-      '<td>'+o.cliente+'</td><td class="num der">'+S(o.total)+'</td>'+
-      '<td><button class="btn chico oscuro" onclick="abrirCobro(&quot;'+o.ot+'&quot;)">Revisar y cobrar</button></td></tr>';
-    }).join('')
-    :'<tr><td colspan="5" class="vacio"><b>Nada por cobrar</b>No hay órdenes listas en este momento.</td></tr>');
+  $('cajaTabla').innerHTML='<tr><td class="hint">Cargando…</td></tr>';
+  cargarOrdenesBD(['DEF_APROBADA'],function(lista){
+    $('cajaTabla').innerHTML='<tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Taller</th><th class="der">Enviado por taller</th><th></th></tr>'+
+      (lista.length?lista.map(function(o){
+        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td>'+
+        '<td><span class="eti '+(o.estado_taller==='LISTO'?'e4':'e3')+'">'+
+          String(o.estado_taller||'').replace('_',' ')+'</span></td>'+
+        '<td class="num der">'+S(o.total)+'</td>'+
+        '<td><button class="btn chico oscuro" onclick="abrirCobro('+o.id+')">Revisar y cobrar</button></td></tr>';
+      }).join('')
+      :'<tr><td colspan="6" class="vacio"><b>Nada por cobrar</b>No hay órdenes con el detalle aprobado.</td></tr>');
+  });
 }
-function abrirCobro(ot){
-  var o=cajaLista().filter(function(x){return x.ot===ot})[0];if(!o)return;
-  CAJA_OT=o;
-  CAJA_LIN=o.lineas.map(function(l){return {d:l.d,p:l.p,ok:true}});
-  $('cajaTabla').parentNode.style.display='none';
-  $('cajaDetalle').style.display='block';
-  renderCobro();
-  window.scrollTo(0,0);
+function abrirCobro(id){
+  cargarOrdenesBD(['DEF_APROBADA'],function(lista){
+    var o=lista.filter(function(x){return x.id===id})[0];
+    if(!o){pintarCaja();return}
+    CAJA_OT=o;
+    cargarLineasBD(id,function(lin){
+      CAJA_LIN=lin.filter(function(l){return l.incluir});
+      $('cajaTabla').parentNode.style.display='none';
+      $('cajaDetalle').style.display='block';
+      renderCobro();
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
 }
 function renderCobro(){
   var o=CAJA_OT;
+  $('cobroCab').innerHTML='<b class="cond" style="font-size:20px">'+o.ot+'</b> · '+
+    '<span class="num">'+o.placa+'</span> · '+o.cliente+
+    (o.estado_taller!=='LISTO'?' <span class="eti e3">vehículo aún en taller</span>':'');
+  $('cobroLineas').innerHTML='<tr><th></th><th>Concepto</th><th class="der">Cant</th>'+
+    '<th class="der">Precio asesor</th><th class="der">Precio a cobrar</th></tr>'+
+    CAJA_LIN.map(function(l,i){
+      return '<tr'+(l.incluir?'':' style="opacity:.45"')+'>'+
+      '<td><input type="checkbox" '+(l.incluir?'checked':'')+' onchange="cobroToggle('+i+',this.checked)" '+
+      'style="width:22px;height:22px;accent-color:var(--rojo)"></td>'+
+      '<td>'+l.desc+'</td><td class="der num">'+l.cant+'</td>'+
+      '<td class="num der" style="color:var(--mudo)">'+S(l.final)+'</td>'+
+      '<td class="der"><input type="number" value="'+l.final+'" min="0" '+(l.incluir?'':'disabled ')+
+      'oninput="cobroPrecio('+i+',this.value)" style="width:110px;text-align:right;padding:8px"></td></tr>';
+    }).join('');
+  cobroTotales();
   var su=$('cajaUser');
   if(su&&!su.options.length){
     su.innerHTML='<option value="">— seleccionar —</option>'+
-      CAJEROS.map(function(c){return '<option value="'+c.u+'">'+c.n+' ('+c.u+')</option>'}).join('');
+      CAJEROS.map(function(c){return '<option value="'+c.u+'">'+c.n+'</option>'}).join('');
   }
-  $('cobroCab').innerHTML='<b class="cond" style="font-size:20px">'+o.ot+'</b> · '+
-    '<span class="num">'+o.placa+'</span> · '+o.cliente;
-  $('cobroLineas').innerHTML='<tr><th></th><th>Concepto enviado por el taller</th>'+
-    '<th class="der">Precio taller</th><th class="der">Precio a cobrar</th></tr>'+
-    CAJA_LIN.map(function(l,i){
-      return '<tr'+(l.ok?'':' style="opacity:.45"')+'>'+
-      '<td><input type="checkbox" '+(l.ok?'checked':'')+' onchange="cobroToggle('+i+',this.checked)" '+
-      'style="width:22px;height:22px;accent-color:var(--rojo)"></td>'+
-      '<td>'+l.d+'</td><td class="num der" style="color:var(--mudo)">'+S(o.lineas[i].p)+'</td>'+
-      '<td class="der"><input type="number" value="'+l.p+'" min="0" step="1" '+(l.ok?'':'disabled')+
-      ' oninput="cobroPrecio('+i+',this.value)" style="width:110px;text-align:right;padding:8px"></td></tr>';
-    }).join('');
-  var sub=CAJA_LIN.filter(function(l){return l.ok}).reduce(function(a,l){return a+(Number(l.p)||0)},0);
-  var igv=Math.round(sub*0.18),tot=sub+igv;
-  var dif=tot-o.total;
-  $('cobroTot').innerHTML=
-    '<div class="fila">'+kpi(S(o.total),'Enviado por taller','tinta')+
+}
+function cobroTotales(){
+  var o=CAJA_OT;
+  var sub=CAJA_LIN.filter(function(l){return l.incluir})
+    .reduce(function(a,l){return a+(Number(l.final)||0)*Number(l.cant||1)},0);
+  var igv=Math.round(sub*0.18),tot=sub+igv,dif=tot-o.total;
+  $('cobroTot').innerHTML='<div class="fila">'+
+    kpi(S(o.total),'Enviado por taller','tinta')+
     kpi(S(tot),'Total a cobrar')+
     kpi((dif===0?'sin cambios':(dif>0?'+':'')+S(dif)),'Diferencia',dif===0?'verde':'')+'</div>';
+  return tot;
 }
-function cobroToggle(i,v){CAJA_LIN[i].ok=v;renderCobro()}
-function cobroPrecio(i,v){CAJA_LIN[i].p=Number(v)||0;
-  var sub=CAJA_LIN.filter(function(l){return l.ok}).reduce(function(a,l){return a+(Number(l.p)||0)},0);
-  var igv=Math.round(sub*0.18),tot=sub+igv,dif=tot-CAJA_OT.total;
-  $('cobroTot').innerHTML='<div class="fila">'+kpi(S(CAJA_OT.total),'Enviado por taller','tinta')+
-    kpi(S(tot),'Total a cobrar')+
-    kpi((dif===0?'sin cambios':(dif>0?'+':'')+S(dif)),'Diferencia',dif===0?'verde':'')+'</div>';
-}
+function cobroToggle(i,v){CAJA_LIN[i].incluir=v;renderCobro()}
+function cobroPrecio(i,v){CAJA_LIN[i].final=Number(v)||0;cobroTotales()}
+function cajaClaveReset(){var e=$('cajaClave');if(e){e.value='';e.focus()}}
 function confirmarCobro(){
-  var uid=($('cajaUser').value||''), clave=($('cajaClave').value||'').trim(),
-      fact=($('cajaFact').value||'').trim();
+  var uid=($('cajaUser').value||''),clave=($('cajaClave').value||'').trim(),
+      fact=($('cajaFact').value||'').trim(),msg=$('cajaMsg');
   var caj=CAJEROS.filter(function(c){return c.u===uid})[0];
-  if(!caj){alert('Selecciona el cajero que autoriza el cobro.');$('cajaUser').focus();return}
-  if(clave!==caj.c){
-    alert('Clave incorrecta para '+caj.n+'. El cobro no se registró.');
-    $('cajaClave').value='';$('cajaClave').focus();return;
-  }
-  if(fact.length<5){alert('Ingresa el número de comprobante emitido (ej. F001-004512).');$('cajaFact').focus();return}
-  var user=caj.n;
-  var activas=CAJA_LIN.filter(function(l){return l.ok});
+  if(!caj){alert('Selecciona el cajero que autoriza.');return}
+  if(clave.length<4){alert('Ingresa la clave del cajero.');$('cajaClave').focus();return}
+  if(fact.length<5){alert('Ingresa el comprobante emitido (ej. F001-004512).');$('cajaFact').focus();return}
+  var activas=CAJA_LIN.filter(function(l){return l.incluir});
   if(!activas.length){alert('Debe quedar al menos un concepto por cobrar.');return}
-  var sub=activas.reduce(function(a,l){return a+(Number(l.p)||0)},0);
-  var tot=sub+Math.round(sub*0.18);
-  var hora=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-  var ot=CAJA_OT.ot, quitadas=CAJA_LIN.length-activas.length, dif=tot-CAJA_OT.total;
-  COBRADAS[ot]=true;
-  try{
-    var d=DB.get(ot);
-    if(d){d.estado='CANCELADO';d.bit=d.bit||{};d.totalCobrado=tot;d.factura=fact;d.cajero=user;
-      d.bit['CANCELADO']={hora:hora,nota:'Cobrado por '+user+' · comprobante '+fact+
-        (quitadas?' · '+quitadas+' concepto(s) retirados':'')+(dif?' · ajuste '+(dif>0?'+':'')+S(dif):'')};
-      DB.set(d);}
-  }catch(e){}
-  auditar('COBRA','orden',ot,'Comprobante '+fact+' · '+user,tot);
-  try{
-    var dd=DB.get(ot);
-    if(dd){dd.estado_ot='PAGADA';DB.set(dd)}
-  }catch(e){}
-  if(ot===OT_NUM){EST_OT_ACT='PAGADA';
-    HITOS['O_PAGADA']=selloHora();renderFlujos();renderGestion()}
-  if(ot===OT_NUM&&OT_EST==='LISTO'){
-    setEstado('CANCELADO','Cobrado por '+user+' · comprobante '+fact);
+  var tot=cobroTotales(),ot=CAJA_OT,hora=selloHora();
+  msg.innerHTML='<div class="hint">Validando…</div>';
+  sb.rpc('validar_pin',{p_usuario:uid,p_pin:clave}).then(function(r){
+    if(r.error||!r.data||!r.data.length){
+      msg.innerHTML='<div class="aviso rojo">Clave incorrecta para '+caj.n+'. El cobro no se registró.</div>';
+      $('cajaClave').value='';return;
+    }
+    var cajeroId=r.data[0].id,pend=CAJA_LIN.length;
+    CAJA_LIN.forEach(function(l){
+      sb.from('orden_detalle').update({precio_caja:l.final,cobrado:l.incluir}).eq('id',l.id)
+       .then(function(){ if(--pend===0)cerrar(cajeroId) },function(){ if(--pend===0)cerrar(cajeroId) });
+    });
+    if(!CAJA_LIN.length)cerrar(cajeroId);
+  },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión con la base.</div>'});
+
+  function cerrar(cajeroId){
+    sb.from('ordenes').update({estado_ot:'PAGADA',total_cobrado:tot,comprobante:fact,
+      cajero_id:cajeroId,est_caja:new Date().toISOString(),ot_pagada:new Date().toISOString()})
+     .eq('id',ot.id).then(function(r2){
+       if(r2.error){msg.innerHTML='<div class="aviso rojo">'+r2.error.message+'</div>';return}
+       auditar('COBRA','orden',ot.ot,'Comprobante '+fact+' · '+caj.n+
+         (tot!==ot.total?' · ajuste '+S(tot-ot.total):''),tot);
+       $('cajaDetalle').style.display='none';
+       $('cajaTabla').parentNode.style.display='block';
+       msg.innerHTML='<div class="aviso ok" style="margin-top:14px"><b>Pago registrado · '+ot.ot+'</b><br>'+
+         'Comprobante <b>'+fact+'</b> por <b>'+caj.n+'</b> a las '+hora+'.<br>'+
+         'Cobrado: <b>'+S(tot)+'</b>'+(tot!==ot.total?' · diferencia '+S(tot-ot.total):' · sin variación')+'<br>'+
+         'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>';
+       $('cajaFact').value='';$('cajaClave').value='';
+       pintarCaja();
+     },function(){});
   }
-  $('cajaDetalle').style.display='none';
-  $('cajaTabla').parentNode.style.display='block';
-  $('cajaMsg').innerHTML='<div class="aviso ok" style="margin-top:14px">'+
-    '<b>Pago registrado · '+ot+'</b><br>'+
-    'Comprobante <b>'+fact+'</b> emitido por <b>'+user+'</b> a las '+hora+'.<br>'+
-    'Cobrado: <b>'+S(tot)+'</b>'+(dif?' · diferencia frente a lo enviado por el taller: '+(dif>0?'+':'')+S(dif):' · sin variación')+
-    (quitadas?'<br>'+quitadas+' concepto(s) no disponibles fueron retirados.':'')+
-    '</div>';
-  $('cajaFact').value='';$('cajaClave').value='';
-  pintarCaja();
 }
 
 /* ============ VISOR DE FOTOS ============ */
