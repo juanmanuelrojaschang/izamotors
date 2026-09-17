@@ -427,7 +427,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v51</span>
+  <span class="demo-tag">v52</span>
   <div class="ubic" id="ubicNav"></div>
   <div class="sesion" id="sesionBox"></div>
   <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -694,6 +694,10 @@ tr.sel td{background:var(--rojo-cl)}
       </div>
 
       <!-- fase 2: aprobacion y cierre -->
+      <div class="card" id="gEditar">
+        <h3>Datos de la orden</h3>
+        <div id="editZona"></div>
+      </div>
       <div class="card" id="gAvance" style="display:none">
         <h3>Siguiente paso</h3>
         <div class="hint" style="margin:-6px 0 12px">Qué corresponde hacer ahora según el punto en que está la orden.</div>
@@ -701,10 +705,6 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="fila" style="margin-top:8px" id="gBotones"></div>
       </div>
 
-      <div class="card" id="gEditar">
-        <h3>Datos de la orden</h3>
-        <div id="editZona"></div>
-      </div>
 
 
     </div>
@@ -3065,6 +3065,9 @@ function renderPanel(){
   /* las tarjetas de acción solo salen en la etapa que toca */
   var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
                (sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'&&EST_TALLER==='EN_DIAGNOSTICO');
+  /* estando en una etapa de la OT, el responsable puede no ser quien mira:
+     igual se muestran las acciones disponibles para su rol */
+  if(sel.f==='ot'&&sel.k===EST_OT_ACT)esAccion=true;
   var puede=puedeEjecutar(sel.k);
   var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO');
   $('gAsig').style.display=(esAccion&&sel.f==='taller'&&tocaMec&&puede)?'block':'none';
@@ -3134,6 +3137,16 @@ function datosDelPaso(f,k,paso){
   }
   else if(k==='PRELIM_APROBADA'){
     var tp=totalesV2();
+    var b=BITACORA['PRELIM_APROBADA']||{};
+    var sinConf=(b.nota||'').indexOf('SIN CONFIRMACIÓN')===0;
+    if(sinConf){
+      return '<div class="card"><h3>'+paso.ic+' '+paso.t+
+        ' <span class="eti e3" style="margin-left:auto">sin confirmación</span></h3>'+
+        '<div class="aviso rojo" style="font-size:12.5px">El cliente no confirmó. El taller avanzó bajo '+
+        'responsabilidad interna.</div>'+
+        fila('Motivo',(b.nota||'').replace('SIN CONFIRMACIÓN DEL CLIENTE · ',''))+
+        fila('Fecha y hora',hh)+fila('Monto',S(tp.tot))+'</div>';
+    }
     filas=fila('Aprobado por',d.cliente)+
       fila('Fecha y hora',hh)+
       fila('Medio','link de WhatsApp')+
@@ -3162,11 +3175,9 @@ function verPaso(f,k){
 }
 /* la etapa pendiente: la que toca ahora en el carril que corresponde */
 function pasoPendiente(){
-  var otIdx=idxOT(EST_OT_ACT);
-  /* si la OT espera una acción del taller, esa manda */
+  /* siempre la etapa en curso: la siguiente todavía no ocurrió */
   if(!EST_OT_ACT&&EST_TALLER==='EN_DIAGNOSTICO')return {f:'ot',k:'PRELIM_ENVIADA'};
-  if(EST_OT_ACT&&otIdx<F_OT.length-1&&puedeEjecutar(F_OT[Math.min(otIdx+1,F_OT.length-1)].k))
-    return {f:'ot',k:F_OT[Math.min(otIdx+1,F_OT.length-1)].k};
+  if(EST_OT_ACT)return {f:'ot',k:EST_OT_ACT};
   return {f:'taller',k:EST_TALLER||'RECIBIDO'};
 }
 
@@ -3206,9 +3217,10 @@ function renderAcciones(){
       'y envíaselo al cliente para que apruebe el servicio.</div>';
   }
   if(EST_OT_ACT==='PRELIM_ENVIADA'){
-    avisos='<div class="aviso info"><b>Preliminar enviada.</b> Esperando que el cliente apruebe desde su link. '+
-      'Si prefiere esperar el detalle definitivo, puede aprobar directamente ese.</div>';
-    botones='';
+    avisos='<div class="aviso info"><b>Preliminar enviada.</b> Esperando que el cliente apruebe desde su link.<br>'+
+      'La aprobación es deseable pero no obligatoria: si el cliente no confirma y el taller decide avanzar, '+
+      'queda registrado quién lo autorizó y por qué.</div>';
+    botones='<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
   }
   if(EST_OT_ACT==='PRELIM_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar aprobada.</b> El taller trabaja. Al terminar, ventanilla valida '+
@@ -3237,6 +3249,15 @@ function renderAcciones(){
   $('gAvisos').innerHTML=avisos;
   $('gBotones').innerHTML=botones;
   renderEditar();
+}
+function continuarSinConfirmar(){
+  var m=prompt('¿Por qué se avanza sin la confirmación del cliente?\n(Ej. autorizó por teléfono, es cliente de flota, dejó el auto con instrucciones)');
+  if(m===null)return;
+  if(!m||m.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return}
+  var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
+  setOT('PRELIM_APROBADA',nota);
+  auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
+  alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
 }
 function irDiagnostico(){
   var mec=($('gMec')&&$('gMec').value||'').trim();
