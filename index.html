@@ -157,6 +157,34 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+/* ===== menús de flujo ===== */
+.menuf{margin-bottom:10px;border:1.5px solid var(--borde);border-radius:12px;overflow:hidden;background:var(--blanco)}
+.menuf .cab{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;background:var(--gris)}
+.menuf .cab:hover{background:var(--gris2)}
+.menuf.on .cab{background:var(--rojo-cl)}
+.menuf .cab .ico{font-size:17px}
+.menuf .cab .tit{font-family:'Barlow Condensed',Impact,sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.04em}
+.menuf .cab .act{margin-left:auto;font-size:12px;font-weight:700;color:var(--rojo);text-align:right;line-height:1.2}
+.menuf .cab .fl{font-size:12px;color:var(--mudo);margin-left:6px}
+.menuf .pasos-l{display:none;padding:8px;background:var(--blanco)}
+.menuf.abierto .pasos-l{display:block}
+.pasoi{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;margin-bottom:4px;
+  font-size:12.5px;cursor:pointer;border:1px solid transparent}
+.pasoi:hover{background:var(--gris)}
+.pasoi.done{color:var(--tinta)}
+.pasoi.done .pt{background:var(--verde);color:#fff}
+.pasoi.act{background:var(--rojo-cl);border-color:var(--rojo);font-weight:700}
+.pasoi.act .pt{background:var(--rojo);color:#fff}
+.pasoi.fut{color:var(--mudo)}
+.pasoi .pt{width:20px;height:20px;border-radius:50%;background:var(--gris2);color:var(--mudo);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto}
+.pasoi .hh{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mudo)}
+.pasoi.sel{outline:2px solid var(--tinta);outline-offset:-2px}
+.dato-l{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--gris2);font-size:13.5px}
+.dato-l:last-child{border:0}
+.dato-l span:first-child{color:var(--mudo)}
+.dato-l span:last-child{font-weight:600;text-align:right}
+
 /* ===== detalle del preliminar, sobre fondo propio ===== */
 .bloque-pres{background:var(--tinta);border-radius:12px;padding:14px;margin-top:18px}
 .bloque-pres label{color:#9AA5B4}
@@ -360,7 +388,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v41</span>
+  <span class="demo-tag">v42</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -535,6 +563,7 @@ tr.sel td{background:var(--rojo-cl)}
         <h3>Orden <span class="num" id="gOT">OT-2026-00184</span>
           <span class="eti" id="gChip" style="margin-left:auto">RECIBIDO</span></h3>
         <div id="gFlujos"></div>
+        <div id="gPanel"></div>
         <div style="color:var(--mudo);font-size:14px" id="gInfo"></div>
         <div style="color:var(--verde);font-size:14px;font-weight:600;margin-top:6px" id="tiempoFinal"></div>
       </div>
@@ -2301,6 +2330,7 @@ function abrirOrden(ot){
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
+  PANEL_SEL=null;ACC_ABIERTO='taller';
   clearInterval(tint);$('crono').classList.remove('on');
   $('gInfo').innerHTML=d.info||(d.veh+' · <b class="num">'+d.placa+'</b> · '+d.cliente);
   $('tiempoFinal').innerHTML='';
@@ -2706,7 +2736,8 @@ function recibir(){
     },function(){});
   }
   BITACORA={};
-  EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};
+  EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
+  HITOS['T_REGISTRO']=selloHora();
   HITOS['T_RECIBIDO']=selloHora();
   setEstado('RECIBIDO','Vehículo recibido con firma del cliente');
   renderFlujos();
@@ -2720,6 +2751,7 @@ var ORDEN_EST=['RECIBIDO','EN_DIAGNOSTICO','POR_APROBAR','EN_PROCESO','EN_VENTAN
 
 /* ---- dos flujos paralelos ---- */
 var F_TALLER=[
+ {k:'REGISTRO',      t:'Registro',       ic:'📝'},
  {k:'RECIBIDO',      t:'Recibido',       ic:'🔑'},
  {k:'EN_DIAGNOSTICO',t:'En diagnóstico', ic:'🔍'},
  {k:'EN_PROCESO',    t:'En proceso',     ic:'🔧'},
@@ -2734,6 +2766,26 @@ var F_OT=[
  {k:'PAGADA',         t:'OT pagada',        ic:'💳'}
 ];
 var EST_TALLER='RECIBIDO',EST_OT_ACT='',HITOS={};
+var ACC_ABIERTO='taller',PANEL_SEL=null;
+
+/* quién debe ejecutar cada etapa */
+var RESP={
+  REGISTRO:['jefe_taller','recepcion'], RECIBIDO:['jefe_taller'],
+  EN_DIAGNOSTICO:['jefe_taller','mecanico'], EN_PROCESO:['jefe_taller','mecanico'],
+  LISTO:['jefe_taller'], ENTREGADO:['jefe_taller'],
+  PRELIM_ENVIADA:['jefe_taller'], PRELIM_APROBADA:['cliente'],
+  DEF_ENVIADA:['ventanilla'], DEF_APROBADA:['cliente','asesor'], PAGADA:['caja']
+};
+var RESP_NOMBRE={jefe_taller:'el jefe de taller',recepcion:'recepción',mecanico:'el mecánico',
+  ventanilla:'ventanilla',asesor:'el asesor de servicio',caja:'caja',cliente:'el cliente'};
+function puedeEjecutar(paso){
+  if(!SESION)return false;
+  if(SESION.rol==='admin_general'||SESION.rol==='admin_local')return true;
+  return (RESP[paso]||[]).indexOf(SESION.rol)>-1;
+}
+function responsableDe(paso){
+  return (RESP[paso]||[]).map(function(r){return RESP_NOMBRE[r]||r}).join(' o ');
+}
 
 function selloHora(d){
   var f=d?new Date(d):new Date();
@@ -2782,26 +2834,137 @@ function guardarFlujos(){
 }
 function renderFlujos(){
   var c=document.getElementById('gFlujos');if(!c)return;
-  function bloque(titulo,lista,actual,pref){
+  /* el taller arranca en REGISTRO: la recepción ya está hecha al llegar acá */
+  var tallerAct = EST_TALLER||'RECIBIDO';
+  var otAct = EST_OT_ACT||'';
+  function menu(id,titulo,ico,lista,actual,pref){
     var idx=lista.map(function(x){return x.k}).indexOf(actual);
-    return '<div class="bloqF"><h4 class="cond">'+titulo+'</h4>'+
+    var nomActual = idx>=0 ? lista[idx].t : (id==='ot'?'Sin enviar':'—');
+    var abierto=(ACC_ABIERTO===id);
+    return '<div class="menuf'+(abierto?' abierto on':'')+'">'+
+      '<div class="cab" onclick="toggleMenu(&quot;'+id+'&quot;)">'+
+        '<span class="ico">'+ico+'</span><span class="tit">'+titulo+'</span>'+
+        '<span class="act">'+nomActual+'<span class="fl">'+(abierto?'▲':'▼')+'</span></span>'+
+      '</div>'+
+      '<div class="pasos-l">'+
       lista.map(function(e,i){
-        var cls=i<idx?'paso2 done':(i===idx?'paso2 act':'paso2');
+        var cls = i<idx?'pasoi done':(i===idx?'pasoi act':'pasoi fut');
+        if(PANEL_SEL&&PANEL_SEL.f===id&&PANEL_SEL.k===e.k)cls+=' sel';
         var hh=HITOS[pref+e.k]||'';
-        return '<div class="'+cls+'"><span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
-          '<span class="tx">'+e.ic+' '+e.t+'</span>'+
+        return '<div class="'+cls+'" onclick="verPaso(&quot;'+id+'&quot;,&quot;'+e.k+'&quot;)">'+
+          '<span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
+          '<span>'+e.ic+' '+e.t+'</span>'+
           (hh?'<span class="hh">'+hh+'</span>':'')+'</div>';
-      }).join('')+'</div>';
+      }).join('')+
+      '</div></div>';
   }
-  c.innerHTML='<div class="flujo2">'+
-    bloque('Vehículo · taller',F_TALLER,EST_TALLER,'T_')+
-    bloque('Orden de trabajo',F_OT,EST_OT_ACT,'O_')+
-    '</div>'+
+  c.innerHTML=
+    menu('taller','Vehículo · taller','🔧',F_TALLER,tallerAct,'T_')+
+    menu('ot','Orden de trabajo','📄',F_OT,otAct,'O_')+
     (EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO'
-      ? '<div class="aviso ok" style="margin-top:8px">OT pagada: el cliente ya puede recoger el vehículo apenas el taller lo marque listo.</div>':'')+
+      ? '<div class="aviso ok" style="margin:8px 0 0">OT pagada: el cliente puede recoger el vehículo cuando el taller lo marque listo.</div>':'')+
     (EST_TALLER==='LISTO'&&EST_OT_ACT!=='PAGADA'
-      ? '<div class="aviso rojo" style="margin-top:8px">Vehículo listo pero la OT no está pagada: no se entrega hasta el cobro.</div>':'');
+      ? '<div class="aviso rojo" style="margin:8px 0 0">Vehículo listo pero la OT no está pagada: no se entrega hasta el cobro.</div>':'');
+  if(!PANEL_SEL)PANEL_SEL=pasoPendiente();
+  renderPanel();
 }
+function renderPanel(){
+  var p=document.getElementById('gPanel');if(!p)return;
+  var sel=PANEL_SEL||pasoPendiente();
+  var lista=(sel.f==='taller')?F_TALLER:F_OT;
+  var actual=(sel.f==='taller')?(EST_TALLER||'RECIBIDO'):EST_OT_ACT;
+  var iSel=lista.map(function(x){return x.k}).indexOf(sel.k);
+  var iAct=lista.map(function(x){return x.k}).indexOf(actual);
+  var paso=lista[iSel]||{t:'',ic:''};
+
+  /* las tarjetas de acción solo salen en la etapa que toca */
+  var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA');
+  var puede=puedeEjecutar(sel.k);
+  $('gAsig').style.display=(esAccion&&sel.f==='taller'&&EST_TALLER==='RECIBIDO'&&puede)?'block':'none';
+  $('gPres').style.display=(esAccion&&sel.f==='ot'&&!EST_OT_ACT&&puede)?'block':'none';
+  $('gAvance').style.display=(esAccion&&puede)?'block':'none';
+  $('gEditar').style.display=(esAccion&&puede)?'block':'none';
+
+  if(esAccion&&puede){ p.innerHTML=''; renderAcciones(); return; }
+
+  if(esAccion&&!puede){
+    p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
+      '<div class="aviso info" style="margin:0"><b>Esta etapa le corresponde a '+responsableDe(sel.k)+'.</b><br>'+
+      'Tú solo puedes consultarla desde acá.</div></div>';
+    return;
+  }
+  if(iSel<iAct){ p.innerHTML=datosDelPaso(sel.f,sel.k,paso); return; }
+  /* etapa futura */
+  p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
+    '<div class="aviso info" style="margin:0">Todavía no corresponde. '+
+    'Ejecuta primero <b>'+((lista[iAct]||{}).t||'la etapa en curso')+'</b>'+
+    (puedeEjecutar(sel.k)?'.':' · esta etapa la realiza '+responsableDe(sel.k)+'.')+'</div></div>';
+}
+
+/* lo que quedó guardado en cada etapa ya cumplida */
+function datosDelPaso(f,k,paso){
+  var d=datosOrden(),hh=HITOS[(f==='taller'?'T_':'O_')+k]||'—';
+  var filas='';
+  function fila(a,b){return '<div class="dato-l"><span>'+a+'</span><span>'+(b||'—')+'</span></div>'}
+
+  if(k==='REGISTRO'){
+    filas=fila('Placa',d.placa)+fila('Vehículo',d.veh)+fila('Cliente',d.cliente)+
+      fila('Teléfono',d.tel)+fila('Km de ingreso',(Number(ORD&&ORD.km||0)).toLocaleString('es-PE'))+
+      fila('Combustible',$('cmb')?$('cmb').textContent:'—')+
+      fila('Daños marcados',(danosLista().length?danosLista().join(', '):'ninguno'))+
+      fila('Accesorios',(accesoriosLista().length?accesoriosLista().join(', '):'—'))+
+      fila('Fotos',FOTOS.length||0)+fila('Firma','capturada');
+  }
+  else if(k==='RECIBIDO'){
+    filas=fila('Hora de recepción',hh)+fila('Recibido por',SESION?SESION.nombre:'—')+
+      fila('Constancia al cliente','enviada por WhatsApp');
+  }
+  else if(k==='EN_DIAGNOSTICO'){
+    filas=fila('Mecánico asignado',$('gMec')?$('gMec').value:'—')+
+      fila('Inicio del diagnóstico',hh)+
+      fila('Comentario',($('sintoma')&&$('sintoma').value)||'—');
+  }
+  else if(k==='EN_PROCESO'){
+    filas=fila('Trabajo iniciado',hh)+fila('Autorizado por','el cliente, desde su link');
+  }
+  else if(k==='LISTO'){ filas=fila('Vehículo listo',hh); }
+  else if(k==='ENTREGADO'){ filas=fila('Entregado',hh); }
+  else if(k==='PRELIM_ENVIADA'){
+    var t=totalesV2();
+    filas=fila('Enviado',hh)+fila('Servicios',S(t.mo))+fila('Repuestos (ref.)',S(t.rp))+
+      fila('Estimado con IGV',S(t.tot))+
+      fila('Comentario',($('sintoma')&&$('sintoma').value)||'—');
+  }
+  else if(k==='PRELIM_APROBADA'){ filas=fila('Aprobado por el cliente',hh)+fila('Efecto','el taller inicia el trabajo'); }
+  else if(k==='DEF_ENVIADA'){ filas=fila('Enviado por ventanilla',hh)+fila('Incluye','stock validado y códigos de almacén'); }
+  else if(k==='DEF_APROBADA'){ filas=fila('Aprobado',hh)+fila('Efecto','pasa a caja para el cobro'); }
+  else if(k==='PAGADA'){ filas=fila('Pagada',hh)+fila('Efecto','el vehículo puede entregarse'); }
+
+  return '<div class="card"><h3>'+paso.ic+' '+paso.t+
+    ' <span class="eti e4" style="margin-left:auto">completada</span></h3>'+filas+'</div>';
+}
+
+function toggleMenu(id){
+  ACC_ABIERTO=(ACC_ABIERTO===id)?null:id;
+  renderFlujos();
+}
+function verPaso(f,k){
+  PANEL_SEL={f:f,k:k};
+  ACC_ABIERTO=f;
+  renderFlujos();
+  var p=document.getElementById('gPanel');
+  if(p)p.scrollIntoView({behavior:'smooth',block:'start'});
+}
+/* la etapa pendiente: la que toca ahora en el carril que corresponde */
+function pasoPendiente(){
+  var otIdx=idxOT(EST_OT_ACT);
+  /* si la OT espera una acción del taller, esa manda */
+  if(!EST_OT_ACT&&EST_TALLER==='EN_DIAGNOSTICO')return {f:'ot',k:'PRELIM_ENVIADA'};
+  if(EST_OT_ACT&&otIdx<F_OT.length-1&&puedeEjecutar(F_OT[Math.min(otIdx+1,F_OT.length-1)].k))
+    return {f:'ot',k:F_OT[Math.min(otIdx+1,F_OT.length-1)].k};
+  return {f:'taller',k:EST_TALLER||'RECIBIDO'};
+}
+
 var BITACORA={};
 function setEstado(e,nota){
   OT_EST=e;
@@ -2822,12 +2985,8 @@ function renderBitacora(){
   }).join('');
   $('gLog').innerHTML=filas||'<div class="hint">Sin movimientos todavía.</div>';
 }
-function renderGestion(){
-  var asig=$('gAsig'),pres=$('gPres'),av=$('gAvance');
-  asig.style.display=(EST_TALLER==='RECIBIDO')?'block':'none';
-  pres.style.display=(EST_TALLER==='EN_DIAGNOSTICO'&&!EST_OT_ACT)?'block':'none';
-  av.style.display='block';
-
+function renderGestion(){ renderFlujos(); }
+function renderAcciones(){
   var avisos='',botones='';
 
   /* --- flujo administrativo --- */
