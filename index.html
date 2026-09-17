@@ -427,7 +427,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v52</span>
+  <span class="demo-tag">v53</span>
   <div class="ubic" id="ubicNav"></div>
   <div class="sesion" id="sesionBox"></div>
   <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -3573,12 +3573,16 @@ function enviarWA(tipo){
   var num=$('waNum').value.replace(/\D/g,'');
   if(num.length<9){alert('Ingresa un número de 9 dígitos.');return}
   var url='https://wa.me/51'+num+'?text='+encodeURIComponent(armarWA(tipo));
-  var a=document.createElement('a');
-  a.href=url;a.target='_blank';a.rel='noopener';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  if(tipo==='recepcion'&&OT_EST==='RECIBIDO'){
-    $('waHint').innerHTML='Constancia enviada. Ahora asigna el mecánico para iniciar el diagnóstico.';
+  if(tipo==='recepcion'){
+    $('waHint').innerHTML='<b style="color:var(--verde)">Constancia marcada como enviada.</b> '+
+      'Se abre WhatsApp: confirma el envío. Luego asigna el mecánico.';
+    auditar('ENVIA_CONSTANCIA','orden',OT_NUM,'Constancia de recepción');
   }
+  setTimeout(function(){
+    var a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  },120);
   if(tipo==='presupuesto'&&OT_EST==='EN_DIAGNOSTICO'){
     setEstado('POR_APROBAR','Presupuesto de '+S(totales().tot)+' enviado al cliente');
   }
@@ -4033,13 +4037,15 @@ function aseEnviarFinal(){
         (ASE_EST?'_Estimado inicial: '+S(ASE_EST)+' · diferencia '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'_\n':'')+
         (linkFinal()?'\nApruebe el detalle definitivo acá:\n'+linkFinal()+'\n':'')+
         '\nUna vez aprobado pasamos a facturación.';
-      var a=document.createElement('a');
-      a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
-      a.target='_blank';a.rel='noopener';
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
       auditar('ENVIA_DEFINITIVO','orden',o.ot,'Definitivo '+S(t.tot),t.tot);
-      msg.innerHTML='<div class="aviso info" style="margin:0">Enviado. La orden espera la aprobación del cliente.</div>';
-      setTimeout(pintarAsesor,1400);
+      msg.innerHTML='<div class="aviso info" style="margin:0">Marcada como enviada. Se abre WhatsApp para que confirmes el envío.</div>';
+      setTimeout(function(){
+        var a=document.createElement('a');
+        a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
+        a.target='_blank';a.rel='noopener';
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+      },120);
+      setTimeout(pintarAsesor,1800);
     },function(){});
   });
 }
