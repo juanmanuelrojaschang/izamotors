@@ -159,9 +159,9 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 
 /* ===== menú de rayitas ===== */
 .hamb{background:var(--gris);border:1px solid var(--borde);border-radius:10px;
-  width:44px;height:44px;font-size:20px;color:var(--tinta);margin-left:auto;flex:0 0 auto}
+  width:44px;height:44px;font-size:20px;color:var(--tinta);flex:0 0 auto;order:99;margin-left:10px}
 .hamb:hover{background:var(--gris2)}
-.ubic{font-size:12.5px;color:var(--mudo);margin-left:12px;font-weight:600;flex:0 0 auto}
+.ubic{font-size:12.5px;color:var(--mudo);margin-left:14px;font-weight:600;flex:0 0 auto}
 .ubic b{color:var(--tinta)}
 @media(max-width:640px){.ubic{display:none}}
 .drawer{position:fixed;inset:0;background:rgba(20,24,30,.45);z-index:60;display:none}
@@ -247,7 +247,9 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
   header{padding:10px 12px;gap:8px}
   .logo,.marca img{height:30px}
   nav button{padding:8px 10px;font-size:12px}
-  .sesion{width:100%;order:3;margin:6px 0 0;font-size:11px}
+  .sesion{margin-left:auto;font-size:11px;max-width:46vw}
+  .sesion b{display:block}
+  header{flex-wrap:nowrap}
   .flujo2{grid-template-columns:1fr}
   .kanban{grid-template-columns:1fr 1fr;gap:8px}
   .kb{padding:10px}.kb .n{font-size:24px}
@@ -285,7 +287,8 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .usr-chip:hover{border-color:var(--rojo);background:var(--rojo-cl)}
 .usr-chip b{font-size:14px}
 .usr-chip span{font-size:11px;color:var(--mudo);text-transform:uppercase;letter-spacing:.06em;margin-left:auto}
-.sesion{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mudo);margin-left:auto}
+.sesion{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mudo);margin-left:auto;
+  text-align:right;line-height:1.25}
 .sesion b{color:var(--tinta)}
 .conex{position:fixed;left:14px;bottom:14px;z-index:60;background:var(--tinta);color:#fff;border-radius:9px;padding:8px 13px;font-size:12px;display:none}
 .conex.on{display:block}
@@ -421,10 +424,10 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v45</span>
+  <span class="demo-tag">v48</span>
+  <div class="ubic" id="ubicNav"></div>
   <div class="sesion" id="sesionBox"></div>
   <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
-  <div class="ubic" id="ubicNav"></div>
 </header>
 
 <div class="drawer" id="drawer" onclick="if(event.target===this)toggleDrawer()">
@@ -446,6 +449,13 @@ tr.sel td{background:var(--rojo-cl)}
       <p style="color:var(--mudo);margin:8px auto 16px;max-width:520px">
         Escanea la placa, registra el estado del auto y envía la constancia al cliente en menos de 3 minutos.</p>
       <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
+      <div style="margin-top:12px">
+        <button class="btn sec" style="width:100%;max-width:340px" onclick="toggleBuscaCli()">🔎 Buscar cliente registrado</button>
+      </div>
+      <div id="buscaCli" style="display:none;margin-top:14px;text-align:left">
+        <input id="bcTxt" placeholder="Documento, nombre o placa" oninput="buscarClienteLista()">
+        <div id="bcRes" style="margin-top:10px"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -514,14 +524,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="hint">Placa registrada de ejemplo: CTS-009</div>
       </div>
 
-      <div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:14px">
-        <button class="btn full" style="background:var(--tinta)" onclick="toggleBuscaCli()">🔎 Buscar cliente registrado</button>
-        <div class="hint">Si el cliente ya existe, elige su placa y saltas la digitación.</div>
-        <div id="buscaCli" style="display:none;margin-top:12px">
-          <input id="bcTxt" placeholder="Documento, nombre o placa" oninput="buscarClienteLista()">
-          <div id="bcRes" style="margin-top:10px"></div>
-        </div>
-      </div>
+
       <div id="ficha" style="margin-top:18px"></div>
     </div>
 
@@ -611,11 +614,11 @@ tr.sel td{background:var(--rojo-cl)}
 
       <!-- fase 2: diagnostico -->
       <div class="card" id="gAsig">
-        <h3>Asignar mecánico e iniciar diagnóstico</h3>
+        <h3 id="tituloMec">Asignar mecánico e iniciar diagnóstico</h3>
         <div class="fila" style="align-items:flex-end">
           <div style="flex:2;min-width:200px"><label>Mecánico</label>
             <select id="gMec"></select></div>
-          <button class="btn chico" style="flex:0 0 auto" onclick="irDiagnostico()">Iniciar diagnóstico</button>
+          <button class="btn chico" id="btnMec" style="flex:0 0 auto" onclick="irDiagnostico()">Iniciar diagnóstico</button>
         </div>
       </div>
 
@@ -2410,7 +2413,7 @@ function guardarOrden(){
   var sel=[];CATALOGO.forEach(function(s,i){if(SEL[i])sel.push(i)});
   DB.set({
     ot:OT_NUM,placa:ORD.placa,veh:ORD.veh,cliente:ORD.cliente,tel:ORD.tel||'',
-    estado:OT_EST,mec:(($('gMec')&&$('gMec').value)||''),sel:sel,
+    estado:OT_EST,mec:MECANICO_OT||(($('gMec')&&$('gMec').value)||''),sel:sel,
     bit:BITACORA,minis:FOTOS_MINI.slice(0,3),total:totales().tot,
     info:($('gInfo')?$('gInfo').innerHTML:''),
     creada:ORD.creada||Date.now(),act:Date.now()
@@ -2428,7 +2431,9 @@ function abrirOrden(ot){
   clearInterval(tint);$('crono').classList.remove('on');
   $('gInfo').innerHTML=d.info||(d.veh+' · <b class="num">'+d.placa+'</b> · '+d.cliente);
   $('tiempoFinal').innerHTML='';
-  $('gMec').innerHTML=TECS.map(function(t){return '<option'+(t===d.mec?' selected':'')+'>'+t+'</option>'}).join('');
+  MECANICO_OT=d.mec||'';
+  $('gMec').innerHTML='<option value="">— elige un mecánico —</option>'+
+    TECS.map(function(t){return '<option'+(t===d.mec?' selected':'')+'>'+t+'</option>'}).join('');
   $('segHome').style.display='none';$('flujo').style.display='block';
   paso(5);
   if(d.estado==='EN_DIAGNOSTICO'||d.estado==='POR_APROBAR')pintarPresupuesto();
@@ -2642,9 +2647,10 @@ function buscarClienteLista(){
     },function(){});
 }
 function elegirPlaca(p){
+  $('buscaCli').style.display='none';
+  if($('flujo').style.display==='none')iniciar();
   modoDigitar();
   $('placa').value=p;
-  $('buscaCli').style.display='none';
   buscar();
 }
 function actualizarContacto(){
@@ -2797,8 +2803,11 @@ function fotoCerrar(){
 var SEL={};
 function pintarSugerencias(){
   var v=ACTUAL||VEH['CTS009'];
-  $('porque').innerHTML='Sugerido por el sistema según <b>'+v.marca+' '+v.modelo+' '+v.anio+'</b>, <b>'+
-    v.km.toLocaleString()+' km</b> y el historial de la placa. El mecánico confirma, el sistema propone.';
+  var d=datosOrden();
+  var km=Number((ACTUAL&&ACTUAL.km)||(ORD&&ORD.km)||0);
+  $('porque').innerHTML='Presupuesto de <b>'+(d.veh||d.placa)+'</b>'+
+    (km?' · <b>'+km.toLocaleString('es-PE')+' km</b>':'')+
+    '. Elige los servicios y agrega los repuestos: los repuestos van con precio referencial.';
   $('sugs').innerHTML=CATALOGO.map(function(s,i){
     return '<div class="sug'+(i<3?' on':'')+'" onclick="toggleS(this,'+i+')"><div class="box">✓</div>'+
      '<div><div style="font-weight:600">'+s.d+'</div><div class="por">'+s.por+'</div></div>'+
@@ -2853,7 +2862,8 @@ function recibir(){
     ' · Combustible: <b>'+$('cmb').textContent+'</b> · Firma: <b style="color:var(--verde)">capturada</b>';
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
   var sel=$('gMec');
-  sel.innerHTML=TECS.map(function(t){return '<option>'+t+'</option>'}).join('');
+  sel.innerHTML='<option value="">— elige un mecánico —</option>'+
+    TECS.map(function(t){return '<option>'+t+'</option>'}).join('');
   /* la orden nace en la base: sin esto no hay flujo entre aparatos */
   if(sb&&v._id){
     sb.from('ordenes').insert({
@@ -2896,7 +2906,7 @@ var F_OT=[
  {k:'DEF_APROBADA',   t:'Final aprobada',   ic:'✅'},
  {k:'PAGADA',         t:'OT pagada',        ic:'💳'}
 ];
-var EST_TALLER='RECIBIDO',EST_OT_ACT='',HITOS={};
+var EST_TALLER='RECIBIDO',EST_OT_ACT='',HITOS={},MECANICO_OT='';
 var ACC_ABIERTO='taller',PANEL_SEL=null;
 
 /* quién debe ejecutar cada etapa */
@@ -3020,7 +3030,14 @@ function renderPanel(){
   var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
                (sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'&&EST_TALLER==='EN_DIAGNOSTICO');
   var puede=puedeEjecutar(sel.k);
-  $('gAsig').style.display=(esAccion&&sel.f==='taller'&&EST_TALLER==='RECIBIDO'&&puede)?'block':'none';
+  var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO');
+  $('gAsig').style.display=(esAccion&&sel.f==='taller'&&tocaMec&&puede)?'block':'none';
+  var hMec=document.getElementById('tituloMec');
+  if(hMec)hMec.textContent=(EST_TALLER==='RECIBIDO')
+    ? 'Asignar mecánico e iniciar diagnóstico'
+    : 'Mecánico asignado · puedes cambiarlo';
+  var bMec=document.getElementById('btnMec');
+  if(bMec)bMec.textContent=(EST_TALLER==='RECIBIDO')?'Iniciar diagnóstico':'Cambiar mecánico';
   var tocaPres = !EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
                  ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'));
   $('gPres').style.display=(tocaPres&&puede)?'block':'none';
@@ -3064,7 +3081,7 @@ function datosDelPaso(f,k,paso){
       fila('Constancia al cliente','enviada por WhatsApp');
   }
   else if(k==='EN_DIAGNOSTICO'){
-    filas=fila('Mecánico asignado',$('gMec')?$('gMec').value:'—')+
+    filas=fila('Mecánico asignado',MECANICO_OT||($('gMec')?$('gMec').value:'')||'—')+
       fila('Inicio del diagnóstico',hh)+
       fila('Comentario',($('sintoma')&&$('sintoma').value)||'—');
   }
@@ -3142,13 +3159,12 @@ function renderAcciones(){
   var avisos='',botones='';
   if(EST_TALLER==='RECIBIDO'){
     avisos='<div class="aviso rojo"><b>Falta asignar un mecánico.</b><br>'+
-      'La orden se queda en RECIBIDO hasta que asignes a alguien: recién ahí pasa a diagnóstico '+
-      'y se habilita el presupuesto preliminar.</div>';
+      'Sin responsable asignado la orden no pasa a diagnóstico ni se habilita el presupuesto preliminar.</div>';
   }
 
   /* --- flujo administrativo --- */
   if(!EST_OT_ACT&&EST_TALLER==='EN_DIAGNOSTICO'){
-    avisos='<div class="aviso info"><b>Mecánico asignado · diagnóstico en curso.</b><br>'+
+    avisos='<div class="aviso info"><b>Diagnóstico en curso'+(MECANICO_OT?' · '+MECANICO_OT:'')+'.</b><br>'+
       'Para continuar hay que preparar el presupuesto preliminar: elige los servicios, agrega los repuestos '+
       'y envíaselo al cliente para que apruebe el servicio.</div>';
   }
@@ -3186,7 +3202,22 @@ function renderAcciones(){
   renderEditar();
 }
 function irDiagnostico(){
-  setTaller('EN_DIAGNOSTICO','Mecánico asignado: '+$('gMec').value);
+  var mec=($('gMec')&&$('gMec').value||'').trim();
+  if(!mec){
+    alert('Elige un mecánico: la orden no puede pasar a diagnóstico sin responsable asignado.');
+    return;
+  }
+  MECANICO_OT=mec;
+  if(EST_TALLER==='EN_DIAGNOSTICO'){
+    auditar('CAMBIA_MECANICO','orden',OT_NUM,'Nuevo mecánico: '+mec);
+    if(sb&&OT_NUM)sb.from('ordenes').update({diagnostico:null}).eq('numero',OT_NUM).then(function(){},function(){});
+    renderFlujos();
+    return;
+  }
+  if(sb&&OT_NUM){
+    sb.from('ordenes').update({mecanico_nombre:mec}).eq('numero',OT_NUM).then(function(){},function(){});
+  }
+  setTaller('EN_DIAGNOSTICO','Mecánico asignado: '+mec);
   pintarPresupuesto();
   guardarOrden();
 }
