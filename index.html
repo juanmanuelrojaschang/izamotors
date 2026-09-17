@@ -388,7 +388,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v42</span>
+  <span class="demo-tag">v43</span>
   <div class="sesion" id="sesionBox"></div>
   <nav>
     <button class="on" data-v="recepcion">Clientes</button>
@@ -442,10 +442,7 @@ tr.sel td{background:var(--rojo-cl)}
       <span class="donde" id="dondeEstoy"></span>
     </div>
     <div id="editProceso" style="display:none"></div>
-    <div class="pasos">
-      <div class="paso" id="p1"></div><div class="paso" id="p2"></div>
-      <div class="paso" id="p3"></div><div class="paso" id="p4"></div>
-    </div>
+
 
     <!-- 1 placa -->
     <div class="card" id="s1">
@@ -560,12 +557,15 @@ tr.sel td{background:var(--rojo-cl)}
     <!-- 5 gestion de la orden -->
     <div id="s5" style="display:none">
       <div class="card">
-        <h3>Orden <span class="num" id="gOT">OT-2026-00184</span>
+        <h3 style="flex-wrap:wrap;gap:8px">
+          <span class="num" id="gOT">OT-2026-00184</span>
+          <span class="num" id="gPlaca" style="color:var(--rojo)">—</span>
+          <span id="gCliente" style="font-family:Inter;font-size:14px;font-weight:600;text-transform:none;letter-spacing:0">—</span>
           <span class="eti" id="gChip" style="margin-left:auto">RECIBIDO</span></h3>
         <div id="gFlujos"></div>
         <div id="gPanel"></div>
-        <div style="color:var(--mudo);font-size:14px" id="gInfo"></div>
-        <div style="color:var(--verde);font-size:14px;font-weight:600;margin-top:6px" id="tiempoFinal"></div>
+        <div id="gInfo" style="display:none"></div>
+        <div id="tiempoFinal" style="display:none"></div>
       </div>
 
       <!-- fase 2: diagnostico -->
@@ -2407,7 +2407,6 @@ function paso(n){
   apagarCamara();
   try{fotoCerrar()}catch(e){}
   for(var i=1;i<=5;i++){var e=$('s'+i);if(e)e.style.display=(i===n?'block':'none')}
-  for(var j=1;j<=4;j++){var p=$('p'+j);if(p)p.classList.toggle('on',j<=Math.min(n,4))}
   var zc=$('zonaConstancia'); if(zc&&n!==4)zc.style.display='none';
   var be=$('btnEditar');
   if(be)be.style.display=(n>=2&&n<=4&&ACTUAL)?'':'none';
@@ -2861,15 +2860,23 @@ function renderFlujos(){
   c.innerHTML=
     menu('taller','Vehículo · taller','🔧',F_TALLER,tallerAct,'T_')+
     menu('ot','Orden de trabajo','📄',F_OT,otAct,'O_')+
-    (EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO'
-      ? '<div class="aviso ok" style="margin:8px 0 0">OT pagada: el cliente puede recoger el vehículo cuando el taller lo marque listo.</div>':'')+
-    (EST_TALLER==='LISTO'&&EST_OT_ACT!=='PAGADA'
-      ? '<div class="aviso rojo" style="margin:8px 0 0">Vehículo listo pero la OT no está pagada: no se entrega hasta el cobro.</div>':'');
+    '';
   if(!PANEL_SEL)PANEL_SEL=pasoPendiente();
   renderPanel();
 }
+function avisoCruce(){
+  if(EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO')
+    return '<div class="aviso ok">OT pagada: el cliente puede recoger el vehículo cuando el taller lo marque listo.</div>';
+  if(EST_TALLER==='LISTO'&&EST_OT_ACT!=='PAGADA')
+    return '<div class="aviso rojo">Vehículo listo pero la OT no está pagada: no se entrega hasta el cobro.</div>';
+  return '';
+}
 function renderPanel(){
   var p=document.getElementById('gPanel');if(!p)return;
+  var dh=datosOrden();
+  var ep=$('gPlaca'),ec=$('gCliente');
+  if(ep)ep.textContent=dh.placa||'—';
+  if(ec)ec.textContent=(dh.cliente||'—')+(dh.veh?' · '+dh.veh:'');
   var sel=PANEL_SEL||pasoPendiente();
   var lista=(sel.f==='taller')?F_TALLER:F_OT;
   var actual=(sel.f==='taller')?(EST_TALLER||'RECIBIDO'):EST_OT_ACT;
@@ -2885,7 +2892,7 @@ function renderPanel(){
   $('gAvance').style.display=(esAccion&&puede)?'block':'none';
   $('gEditar').style.display=(esAccion&&puede)?'block':'none';
 
-  if(esAccion&&puede){ p.innerHTML=''; renderAcciones(); return; }
+  if(esAccion&&puede){ p.innerHTML=avisoCruce(); renderAcciones(); return; }
 
   if(esAccion&&!puede){
     p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
@@ -2935,7 +2942,15 @@ function datosDelPaso(f,k,paso){
       fila('Estimado con IGV',S(t.tot))+
       fila('Comentario',($('sintoma')&&$('sintoma').value)||'—');
   }
-  else if(k==='PRELIM_APROBADA'){ filas=fila('Aprobado por el cliente',hh)+fila('Efecto','el taller inicia el trabajo'); }
+  else if(k==='PRELIM_APROBADA'){
+    var tp=totalesV2();
+    filas=fila('Aprobado por',d.cliente)+
+      fila('Fecha y hora',hh)+
+      fila('Medio','link de WhatsApp')+
+      fila('Monto aprobado',S(tp.tot))+
+      fila('Condiciones','servicios a precio firme · repuestos referenciales, sujetos a stock')+
+      fila('Efecto','el taller inicia el trabajo');
+  }
   else if(k==='DEF_ENVIADA'){ filas=fila('Enviado por ventanilla',hh)+fila('Incluye','stock validado y códigos de almacén'); }
   else if(k==='DEF_APROBADA'){ filas=fila('Aprobado',hh)+fila('Efecto','pasa a caja para el cobro'); }
   else if(k==='PAGADA'){ filas=fila('Pagada',hh)+fila('Efecto','el vehículo puede entregarse'); }
