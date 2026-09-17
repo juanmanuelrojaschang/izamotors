@@ -427,7 +427,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v50</span>
+  <span class="demo-tag">v51</span>
   <div class="ubic" id="ubicNav"></div>
   <div class="sesion" id="sesionBox"></div>
   <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -706,10 +706,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div id="editZona"></div>
       </div>
 
-      <div class="card">
-        <h3>Bitácora</h3>
-        <div id="gLog" style="font-size:13.5px;line-height:2"></div>
-      </div>
+
     </div>
   </div>
 </section>
@@ -2507,9 +2504,11 @@ function pintarSugerencias2(sel){
 setInterval(function(){
   if(!sb||!OT_NUM)return;
   if(document.body.classList.contains('modo-cliente'))return;
-  sb.from('ordenes').select('estado_taller,estado_ot').eq('numero',OT_NUM).maybeSingle()
+  sb.from('ordenes').select('estado_taller,estado_ot,ingreso').eq('numero',OT_NUM).maybeSingle()
    .then(function(r){
      if(!r.data)return;
+     /* si la fila es de otra orden más antigua, no se toma */
+     if(ORD&&ORD.creada&&r.data.ingreso&&(new Date(r.data.ingreso)<new Date(ORD.creada-120000)))return;
      var cambio=false;
      if(r.data.estado_taller&&r.data.estado_taller!==EST_TALLER){
        EST_TALLER=r.data.estado_taller;HITOS['T_'+EST_TALLER]=HITOS['T_'+EST_TALLER]||selloHora();cambio=true;
@@ -2876,7 +2875,8 @@ function recibir(){
   var s=Math.floor((Date.now()-t0)/1000);
   $('crono').classList.add('listo');$('cronoL').textContent='Recepción completada';
   var v=ACTUAL||VEH['CTS009'];
-  OT_NUM=DB.correlativo();$('gOT').textContent=OT_NUM;
+  OT_NUM=DB.correlativo();  /* provisional hasta que responda la base */
+  $('gOT').textContent=OT_NUM;
   var kmIng=kmNum('kmIngreso')||Number(v.km)||0;
   ORD={num:OT_NUM,placa:v.placa,veh:v.marca+' '+v.modelo+' '+v.anio,cliente:v.cliente,tel:v.tel,
        km:kmIng,creada:Date.now()};
@@ -2889,17 +2889,12 @@ function recibir(){
   var sel=$('gMec');
   sel.innerHTML='<option value="">— elige un mecánico —</option>'+
     TECS.map(function(t){return '<option>'+t+'</option>'}).join('');
-  /* la orden nace en la base: sin esto no hay flujo entre aparatos */
+  /* el número lo entrega la base: en el navegador se repetía entre equipos */
   if(sb&&v._id){
-    sb.from('ordenes').insert({
-      numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
-      estado:'RECIBIDO',estado_taller:'RECIBIDO',km_ingreso:kmIng,
-      combustible:$('cmb').textContent,danos:danosLista(),accesorios:accesoriosLista(),
-      recepcion_id:SESION?SESION.id:null
-    }).then(function(r){
-      if(r.error)conex('No se pudo crear la orden: '+r.error.message,true);
-      else auditar('CREA_OT','orden',OT_NUM,v.placa+' · '+kmIng.toLocaleString('es-PE')+' km');
-    },function(){});
+    sb.rpc('nuevo_numero_ot').then(function(rn){
+      if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
+      crearOrdenBD(v,kmIng);
+    },function(){ crearOrdenBD(v,kmIng); });
   }
   BITACORA={};
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
@@ -2981,6 +2976,22 @@ function setOT(k,nota){
   guardarFlujos();
   auditar('OT_'+k,'orden',OT_NUM,nota||'');
   renderFlujos();renderGestion();
+}
+function crearOrdenBD(v,kmIng){
+  sb.from('ordenes').insert({
+    numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
+    estado:'RECIBIDO',estado_taller:'RECIBIDO',estado_ot:null,km_ingreso:kmIng,
+    combustible:$('cmb').textContent,danos:danosLista(),accesorios:accesoriosLista(),
+    recepcion_id:SESION?SESION.id:null
+  }).then(function(r){
+    if(r.error){
+      conex('No se pudo crear la orden: '+r.error.message,true);
+      return;
+    }
+    auditar('CREA_OT','orden',OT_NUM,v.placa+' · '+kmIng.toLocaleString('es-PE')+' km');
+    guardarOrden();
+    renderFlujos();
+  },function(){});
 }
 function guardarFlujos(){
   if(SESION)guardarSesion();
@@ -3177,7 +3188,8 @@ function renderBitacora(){
       '<span class="eti '+CHIP[e]+'" style="min-width:118px;text-align:center">'+NOMBRE_EST[e]+'</span>'+
       '<span style="color:var(--mudo)">'+b.nota+'</span></div>';
   }).join('');
-  $('gLog').innerHTML=filas||'<div class="hint">Sin movimientos todavía.</div>';
+  var lg=document.getElementById('gLog');
+  if(lg)lg.innerHTML=filas||'<div class="hint">Sin movimientos todavía.</div>';
 }
 function renderGestion(){ renderFlujos(); }
 function renderAcciones(){
@@ -3253,7 +3265,7 @@ function reset(){
   SESION_ACT=false;ORD=null;PASO_ACTUAL=1;
   $('segHome').style.display='block';$('flujo').style.display='none';
   FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';estadoZ={};SEL={};OT_EST='';SEL_SERV={};LINEAS_SERV=[];LINEAS_REP=[];
-  BITACORA={};renderBitacora();
+  BITACORA={};
   $('placa').value='';ACTUAL=null;ocrIdx=0;
   $('ocrBox').className='ocr vacio';$('ocrBox').textContent='Toca "Escanear placa": la cámara se abre dentro de este recuadro';
   modoInicio();
