@@ -157,6 +157,9 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+/* ===== visibilidad por clase, no por estilo en línea ===== */
+.oculto{display:none!important}
+
 /* ===== menú de rayitas ===== */
 .hamb{background:var(--gris);border:1px solid var(--borde);border-radius:10px;
   width:44px;height:44px;font-size:20px;color:var(--tinta);flex:0 0 auto;order:99;margin-left:10px}
@@ -424,7 +427,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v48</span>
+  <span class="demo-tag">v50</span>
   <div class="ubic" id="ubicNav"></div>
   <div class="sesion" id="sesionBox"></div>
   <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -444,37 +447,41 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= RECEPCIÓN ================= -->
 <section class="vista on" id="v-recepcion">
   <div id="segHome">
-    <div class="card" style="text-align:center;padding:22px">
+    <div class="card" style="text-align:center;padding:30px 20px">
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
-      <p style="color:var(--mudo);margin:8px auto 16px;max-width:520px">
-        Escanea la placa, registra el estado del auto y envía la constancia al cliente en menos de 3 minutos.</p>
-      <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
-      <div style="margin-top:12px">
-        <button class="btn sec" style="width:100%;max-width:340px" onclick="toggleBuscaCli()">🔎 Buscar cliente registrado</button>
-      </div>
-      <div id="buscaCli" style="display:none;margin-top:14px;text-align:left">
-        <input id="bcTxt" placeholder="Documento, nombre o placa" oninput="buscarClienteLista()">
-        <div id="bcRes" style="margin-top:10px"></div>
+      <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
+        Registra un ingreso nuevo o busca un cliente ya registrado.</p>
+      <div class="grid g2" style="max-width:520px;margin:0 auto;gap:12px">
+        <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
+        <button class="btn sec" onclick="abrirListado()">👥 Listado de clientes</button>
       </div>
     </div>
 
-    <div class="card">
-      <h3>Clientes y órdenes en curso</h3>
+    <div class="card oculto" id="panelListado">
+      <div class="navproc">
+        <button class="atras" onclick="cerrarListado()">← Volver</button>
+        <span class="donde">Clientes y órdenes</span>
+      </div>
       <div class="fila" style="align-items:flex-end;margin-bottom:12px">
-        <div style="flex:2;min-width:190px"><label>Placa, cliente u OT</label>
-          <input id="segTxt" placeholder="Ej. CTS-009, Rosa, OT-2026…" oninput="segLista()"></div>
-        <div style="min-width:160px"><label>Etapa</label>
+        <div style="flex:2;min-width:190px"><label>Buscar por placa, cliente, documento u OT</label>
+          <input id="segTxt" placeholder="Ej. CTS-009, Rojas, 42594207" oninput="segLista()"></div>
+        <div style="min-width:150px"><label>Etapa</label>
           <select id="segEtapa" onchange="segLista()"></select></div>
-        <div style="min-width:165px"><label>Ingreso</label>
+        <div style="min-width:150px"><label>Ingreso</label>
           <select id="segDia" onchange="segLista()">
             <option value="todos">Todos</option>
             <option value="hoy">Ingresó hoy</option>
             <option value="viejo">Más de 1 día</option>
           </select></div>
-        <button class="btn chico sec" style="flex:0 0 auto" onclick="limpiarHistorial()">Limpiar pruebas</button>
+      </div>
+      <div class="modo" style="max-width:340px;margin-bottom:12px">
+        <button id="tabOrdenes" class="on" onclick="setTabListado('ordenes')">Órdenes en curso</button>
+        <button id="tabClientes" onclick="setTabListado('clientes')">Clientes recientes</button>
       </div>
       <div style="overflow-x:auto"><table id="segRes"></table></div>
-      <div class="hint">Toca una orden para continuar donde quedó: asignar mecánico, enviar presupuesto o marcar listo.</div>
+      <div class="fila" style="margin-top:14px">
+        <button class="btn chico sec" onclick="limpiarHistorial()">Limpiar pruebas</button>
+      </div>
     </div>
   </div>
 
@@ -1152,11 +1159,27 @@ function limpiarHistorial(){
   OT_EST='';OT_NUM='';ORD=null;SESION_ACT=false;BITACORA={};
   segLista();
 }
+var TAB_LISTADO='ordenes';
+function abrirListado(){
+  document.getElementById('panelListado').classList.remove('oculto');
+  segLista();
+  document.getElementById('panelListado').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cerrarListado(){
+  document.getElementById('panelListado').classList.add('oculto');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function setTabListado(t){
+  TAB_LISTADO=t;
+  document.getElementById('tabOrdenes').classList.toggle('on',t==='ordenes');
+  document.getElementById('tabClientes').classList.toggle('on',t==='clientes');
+  segLista();
+}
 function segEntrada(){
   apagarCamara();try{fotoCerrar()}catch(e){}
   $('segHome').style.display='block';
   $('flujo').style.display='none';
-  segLista();
+  var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
 }
 function continuarSesion(){
   $('segHome').style.display='none';
@@ -1164,6 +1187,7 @@ function continuarSesion(){
   paso(OT_EST?5:PASO_ACTUAL);
 }
 function segLista(){
+  if(TAB_LISTADO==='clientes'){ listaClientes(); return; }
   var selE=$('segEtapa');
   if(selE&&!selE.options.length){
     selE.innerHTML='<option value="">Todas</option>'+ETAPAS.map(function(e){
@@ -1212,6 +1236,37 @@ function segLista(){
   $('segRes').innerHTML='<tr><th>OT</th><th>Placa</th><th>Cliente</th><th>Estado</th>'+
     '<th class="der">En taller</th><th></th></tr>'+
     (filas||'<tr><td colspan="6" class="vacio"><b>Sin resultados</b>Prueba con otra placa.</td></tr>');
+}
+function listaClientes(){
+  var res=$('segRes');
+  if(!sb){res.innerHTML='<tr><td class="hint">Sin conexión con la base.</td></tr>';return}
+  var txt=($('segTxt').value||'').trim().toLowerCase().replace(/-/g,'');
+  res.innerHTML='<tr><td class="hint">Cargando…</td></tr>';
+  sb.from('clientes').select('id,nombre,tipo_doc,num_doc,telefono,nivel,creado,vehiculos(placa,marca,modelo)')
+    .order('creado',{ascending:false}).limit(60)
+    .then(function(r){
+      var lista=(r.data||[]).filter(function(c){
+        if(!txt)return true;
+        var pj=((c.nombre||'')+(c.num_doc||'')+
+          (c.vehiculos||[]).map(function(v){return v.placa}).join('')).toLowerCase().replace(/-/g,'');
+        return pj.indexOf(txt)>-1;
+      }).slice(0,20);
+      res.innerHTML='<tr><th>Cliente</th><th>Documento</th><th>Nivel</th><th>Vehículos</th></tr>'+
+        (lista.length?lista.map(function(c){
+          var vs=(c.vehiculos||[]);
+          return '<tr><td><b>'+c.nombre+'</b>'+
+            '<div style="font-size:11px;color:var(--mudo)">'+(c.telefono||'sin teléfono')+'</div></td>'+
+            '<td class="num">'+(c.tipo_doc||'')+' '+(c.num_doc||'—')+'</td>'+
+            '<td><span class="niv '+claseNivel(c.nivel)+'">'+(c.nivel||'Plata')+'</span></td>'+
+            '<td>'+(vs.length?vs.map(function(v){
+              return '<button class="btn chico sec" style="min-height:34px;padding:0 11px;margin:2px" '+
+                'onclick="elegirPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>';
+            }).join(''):'<span class="hint">sin vehículos</span>')+'</td></tr>';
+        }).join('')
+        :'<tr><td colspan="4" class="vacio"><b>Sin resultados</b>Prueba con otro dato o crea el cliente desde Nueva recepción.</td></tr>');
+    },function(e){
+      res.innerHTML='<tr><td class="aviso rojo">No se pudo consultar: '+(e&&e.message||'error')+'</td></tr>';
+    });
 }
 function reanudar(ot){
   var o=OTS.filter(function(x){return x.ot===ot})[0];if(!o)return;
@@ -2614,40 +2669,10 @@ function buscar(){
   if(!v){$('ficha').innerHTML='<div class="aviso rojo">Placa no registrada.</div>';return}
   ACTUAL=v;pintarFicha(v);
 }
-function toggleBuscaCli(){
-  var z=$('buscaCli');
-  z.style.display=(z.style.display==='none')?'block':'none';
-  if(z.style.display==='block'){ $('bcTxt').focus(); buscarClienteLista(); }
-}
-function buscarClienteLista(){
-  if(!sb)return;
-  var txt=($('bcTxt').value||'').trim().toLowerCase().replace(/-/g,'');
-  $('bcRes').innerHTML='<div class="hint">Buscando…</div>';
-  sb.from('clientes').select('id,nombre,tipo_doc,num_doc,telefono,nivel,vehiculos(placa,marca,modelo)')
-    .limit(50).then(function(r){
-      var lista=(r.data||[]).filter(function(c){
-        if(!txt)return true;
-        var pj=((c.nombre||'')+(c.num_doc||'')+
-          (c.vehiculos||[]).map(function(v){return v.placa}).join('')).toLowerCase().replace(/-/g,'');
-        return pj.indexOf(txt)>-1;
-      }).slice(0,12);
-      $('bcRes').innerHTML=lista.length?
-        '<div style="overflow-x:auto"><table><tr><th>Cliente</th><th>Documento</th><th>Vehículos</th></tr>'+
-        lista.map(function(c){
-          var vs=(c.vehiculos||[]);
-          return '<tr><td><b>'+c.nombre+'</b><div style="font-size:11px;color:var(--mudo)">'+
-            (c.telefono||'')+'</div></td>'+
-            '<td class="num">'+(c.tipo_doc||'')+' '+(c.num_doc||'')+'</td>'+
-            '<td>'+(vs.length?vs.map(function(v){
-              return '<button class="btn chico sec" style="min-height:32px;padding:0 10px;margin:2px" '+
-                'onclick="elegirPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>';
-            }).join(''):'<span class="hint">sin vehículos</span>')+'</td></tr>';
-        }).join('')+'</table></div>'
-        :'<div class="hint">Sin resultados. Si es cliente nuevo, digita la placa arriba y créalo.</div>';
-    },function(){});
-}
+
+
 function elegirPlaca(p){
-  $('buscaCli').style.display='none';
+  var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
   if($('flujo').style.display==='none')iniciar();
   modoDigitar();
   $('placa').value=p;
