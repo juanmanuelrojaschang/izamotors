@@ -439,7 +439,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v56</span>
+  <span class="demo-tag">v57</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -665,24 +665,20 @@ tr.sel td{background:var(--rojo-cl)}
         </div>
         <div class="aviso info" style="font-size:12.5px">Los repuestos van con <b>precio referencial</b>.
           El precio definitivo lo confirma el asesor de servicio con el cliente.</div>
+
+        <div style="margin-top:14px"><label>Comentario del preliminar · lo ve el cliente</label>
+          <textarea id="sintoma" rows="2" placeholder="Ej. pastillas al 15%, discos con surcos. Repuestos sujetos a disponibilidad."></textarea></div>
+
         <div class="bloque-pres">
           <label style="margin:0 0 10px">Detalle de la OT preliminar</label>
           <div id="presLista"></div>
         </div>
 
-        <div class="card" style="margin:16px 0 0;background:#F0FBF3;border-color:#BFE6CE">
-          <label>Enviar presupuesto PRELIMINAR al cliente</label>
-          <div class="fila" style="align-items:center">
-            <div style="flex:1;min-width:170px">
-              <div style="display:flex;align-items:center;gap:7px">
-                <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
-                <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="9XX XXX XXX">
-              </div>
-        <div class="fila" style="margin-top:12px">
-          <button class="btn chico sec" onclick="continuarSinConfirmar()">Iniciar sin visto bueno del cliente</button>
+        <div class="fila" style="margin-top:16px">
+          <div class="kpi tinta"><div class="v" id="totMO">S/ 0</div><div class="l">Servicios</div></div>
+          <div class="kpi tinta"><div class="v" id="totREP">S/ 0</div><div class="l">Repuestos</div></div>
+          <div class="kpi"><div class="v" id="totTOT">S/ 0</div><div class="l">Total con IGV</div></div>
         </div>
-        <div class="hint">Para casos en que el cliente no aprueba por el link: pide un comentario obligatorio
-          y queda registrado quién autorizó el inicio.</div>
 
         <div class="fila" style="margin-top:16px">
           <div style="min-width:190px"><label>Comprobante que pide el cliente</label>
@@ -697,29 +693,34 @@ tr.sel td{background:var(--rojo-cl)}
             <input id="gRuc" inputmode="numeric" maxlength="11" placeholder="20xxxxxxxxx">
             <div class="hint" id="rucHint">La factura puede ir a nombre de un tercero: el RUC es editable.</div>
           </div>
-          <div style="flex:0 0 auto;align-self:flex-end">
-            <button class="btn chico sec" onclick="imprimirPresupuesto()">🖨️ Imprimir presupuesto</button></div>
         </div>
 
+        <div class="fila" style="margin-top:14px">
+          <button class="btn chico sec" onclick="imprimirPresupuesto()">🖨️ Imprimir presupuesto</button>
+        </div>
 
+        <div class="card" style="margin:16px 0 0;background:#F0FBF3;border-color:#BFE6CE">
+          <label>Enviar presupuesto PRELIMINAR al cliente</label>
+          <div class="fila" style="align-items:center">
+            <div style="flex:1;min-width:170px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
+                <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="9XX XXX XXX">
+              </div>
             </div>
             <button class="btn chico" style="flex:0 0 auto;background:#25D366;color:#0A2E19"
                     onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
           </div>
           <div class="hint" id="preHint">Si el celular cambió, corrígelo acá: se actualiza también en la ficha del cliente.</div>
         </div>
+
+        <div class="fila" style="margin-top:14px">
+          <button class="btn chico sec" onclick="continuarSinConfirmar()">Iniciar sin visto bueno del cliente</button>
+        </div>
+        <div class="hint">Para cuando el cliente no aprueba por el link: pide un comentario obligatorio
+          y queda registrado quién autorizó el inicio.</div>
+
         <div id="sugs" style="display:none"></div>
-        <div style="margin-top:14px"><label>Comentario del preliminar · lo ve el cliente</label>
-          <textarea id="sintoma" rows="2" placeholder="Ej. pastillas al 15%, discos con surcos. Repuestos sujetos a disponibilidad."></textarea></div>
-        <div class="fila" style="margin-top:16px">
-          <div class="kpi tinta"><div class="v" id="totMO">S/ 0</div><div class="l">Servicios</div></div>
-          <div class="kpi tinta"><div class="v" id="totREP">S/ 0</div><div class="l">Repuestos</div></div>
-          <div class="kpi"><div class="v" id="totTOT">S/ 0</div><div class="l">Total con IGV</div></div>
-        </div>
-        <div class="fila" style="margin-top:16px">
-          
-          
-        </div>
       </div>
 
       <!-- fase 2: aprobacion y cierre -->
@@ -1241,11 +1242,19 @@ function segLista(){
     var mins=Math.round((Date.now()-(d.creada||Date.now()))/60000);
     if(fD==='hoy'&&mins>600)return;
     if(fD==='viejo'&&mins<=1440)return;
-    filas+='<tr class="click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)" style="background:#FFF7F7">'+
-      '<td class="num"><b>'+d.ot+'</b></td><td class="num"><b>'+d.placa+'</b></td><td>'+d.cliente+'</td>'+
-      '<td><span class="eti '+CHIP[d.estado]+'">'+NOMBRE_EST[d.estado]+'</span></td>'+
+    var esAdmin=SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general');
+    filas+='<tr style="background:#FFF7F7">'+
+      '<td class="num click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+d.ot+'</b></td>'+
+      '<td class="num click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+d.placa+'</b></td>'+
+      '<td class="click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)">'+d.cliente+'</td>'+
+      '<td><span class="eti '+CHIP[d.estado_taller||d.estado]+'">'+
+        (NOMBRE_EST[d.estado_taller||d.estado]||'—')+'</span></td>'+
       '<td class="num der">'+tiempo(mins)+'</td>'+
-      '<td class="der"><b style="color:var(--rojo)">Continuar →</b></td></tr>';
+      '<td class="der"><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
+        'onclick="abrirOrden(&quot;'+d.ot+'&quot;)">Continuar</button>'+
+        (esAdmin?' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
+          'onclick="anularDesdeLista(&quot;'+d.ot+'&quot;)">Anular</button>':'')+
+      '</td></tr>';
   });
   OTS.filter(function(o){
     if(fE&&o.estado!==fE)return false;
@@ -2177,9 +2186,7 @@ function renderEditar(){
     '<textarea id="edSint" rows="2" placeholder="Nota interna del taller · no se envía al cliente"></textarea>'+
     '<div class="fila" style="margin-top:12px">'+
       '<button class="btn chico sec" onclick="guardarCorreccion()">Guardar comentario</button>'+
-      (puedeAnular()
-        ? '<button class="btn chico sec" onclick="anularOrden()">Anular orden</button>'
-        : '<span class="hint" style="align-self:center">La anulación es exclusiva del administrador del taller.</span>')+
+
     '</div>'+
     '<div id="editMsg" style="margin-top:10px"></div>';
 }
@@ -2196,6 +2203,25 @@ function guardarCorreccion(){
   auditar('EDITA_ORDEN','orden',OT_NUM,cambios.join(' · ')+marca);
   BITACORA['_edit_'+Date.now()]=null;
   $('editMsg').innerHTML='<div class="aviso ok" style="margin:0">Corrección registrada en la bitácora.</div>';
+}
+function anularDesdeLista(ot){
+  if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'))){
+    alert('La anulación es exclusiva del administrador del taller.');return;
+  }
+  var motivo=prompt('Motivo de la anulación de '+ot+' (obligatorio):');
+  if(motivo===null)return;
+  if(!motivo||motivo.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return}
+  if(!confirm('La orden '+ot+' quedará ANULADA. No se borra: queda con tu nombre y el motivo. ¿Continuar?'))return;
+  if(sb)sb.from('ordenes').update({estado:'ANULADO',estado_taller:'ANULADO',estado_ot:'ANULADA'})
+    .eq('numero',ot).then(function(){},function(){});
+  try{
+    var d=DB.get(ot);
+    if(d){d.estado='ANULADO';d.estado_taller='ANULADO';d.bit=d.bit||{};
+      d.bit['ANULADO']={hora:selloHora(),nota:'Anulada por '+SESION.nombre+' · '+motivo.trim()};
+      DB.set(d);}
+  }catch(e){}
+  auditar('ANULA_ORDEN','orden',ot,'Motivo: '+motivo.trim());
+  segLista();
 }
 function anularOrden(){
   if(!puedeAnular()){alert('Solo el administrador del taller puede anular una orden.');return}
