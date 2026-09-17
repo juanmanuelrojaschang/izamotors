@@ -157,6 +157,15 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+/* ===== menú principal y submenú ===== */
+.subnav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;background:var(--gris);
+  border-bottom:1px solid var(--borde);position:sticky;top:57px;z-index:19}
+.subnav button{background:transparent;border:1px solid transparent;color:var(--mudo);
+  padding:8px 13px;border-radius:8px;font-weight:600;font-size:13px;white-space:nowrap}
+.subnav button.on{background:var(--blanco);color:var(--tinta);border-color:var(--borde)}
+.subnav:empty{display:none}
+@media(max-width:640px){.subnav{top:52px;padding:6px 10px}.subnav button{font-size:12px;padding:7px 10px}}
+
 /* ===== menús de flujo ===== */
 .menuf{margin-bottom:10px;border:1.5px solid var(--borde);border-radius:12px;overflow:hidden;background:var(--blanco)}
 .menuf .cab{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;background:var(--gris)}
@@ -275,11 +284,13 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .foto{cursor:zoom-in}
 
 .modo-caja nav{display:none}
+.modo-caja .subnav{display:none!important}
 .modo-caja .demo-tag{display:none}
 .modo-caja header{justify-content:center}
 
 /* ===== modo cliente (link de WhatsApp) ===== */
 .modo-cliente nav{display:none}
+.modo-cliente .subnav{display:none!important}
 .modo-cliente .demo-tag{display:none}
 .modo-cliente #cliBuscar{display:none!important}
 .modo-cliente .solo-admin{display:none!important}
@@ -388,21 +399,17 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v43</span>
+  <span class="demo-tag">v44</span>
   <div class="sesion" id="sesionBox"></div>
-  <nav>
-    <button class="on" data-v="recepcion">Clientes</button>
-    <button data-v="taller">Taller</button>
-    <button data-v="ventanilla">Ventanilla</button>
-    <button data-v="asesor">Asesor</button>
-    <button data-v="caja">Caja</button>
-    <button data-v="productividad">Productividad</button>
-    <button data-v="datos">Base de datos</button>
-    <button data-v="bitacora">Bitácora</button>
-    <button data-v="usuarios">Usuarios</button>
+  <nav id="navMadre">
+    <button class="on" data-m="taller">Módulo Taller</button>
+    <button data-m="reporteria">Reportería</button>
+    <button data-m="bitacora">Bitácora</button>
+    <button data-m="usuarios">Usuarios</button>
   </nav>
 </header>
 
+<div class="subnav" id="subNav"></div>
 <main>
 
 <!-- ================= RECEPCIÓN ================= -->
@@ -481,6 +488,13 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="hint">Placa registrada de ejemplo: CTS-009</div>
       </div>
 
+      <div style="margin-top:14px;border-top:1px solid var(--borde);padding-top:12px">
+        <button class="btn full sec" onclick="toggleBuscaCli()">🔎 Buscar cliente registrado</button>
+        <div id="buscaCli" style="display:none;margin-top:12px">
+          <input id="bcTxt" placeholder="Documento, nombre o placa" oninput="buscarClienteLista()">
+          <div id="bcRes" style="margin-top:10px"></div>
+        </div>
+      </div>
       <div id="ficha" style="margin-top:18px"></div>
     </div>
 
@@ -1060,7 +1074,35 @@ var APP_URL='';
 
 
 /* ============ NAVEGACIÓN ============ */
-document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){ir(b.dataset.v)}});
+var MODULOS={
+  taller:{t:'Módulo Taller',vistas:[
+    {v:'recepcion',t:'Clientes'},{v:'taller',t:'Piso'},
+    {v:'ventanilla',t:'Ventanilla'},{v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'},
+    {v:'datos',t:'Base de datos'}]},
+  reporteria:{t:'Reportería',vistas:[{v:'productividad',t:'Productividad'}]},
+  bitacora:{t:'Bitácora',vistas:[{v:'bitacora',t:'Transacciones'}]},
+  usuarios:{t:'Usuarios',vistas:[{v:'usuarios',t:'Usuarios y permisos'}]}
+};
+var MODULO_ACT='taller';
+document.querySelectorAll('#navMadre button').forEach(function(b){
+  b.onclick=function(){abrirModulo(b.dataset.m)};
+});
+function vistasPermitidas(){
+  return (ROLES[SESION?SESION.rol:'']||{}).vistas||['recepcion'];
+}
+function abrirModulo(m){
+  MODULO_ACT=m;
+  document.querySelectorAll('#navMadre button').forEach(function(b){
+    b.classList.toggle('on',b.dataset.m===m);
+  });
+  var permit=vistasPermitidas();
+  var subs=(MODULOS[m]||{vistas:[]}).vistas.filter(function(x){return permit.indexOf(x.v)>-1});
+  var sn=document.getElementById('subNav');
+  sn.innerHTML=(subs.length>1)?subs.map(function(x){
+    return '<button data-v="'+x.v+'" onclick="ir(\''+x.v+'\')">'+x.t+'</button>';
+  }).join(''):'';
+  if(subs.length)ir(subs[0].v);
+}
 function limpiarHistorial(){
   if(!confirm('¿Borrar las órdenes registradas en este dispositivo? Las de ejemplo del piso se mantienen.'))return;
   try{localStorage.removeItem(DB.K);localStorage.removeItem('iza_corr')}catch(e){}
@@ -1154,8 +1196,11 @@ var VISTA_ACT='recepcion';
 function ir(v){
   VISTA_ACT=v;
   if(SESION)guardarSesion();
+  document.querySelectorAll('#subNav button').forEach(function(b){
+    b.classList.toggle('on',b.dataset.v===v);
+  });
   document.querySelectorAll('.vista').forEach(function(s){s.classList.toggle('on',s.id==='v-'+v)});
-  document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.dataset.v===v)});
+
   window.scrollTo(0,0);
   if(v==='recepcion')segEntrada();if(v==='datos')bdBuscar();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();
 }
@@ -1321,15 +1366,19 @@ function estadoSesion(){
 }
 
 function aplicarPermisos(){
-  var permitidas=(ROLES[SESION.rol]||{}).vistas||['recepcion'];
+  var permitidas=vistasPermitidas();
   if(permitidas.length===1){
     document.querySelectorAll('#v-ventanilla .navproc, #v-asesor .navproc, #v-caja .navproc')
       .forEach(function(n){n.style.display='none'});
   }
-  document.querySelectorAll('nav button').forEach(function(b){
-    b.style.display = permitidas.indexOf(b.dataset.v)>-1 ? '' : 'none';
+  var primero=null;
+  document.querySelectorAll('#navMadre button').forEach(function(b){
+    var m=b.dataset.m;
+    var tiene=(MODULOS[m]||{vistas:[]}).vistas.some(function(x){return permitidas.indexOf(x.v)>-1});
+    b.style.display=tiene?'':'none';
+    if(tiene&&!primero)primero=m;
   });
-  ir(permitidas[0]);
+  if(primero)abrirModulo(primero);
   if(SEDE_ACTIVA===2)avisoSedeVacia();
 }
 function avisoSedeVacia(){
@@ -2515,6 +2564,44 @@ function buscar(){
   if(!v){$('ficha').innerHTML='<div class="aviso rojo">Placa no registrada.</div>';return}
   ACTUAL=v;pintarFicha(v);
 }
+function toggleBuscaCli(){
+  var z=$('buscaCli');
+  z.style.display=(z.style.display==='none')?'block':'none';
+  if(z.style.display==='block'){ $('bcTxt').focus(); buscarClienteLista(); }
+}
+function buscarClienteLista(){
+  if(!sb)return;
+  var txt=($('bcTxt').value||'').trim().toLowerCase().replace(/-/g,'');
+  $('bcRes').innerHTML='<div class="hint">Buscando…</div>';
+  sb.from('clientes').select('id,nombre,tipo_doc,num_doc,telefono,nivel,vehiculos(placa,marca,modelo)')
+    .limit(50).then(function(r){
+      var lista=(r.data||[]).filter(function(c){
+        if(!txt)return true;
+        var pj=((c.nombre||'')+(c.num_doc||'')+
+          (c.vehiculos||[]).map(function(v){return v.placa}).join('')).toLowerCase().replace(/-/g,'');
+        return pj.indexOf(txt)>-1;
+      }).slice(0,12);
+      $('bcRes').innerHTML=lista.length?
+        '<div style="overflow-x:auto"><table><tr><th>Cliente</th><th>Documento</th><th>Vehículos</th></tr>'+
+        lista.map(function(c){
+          var vs=(c.vehiculos||[]);
+          return '<tr><td><b>'+c.nombre+'</b><div style="font-size:11px;color:var(--mudo)">'+
+            (c.telefono||'')+'</div></td>'+
+            '<td class="num">'+(c.tipo_doc||'')+' '+(c.num_doc||'')+'</td>'+
+            '<td>'+(vs.length?vs.map(function(v){
+              return '<button class="btn chico sec" style="min-height:32px;padding:0 10px;margin:2px" '+
+                'onclick="elegirPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>';
+            }).join(''):'<span class="hint">sin vehículos</span>')+'</td></tr>';
+        }).join('')+'</table></div>'
+        :'<div class="hint">Sin resultados. Si es cliente nuevo, digita la placa arriba y créalo.</div>';
+    },function(){});
+}
+function elegirPlaca(p){
+  modoDigitar();
+  $('placa').value=p;
+  $('buscaCli').style.display='none';
+  buscar();
+}
 function actualizarContacto(){
   var tel=($('fcTel').value||'').trim(),mail=($('fcMail').value||'').trim();
   var msg=$('fcMsg');
@@ -2796,7 +2883,7 @@ function idxOT(k){for(var i=0;i<F_OT.length;i++)if(F_OT[i].k===k)return i;return
 
 function setTaller(k,nota){
   if(idxTaller(k)<idxTaller(EST_TALLER)){alert('El flujo del taller solo avanza.');return}
-  EST_TALLER=k;
+  EST_TALLER=k;PANEL_SEL=null;
   HITOS['T_'+k]=selloHora();
   guardarFlujos();
   auditar('TALLER_'+k,'orden',OT_NUM,nota||'');
@@ -2804,7 +2891,7 @@ function setTaller(k,nota){
 }
 function setOT(k,nota){
   if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return}
-  EST_OT_ACT=k;
+  EST_OT_ACT=k;PANEL_SEL=null;
   HITOS['O_'+k]=selloHora();
   /* la aprobación preliminar libera el trabajo en el taller */
   if(k==='PRELIM_APROBADA'&&idxTaller(EST_TALLER)<idxTaller('EN_PROCESO')){
@@ -2885,10 +2972,15 @@ function renderPanel(){
   var paso=lista[iSel]||{t:'',ic:''};
 
   /* las tarjetas de acción solo salen en la etapa que toca */
-  var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA');
+  var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
+               (sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'&&EST_TALLER==='EN_DIAGNOSTICO');
   var puede=puedeEjecutar(sel.k);
   $('gAsig').style.display=(esAccion&&sel.f==='taller'&&EST_TALLER==='RECIBIDO'&&puede)?'block':'none';
-  $('gPres').style.display=(esAccion&&sel.f==='ot'&&!EST_OT_ACT&&puede)?'block':'none';
+  var tocaPres = !EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
+                 ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'));
+  $('gPres').style.display=(tocaPres&&puede)?'block':'none';
+  if(tocaPres&&puede&&!SERVICIOS.length)cargarCatalogoV2();
+  if(tocaPres&&puede)setTimeout(pintarPresupuesto,60);
   $('gAvance').style.display=(esAccion&&puede)?'block':'none';
   $('gEditar').style.display=(esAccion&&puede)?'block':'none';
 
@@ -3006,7 +3098,9 @@ function renderAcciones(){
 
   /* --- flujo administrativo --- */
   if(!EST_OT_ACT&&EST_TALLER==='EN_DIAGNOSTICO'){
-    avisos='<div class="aviso info">Arma el presupuesto preliminar y envíaselo al cliente para que apruebe el servicio.</div>';
+    avisos='<div class="aviso info"><b>Mecánico asignado · diagnóstico en curso.</b><br>'+
+      'Para continuar hay que preparar el presupuesto preliminar: elige los servicios, agrega los repuestos '+
+      'y envíaselo al cliente para que apruebe el servicio.</div>';
   }
   if(EST_OT_ACT==='PRELIM_ENVIADA'){
     avisos='<div class="aviso info"><b>Preliminar enviada.</b> Esperando que el cliente apruebe desde su link. '+
