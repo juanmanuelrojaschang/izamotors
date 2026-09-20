@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v69</span>
+  <span class="demo-tag">v70</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -1649,6 +1649,11 @@ function cargarCatalogoV2(){
 }
 var LINEAS_SERV=[];
 function pintarPresupuesto(){
+  if(!LINEAS_SERV.length&&!LINEAS_REP.length&&sb&&OT_NUM){
+    sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
+      if(r.data)cargarLineasOrden(r.data.id);
+    },function(){});
+  }
   var wp=$('waNumPre');
   if(wp&&!wp.value)wp.value=String((ORD&&ORD.tel)||(ACTUAL&&ACTUAL.tel)||'').replace(/\D/g,'');
   $('servSel').innerHTML='<option value="">— elige un servicio —</option>'+
@@ -2651,11 +2656,26 @@ function abrirOrden(ot){
 }
 /* La base es la fuente de verdad: al reabrir, se traen estado, mecánico
    y líneas, y se pisa lo que el navegador tenía guardado. */
+function cargarLineasOrden(ordenId){
+  cargarLineasBD(ordenId,function(lin){
+    if(!lin.length)return;
+    LINEAS_SERV=[];LINEAS_REP=[];
+    lin.forEach(function(l){
+      if(l.tipo==='MO')LINEAS_SERV.push({codigo:'',desc:l.desc,precio:l.final||l.precio,cant:l.cant||1});
+      else if(l.incluir)LINEAS_REP.push({codigo:'',desc:l.desc,precio:l.final||l.precio,cant:l.cant||1});
+    });
+    try{pintarPresupuestoLista()}catch(e){}
+    try{var t=totalesV2();$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
+    guardarOrden();
+    conex('Detalle recuperado de la base');
+  });
+}
 function sincronizarDesdeBase(){
   if(!sb||!OT_NUM)return;
-  sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre,total_taller,comprobante_tipo,comprobante_ruc,diagnostico,prelim_rev,tiene_prelim2,prelim_sin_vb,def_sin_vb')
+  sb.from('ordenes').select('*')
     .eq('numero',OT_NUM).maybeSingle().then(function(r){
-      if(!r.data)return;
+      if(r.error){conex('No se pudo leer la orden: '+r.error.message,true);return}
+      if(!r.data){conex('La orden '+OT_NUM+' no está en la base',true);return}
       var d=r.data,cambio=false;
       if(typeof d.prelim_rev==='number'&&d.prelim_rev>PRELIM_REV)PRELIM_REV=d.prelim_rev;
       if(d.tiene_prelim2&&!TIENE_P2){TIENE_P2=true;armarFOT();cambio=true}
@@ -2672,15 +2692,7 @@ function sincronizarDesdeBase(){
         cambioComprobante();
       }
       if(d.diagnostico&&$('sintoma')&&!$('sintoma').value)$('sintoma').value=d.diagnostico;
-      if(!LINEAS_SERV.length&&!LINEAS_REP.length){
-        cargarLineasBD(d.id,function(lin){
-          lin.forEach(function(l){
-            if(l.tipo==='MO')LINEAS_SERV.push({codigo:'',desc:l.desc,precio:l.precio,cant:l.cant||1});
-            else LINEAS_REP.push({codigo:'',desc:l.desc,precio:l.precio,cant:l.cant||1});
-          });
-          if(lin.length){pintarPresupuestoLista();guardarOrden()}
-        });
-      }
+      if(!LINEAS_SERV.length&&!LINEAS_REP.length)cargarLineasOrden(d.id);
       if(cambio){guardarOrden();renderFlujos();renderGestion()}
     },function(){});
 }
