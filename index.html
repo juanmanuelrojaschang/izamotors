@@ -463,7 +463,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v61</span>
+  <span class="demo-tag">v63</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -492,10 +492,32 @@ tr.sel td{background:var(--rojo-cl)}
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
       <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
         Registra un ingreso nuevo o busca un cliente ya registrado.</p>
-      <div class="grid g2" style="max-width:520px;margin:0 auto;gap:12px">
+      <div class="grid g3" style="max-width:720px;margin:0 auto;gap:12px">
         <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
         <button class="btn sec" onclick="abrirListado()">👥 Listado de clientes</button>
+        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
       </div>
+    </div>
+
+    <div class="card oculto" id="panelCrear">
+      <div class="navproc">
+        <button class="atras" onclick="cerrarCrear()">← Volver</button>
+        <span class="donde">Editar cliente</span>
+      </div>
+      <div class="aviso info" style="font-size:12.5px">Busca por documento, nombre o placa.
+        Los clientes nuevos se crean desde la placa en <b>Nueva recepción</b>.</div>
+
+  <div class="card">
+    <h3>🗂️ Clientes y vehículos</h3>
+    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+      <div style="flex:2;min-width:200px"><label>Buscar por documento, nombre o placa</label>
+        <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()"></div>
+      <button class="btn chico" style="flex:0 0 auto" onclick="bdNuevoCliente()">+ Nuevo cliente</button>
+    </div>
+    <div style="overflow-x:auto"><table id="bdTabla"></table></div>
+  </div>
+  <div class="card" id="bdDetalle" style="display:none"></div>
+
     </div>
 
     <div class="card oculto" id="panelListado">
@@ -762,19 +784,7 @@ tr.sel td{background:var(--rojo-cl)}
   </div>
 </section>
 
-<!-- ================= BASE DE DATOS ================= -->
-<section class="vista" id="v-datos">
-  <div class="card">
-    <h3>🗂️ Clientes y vehículos</h3>
-    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
-      <div style="flex:2;min-width:200px"><label>Buscar por documento, nombre o placa</label>
-        <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()"></div>
-      <button class="btn chico" style="flex:0 0 auto" onclick="bdNuevoCliente()">+ Nuevo cliente</button>
-    </div>
-    <div style="overflow-x:auto"><table id="bdTabla"></table></div>
-  </div>
-  <div class="card" id="bdDetalle" style="display:none"></div>
-</section>
+
 
 <!-- ================= BITÁCORA DE TRANSACCIONES ================= -->
 <section class="vista" id="v-bitacora">
@@ -1161,11 +1171,10 @@ var APP_URL='';
 /* ============ NAVEGACIÓN ============ */
 var MODULOS={
   taller:{t:'Módulo Taller',vistas:[
-    {v:'recepcion',t:'Clientes'},{v:'taller',t:'Piso'},
-    {v:'ventanilla',t:'Ventanilla'},{v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'},
-    {v:'datos',t:'Base de datos'}]},
-  reporteria:{t:'Reportería',vistas:[{v:'productividad',t:'Productividad'}]},
-  bitacora:{t:'Bitácora',vistas:[{v:'bitacora',t:'Transacciones'}]},
+    {v:'recepcion',t:'Clientes'},
+    {v:'ventanilla',t:'Ventanilla'},{v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
+  reporteria:{t:'Reportería',vistas:[
+    {v:'taller',t:'Taller'},{v:'productividad',t:'Productividad'},{v:'bitacora',t:'Bitácora y transacciones'}]},
   usuarios:{t:'Usuarios',vistas:[{v:'usuarios',t:'Usuarios y permisos'}]}
 };
 var MODULO_ACT='taller';
@@ -1209,9 +1218,24 @@ function limpiarHistorial(){
 }
 var TAB_LISTADO='ordenes';
 function abrirListado(){
+  var pc=document.getElementById('panelCrear');if(pc)pc.classList.add('oculto');
   document.getElementById('panelListado').classList.remove('oculto');
   segLista();
   document.getElementById('panelListado').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function abrirCrearCliente(){
+  if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'||SESION.rol==='jefe_taller'))){
+    alert('La edición de clientes es de administradores y jefe de taller.');return;
+  }
+  document.getElementById('panelListado').classList.add('oculto');
+  var p=document.getElementById('panelCrear');
+  p.classList.remove('oculto');
+  p.scrollIntoView({behavior:'smooth',block:'start'});
+  var t=document.getElementById('bdTxt');if(t)t.focus();
+}
+function cerrarCrear(){
+  document.getElementById('panelCrear').classList.add('oculto');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 function cerrarListado(){
   document.getElementById('panelListado').classList.add('oculto');
@@ -1228,6 +1252,7 @@ function segEntrada(){
   $('segHome').style.display='block';
   $('flujo').style.display='none';
   var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
+  var pc=document.getElementById('panelCrear');if(pc)pc.classList.add('oculto');
 }
 function continuarSesion(){
   $('segHome').style.display='none';
@@ -1363,7 +1388,7 @@ function ir(v){
   document.querySelectorAll('.vista').forEach(function(s){s.classList.toggle('on',s.id==='v-'+v)});
 
   window.scrollTo(0,0);
-  if(v==='recepcion')segEntrada();if(v==='datos')bdBuscar();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();
+  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -1379,9 +1404,9 @@ try{ sb=supabase.createClient(SB_URL,SB_KEY); }catch(e){ console.error('Supabase
 
 var ROLES={
   admin_general:{t:'Administrador General', d:'Acceso total, todas las sedes',
-                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','datos','bitacora','usuarios']},
+                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','bitacora','usuarios']},
   admin_local:  {t:'Administrador Local',   d:'Acceso completo a su local',
-                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','datos','bitacora']},
+                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','bitacora']},
   jefe_taller:  {t:'Jefe de Taller',        d:'Recepción de vehículos y gestión del piso',
                  vistas:['recepcion','taller','bitacora']},
   ventanilla:   {t:'Ventanilla',            d:'Valida stock y codifica · por construir',
