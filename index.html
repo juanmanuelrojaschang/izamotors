@@ -464,7 +464,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v64</span>
+  <span class="demo-tag">v65</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -3261,10 +3261,11 @@ function renderFlujos(){
       lista.map(function(e,i){
         var cls = i<idx?'pasoi done':(i===idx?'pasoi act':'pasoi fut');
         if(PANEL_SEL&&PANEL_SEL.f===id&&PANEL_SEL.k===e.k)cls+=' sel';
-        var hh=HITOS[pref+e.k]||'';
+        var hh=HITOS[pref+e.k]||((BITACORA[e.k]&&BITACORA[e.k].hora)||'');
+        var sinvb=HITOS['SINVB_'+e.k]?' <span class="eti e3" style="font-size:9px;padding:1px 6px">sin VB cliente</span>':'';
         return '<div class="'+cls+'" onclick="verPaso(&quot;'+id+'&quot;,&quot;'+e.k+'&quot;)">'+
           '<span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
-          '<span>'+e.ic+' '+e.t+'</span>'+
+          '<span>'+e.ic+' '+e.t+sinvb+'</span>'+
           (hh?'<span class="hh">'+hh+'</span>':'')+'</div>';
       }).join('')+
       '</div></div>';
@@ -3377,7 +3378,7 @@ function datosDelPaso(f,k,paso){
   else if(k==='PRELIM_APROBADA'){
     var tp=totalesV2();
     var b=BITACORA['PRELIM_APROBADA']||{};
-    var sinConf=(b.nota||'').indexOf('SIN CONFIRMACIÓN')===0;
+    var sinConf=(b.nota||'').indexOf('SIN CONFIRMACIÓN')===0||!!HITOS['SINVB_PRELIM_APROBADA'];
     if(sinConf){
       return '<div class="card"><h3>'+paso.ic+' '+paso.t+
         ' <span class="eti e3" style="margin-left:auto">sin confirmación</span></h3>'+
@@ -3469,7 +3470,7 @@ function renderAcciones(){
     avisos='<div class="aviso info"><b>Preliminar enviada.</b> Esperando que el cliente apruebe desde su link.<br>'+
       'La aprobación es deseable pero no obligatoria: si el cliente no confirma y el taller decide avanzar, '+
       'queda registrado quién lo autorizó y por qué.</div>';
-    botones='<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
+    botones=EDITANDO_OT?'':'<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
   }
   if(EST_OT_ACT==='PRELIM_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar aprobada.</b> El taller trabaja. Al terminar, ventanilla valida '+
@@ -3478,7 +3479,7 @@ function renderAcciones(){
   if(EST_OT_ACT==='PRELIM2_ENVIADA'){
     avisos='<div class="aviso info"><b>Preliminar 2 enviada.</b> Esperando que el cliente apruebe la versión actualizada. '+
       'El link de la primera versión ya no funciona.</div>';
-    botones='<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
+    botones=EDITANDO_OT?'':'<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
   }
   if(EST_OT_ACT==='PRELIM2_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar 2 aprobada.</b> El taller continúa con el alcance actualizado.</div>';
@@ -3517,7 +3518,7 @@ function editarOT(){
   var creaP2=(EST_OT_ACT==='PRELIM_APROBADA');
   var msg=creaP2
     ? 'La preliminar ya fue aprobada. Al editarla se crea la PRELIMINAR 2, que el cliente deberá aprobar de nuevo. ¿Continuar?'
-    : 'Vas a modificar la preliminar. Al reenviarla, el link que ya tiene el cliente dejará de funcionar. ¿Continuar?';
+    : 'Vas a modificar la preliminar. Si el cliente tiene un link para aprobar, ese link dejará de funcionar. ¿Continuar?';
   if(!confirm(msg))return;
   if(creaP2){TIENE_P2=true;armarFOT();guardarFlujos()}
   EDITANDO_OT=true;
@@ -3533,13 +3534,15 @@ function continuarSinConfirmar(){
   var m=prompt('¿Por qué se inicia sin el visto bueno del cliente?\n(Ej. autorizó por teléfono, es cliente de flota, dejó el auto con instrucciones)');
   if(m===null)return;
   if(!m||m.trim().length<5){alert('El comentario es obligatorio y debe ser específico.');return}
-  /* si la preliminar aún no se envió, se registra igual para dejar el rastro */
-  if(!EST_OT_ACT){
-    guardarDetalleBD();
-    setOT('PRELIM_ENVIADA','Preliminar no enviada al cliente · inicio autorizado internamente');
-  }
+  var esP2=(EST_OT_ACT==='PRELIM2_ENVIADA'||TIENE_P2||EST_OT_ACT==='PRELIM_APROBADA');
+  var kEnv=esP2?'PRELIM2_ENVIADA':'PRELIM_ENVIADA', kApr=esP2?'PRELIM2_APROBADA':'PRELIM_APROBADA';
+  /* si la preliminar nunca se envió, el paso "enviada" queda cumplido con esta misma hora,
+     sin un segundo cambio de estado que compita con el definitivo en la base */
+  guardarDetalleBD();
+  if(!HITOS['O_'+kEnv])HITOS['O_'+kEnv]=selloHora();
+  HITOS['SINVB_'+kApr]=true;
   var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
-  setOT((EST_OT_ACT==='PRELIM2_ENVIADA'||TIENE_P2)?'PRELIM2_APROBADA':'PRELIM_APROBADA',nota);
+  setOT(kApr,nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
   alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
 }
@@ -3866,7 +3869,7 @@ function enviarPreliminar(){
       setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
     }
     hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada'+
-      (PRELIM_REV>1?' (revisión '+PRELIM_REV+', el link anterior quedó sin efecto)':'')+'.</span> '+
+      (PRELIM_REV>1?' (revisión '+PRELIM_REV+': si había un link anterior, quedó sin efecto)':'')+'.</span> '+
       'Confirma el envío en WhatsApp.';
   }catch(e){
     hint.innerHTML='<span style="color:var(--rojo)">Error al marcar el estado: '+e.message+'</span>';
