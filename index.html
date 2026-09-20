@@ -439,7 +439,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v57</span>
+  <span class="demo-tag">v58</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -699,26 +699,25 @@ tr.sel td{background:var(--rojo-cl)}
           <button class="btn chico sec" onclick="imprimirPresupuesto()">🖨️ Imprimir presupuesto</button>
         </div>
 
-        <div class="card" style="margin:16px 0 0;background:#F0FBF3;border-color:#BFE6CE">
-          <label>Enviar presupuesto PRELIMINAR al cliente</label>
-          <div class="fila" style="align-items:center">
-            <div style="flex:1;min-width:170px">
-              <div style="display:flex;align-items:center;gap:7px">
-                <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
-                <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="9XX XXX XXX">
-              </div>
+        <div class="grid g2" style="margin-top:16px;gap:12px;align-items:stretch">
+          <div class="card" style="margin:0;background:#F0FBF3;border-color:#BFE6CE">
+            <label>A · Enviar al cliente</label>
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+              <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
+              <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="9XX XXX XXX">
             </div>
-            <button class="btn chico" style="flex:0 0 auto;background:#25D366;color:#0A2E19"
+            <button class="btn chico" style="width:100%;background:#25D366;color:#0A2E19"
                     onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
+            <div class="hint" id="preHint">El cliente aprueba desde su celular.</div>
           </div>
-          <div class="hint" id="preHint">Si el celular cambió, corrígelo acá: se actualiza también en la ficha del cliente.</div>
+          <div class="card" style="margin:0">
+            <label>B · Iniciar sin visto bueno</label>
+            <div class="hint" style="margin:0 0 10px">Cuando el cliente no aprueba por el link.
+              Pide comentario obligatorio y queda registrado quién autorizó.</div>
+            <button class="btn chico sec" style="width:100%"
+                    onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
+          </div>
         </div>
-
-        <div class="fila" style="margin-top:14px">
-          <button class="btn chico sec" onclick="continuarSinConfirmar()">Iniciar sin visto bueno del cliente</button>
-        </div>
-        <div class="hint">Para cuando el cliente no aprueba por el link: pide un comentario obligatorio
-          y queda registrado quién autorizó el inicio.</div>
 
         <div id="sugs" style="display:none"></div>
       </div>
@@ -3681,14 +3680,18 @@ function enviarPreliminar(){
     'en ventanilla antes de facturar. Vigente al '+hoy+'._\n\n'+
     (linkCliente('presupuesto')?'Apruebe el servicio acá:\n'+linkCliente('presupuesto')+'\n\n':'')+
     'No iniciamos ningún trabajo sin su aprobación.';
-  var a=document.createElement('a');
-  a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
-  a.target='_blank';a.rel='noopener';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  /* PRIMERO el estado, DESPUÉS WhatsApp: al saltar a la app el navegador
+     congela la página y lo que venga después puede no ejecutarse */
   guardarDetalleBD();
   setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot));
-  hint.innerHTML='<span style="color:var(--verde);font-weight:700">Preliminar enviada.</span> '+
-    'La orden espera la aprobación del cliente.';
+  hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada.</span> '+
+    'Se abre WhatsApp: confirma el envío desde ahí.';
+  setTimeout(function(){
+    var a=document.createElement('a');
+    a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
+    a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  },150);
 }
 function enviarWA(tipo){
   var num=$('waNum').value.replace(/\D/g,'');
