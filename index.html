@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v67</span>
+  <span class="demo-tag">v69</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -846,14 +846,20 @@ tr.sel td{background:var(--rojo-cl)}
 
 <!-- ================= VENTANILLA ================= -->
 <section class="vista" id="v-ventanilla">
-  <div class="card">
-    <div class="navproc"><button class="atras" onclick="history.length>1&&ir('recepcion')">← Volver</button>
-      <span class="donde">Validación de stock y codificación</span></div>
+  <div class="card" id="ventHome">
     <h3>🏷️ Ventanilla de almacén</h3>
-    <div class="aviso info"><b>Módulo por construir.</b> Acá ventanilla revisa cada repuesto de la orden,
-      confirma si existe en almacén y le pone el código con el que sale del inventario.</div>
+    <p style="color:var(--mudo);font-size:14px;margin:0 0 14px">Codifica los repuestos, ajusta precios y arma la OT definitiva.</p>
+    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+      <div style="flex:2;min-width:190px"><label>Buscar por placa, cliente u OT</label>
+        <input id="ventTxt" placeholder="Ej. CTS-009, Rojas, OT-2026-00207" oninput="ventLista()"></div>
+    </div>
+    <div class="modo" style="max-width:360px;margin-bottom:12px">
+      <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes en curso</button>
+      <button id="ventTabC" onclick="ventTab('clientes')">Clientes recientes</button>
+    </div>
     <div id="ventLista"></div>
   </div>
+  <div class="card oculto" id="ventDetalle"></div>
 </section>
 
 <!-- ================= ASESOR DE SERVICIO ================= -->
@@ -2647,12 +2653,15 @@ function abrirOrden(ot){
    y líneas, y se pisa lo que el navegador tenía guardado. */
 function sincronizarDesdeBase(){
   if(!sb||!OT_NUM)return;
-  sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre,total_taller,comprobante_tipo,comprobante_ruc,diagnostico,prelim_rev,tiene_prelim2')
+  sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre,total_taller,comprobante_tipo,comprobante_ruc,diagnostico,prelim_rev,tiene_prelim2,prelim_sin_vb,def_sin_vb')
     .eq('numero',OT_NUM).maybeSingle().then(function(r){
       if(!r.data)return;
       var d=r.data,cambio=false;
       if(typeof d.prelim_rev==='number'&&d.prelim_rev>PRELIM_REV)PRELIM_REV=d.prelim_rev;
       if(d.tiene_prelim2&&!TIENE_P2){TIENE_P2=true;armarFOT();cambio=true}
+      if(d.prelim_sin_vb&&!HITOS['SINVB_PRELIM_APROBADA']&&!HITOS['SINVB_PRELIM2_APROBADA']){
+        HITOS['SINVB_'+(d.tiene_prelim2?'PRELIM2_APROBADA':'PRELIM_APROBADA')]=true;cambio=true}
+      if(d.def_sin_vb&&!HITOS['SINVB_DEF_APROBADA']){HITOS['SINVB_DEF_APROBADA']=true;cambio=true}
       if(d.estado_taller&&d.estado_taller!==EST_TALLER){EST_TALLER=d.estado_taller;cambio=true}
       if((d.estado_ot||'')!==(EST_OT_ACT||'')){EST_OT_ACT=d.estado_ot||'';cambio=true}
       if(d.mecanico_nombre&&!MECANICO_OT){MECANICO_OT=d.mecanico_nombre;
@@ -3496,7 +3505,9 @@ function renderAcciones(){
   }
   if(EST_OT_ACT==='PRELIM_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar aprobada.</b> El taller trabaja. Al terminar, ventanilla valida '+
-      'stock y arma la definitiva.</div>';
+      'stock y arma la definitiva.</div>'+
+      '<div id="avisoDespacho"></div>';
+    setTimeout(pintarAvisoDespacho,50);
   }
   if(EST_OT_ACT==='PRELIM2_ENVIADA'){
     avisos='<div class="aviso info"><b>Preliminar 2 enviada.</b> Esperando que el cliente apruebe la versión actualizada. '+
@@ -3516,7 +3527,8 @@ function renderAcciones(){
     avisos='<div class="aviso info"><b>Definitiva enviada.</b> Esperando la aprobación del monto final.</div>';
   }
   if(EST_OT_ACT==='DEF_APROBADA'){
-    avisos='<div class="aviso ok"><b>Definitiva aprobada.</b> Con el asesor de servicio para el cobro.</div>';
+    avisos='<div class="aviso ok"><b>OT final aprobada'+(HITOS['SINVB_DEF_APROBADA']?' · sin VB del cliente':'')+
+      '.</b> Con el asesor de servicio para el cobro.</div>';
   }
   if(EST_OT_ACT==='PAGADA'){
     avisos='<div class="aviso ok"><b>OT pagada.</b> El cliente puede recoger el vehículo.</div>';
@@ -3565,6 +3577,7 @@ function continuarSinConfirmar(){
   HITOS['SINVB_'+kApr]=true;
   var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
   setOT(kApr,nota);
+  if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true}).eq('numero',OT_NUM).then(function(){},function(){});
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
   alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
 }
@@ -4003,8 +4016,14 @@ function renderFicha(){
     : '<div class="hint" style="margin:0">Sin fotos registradas en el ingreso.</div>';
   if(f.lineas.length){
     var sub=f.lineas.reduce(function(a,l){return a+l.p},0);
-    $('cliPres').innerHTML='<table>'+f.lineas.map(function(l){
-      return '<tr><td>'+l.d+'</td><td class="num der">'+S(l.p)+'</td></tr>'}).join('')+
+    var hayCambios=f.lineas.some(function(l){return l.c});
+    $('cliPres').innerHTML=(hayCambios
+      ? '<div class="aviso info" style="font-size:12.5px;margin:0 0 8px"><b>Con cambios respecto al preliminar:</b> '+
+        'nuevo = agregado en almacén · reemplazo = sustituto por falta de stock · tachado = retirado.</div>':'')+
+      '<table>'+f.lineas.map(function(l){
+      var badge=l.c==='A'?' <span class="eti e4">nuevo</span>':l.c==='R'?' <span class="eti e3">reemplazo</span>':'';
+      var st=l.c==='X'?' style="opacity:.5;text-decoration:line-through"':'';
+      return '<tr'+st+'><td>'+l.d+badge+'</td><td class="num der">'+(l.c==='X'?'—':S(l.p))+'</td></tr>'}).join('')+
       '<tr><td>IGV 18%</td><td class="num der">'+S(f.total-sub)+'</td></tr>'+
       '<tr><td><b>Total</b></td><td class="num der"><b style="color:var(--rojo)">'+S(f.total)+'</b></td></tr></table>';
   } else {
@@ -4165,112 +4184,375 @@ function cargarLineasBD(ordenId,cb){
                 precio:Number(l.precio_taller)||0,
                 final:(l.precio_caja!==null&&l.precio_caja!==undefined)?Number(l.precio_caja):Number(l.precio_taller)||0,
                 stock:l.stock_ok,cod_alm:l.codigo_almacen||'',
-                incluir:(l.cobrado!==false)};
+                incluir:(l.cobrado!==false),cambio:l.cambio||'',orig:l.descripcion_original||'',
+                nota:l.nota_cambio||'',desp:l.despachado_el||null,desp_por:l.despachado_por||''};
       }));
     },function(){cb([])});
 }
 
 /* ============================================================
-   VENTANILLA · valida stock y codifica · lee de la base
+   VENTANILLA · codifica repuestos, ajusta la OT y arma la definitiva
+   Trabaja sobre la base: cualquier equipo ve lo mismo.
    ============================================================ */
-var VENT_OT=null,VENT_LIN=[];
+var VENT_OT=null,VENT_LIN=[],VENT_TAB='ordenes';
+var VENT_ESTADOS=['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA'];
 
 function enviarAVentanilla(){
   setTaller('LISTO','Trabajo terminado · pasa a ventanilla');
 }
-
+function ventTab(t){
+  VENT_TAB=t;
+  $('ventTabO').classList.toggle('on',t==='ordenes');
+  $('ventTabC').classList.toggle('on',t==='clientes');
+  ventLista();
+}
 function pintarVentanilla(){
   VENT_OT=null;
-  $('ventLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
-  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA'],function(lista){
-    $('ventLista').innerHTML=
-      '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>Taller</th><th class="der">En taller</th><th class="der">Estimado</th><th></th></tr>'+
+  $('ventDetalle').classList.add('oculto');
+  $('ventHome').classList.remove('oculto');
+  ventLista();
+}
+function ventLista(){
+  var res=$('ventLista'),txt=($('ventTxt').value||'').trim().toLowerCase().replace(/-/g,'');
+  res.innerHTML='<div class="hint">Cargando…</div>';
+  if(VENT_TAB==='clientes'){
+    if(!sb){res.innerHTML='<div class="hint">Sin conexión.</div>';return}
+    sb.from('clientes').select('id,nombre,num_doc,telefono,vehiculos(placa,marca,modelo)')
+      .order('creado',{ascending:false}).limit(60).then(function(r){
+        var lista=(r.data||[]).filter(function(c){
+          if(!txt)return true;
+          var pj=((c.nombre||'')+(c.num_doc||'')+(c.vehiculos||[]).map(function(v){return v.placa}).join('')).toLowerCase().replace(/-/g,'');
+          return pj.indexOf(txt)>-1;
+        }).slice(0,20);
+        res.innerHTML='<div style="overflow-x:auto"><table><tr><th>Cliente</th><th>Vehículos</th></tr>'+
+          (lista.length?lista.map(function(c){
+            return '<tr><td><b>'+c.nombre+'</b><div style="font-size:11px;color:var(--mudo)">'+(c.telefono||'')+'</div></td>'+
+            '<td>'+(c.vehiculos||[]).map(function(v){
+              return '<button class="btn chico sec" style="min-height:34px;padding:0 11px;margin:2px" '+
+                'onclick="ventPorPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>'}).join('')+'</td></tr>';
+          }).join(''):'<tr><td colspan="2" class="vacio"><b>Sin resultados</b></td></tr>')+'</table></div>';
+      },function(){res.innerHTML='<div class="hint">Error al consultar.</div>'});
+    return;
+  }
+  cargarOrdenesBD(VENT_ESTADOS,function(lista){
+    lista=lista.filter(function(o){
+      if(!txt)return true;
+      return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
+    });
+    res.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>OT</th><th class="der">En taller</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
+        var chip=o.estado_ot==='DEF_ENVIADA'?'<span class="eti e3">Final enviada</span>'
+               :'<span class="eti e4">'+(o.estado_ot==='PRELIM2_APROBADA'?'Prelim. 2 aprobada':'Prelim. aprobada')+'</span>';
         return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td>'+
-        '<td><span class="eti e3">'+String(o.estado_taller||'').replace('_',' ')+'</span></td>'+
+        '<td>'+o.cliente+'</td><td>'+chip+'</td>'+
         '<td class="num der'+(o.mins>1440?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
-        '<td class="num der">'+S(o.total)+'</td>'+
-        '<td><button class="btn chico" onclick="ventAbrir('+o.id+')">Validar stock</button></td></tr>';
+        '<td><button class="btn chico" onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="7" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado esperando almacén.</td></tr>')+
-      '</table></div>'+
-      '<div class="hint">Aparecen acá las órdenes cuyo servicio ya aprobó el cliente.</div>';
+      :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado.</td></tr>')+
+      '</table></div>';
+  });
+}
+function ventPorPlaca(placa){
+  cargarOrdenesBD(VENT_ESTADOS,function(lista){
+    var o=lista.filter(function(x){return x.placa===placa})[0];
+    if(!o){alert('Esa placa no tiene una orden pendiente en ventanilla.');return}
+    ventAbrir(o.id);
   });
 }
 function ventAbrir(id){
-  $('ventLista').innerHTML='<div class="hint">Abriendo…</div>';
-  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA'],function(lista){
+  cargarOrdenesBD(VENT_ESTADOS,function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarVentanilla();return}
     VENT_OT=o;
-    cargarLineasBD(id,function(lin){ VENT_LIN=lin; ventRender(); });
+    cargarLineasBD(id,function(lin){
+      VENT_LIN=lin.map(function(l){l.orig_final=l.final;return l});
+      $('ventHome').classList.add('oculto');
+      $('ventDetalle').classList.remove('oculto');
+      ventRender();
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
   });
+}
+function ventTotales(){
+  var sub=0;
+  VENT_LIN.forEach(function(l){ if(l.incluir)sub+=Number(l.final||0)*Number(l.cant||1) });
+  var igv=Math.round(sub*0.18);
+  return {sub:sub,igv:igv,tot:sub+igv};
 }
 function ventRender(){
-  var o=VENT_OT;
-  var reps=VENT_LIN.filter(function(l){return l.tipo==='REP'});
-  var pend=reps.filter(function(l){return l.stock===null||l.stock===undefined}).length;
-  $('ventLista').innerHTML=
+  var o=VENT_OT,t=ventTotales();
+  var cats=[];REPUESTOS.forEach(function(r){if(cats.indexOf(r.categoria)===-1&&r.categoria)cats.push(r.categoria)});
+  var sinCod=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
+  $('ventDetalle').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
-    '<span class="donde">Orden <b>'+o.ot+'</b> · '+o.placa+' · '+o.cliente+'</span></div>'+
-    '<div class="aviso info" style="font-size:12.5px">Marca cada repuesto: <b>Hay</b> con su código de almacén, '+
-    'o <b>No hay</b> si no está disponible. Los servicios no requieren validación.</div>'+
-    '<div style="overflow-x:auto"><table><tr><th>Tipo</th><th>Concepto</th><th class="der">Cant</th>'+
-    '<th class="der">Referencial</th><th>Disponibilidad</th><th>Código almacén</th></tr>'+
-    (VENT_LIN.length?VENT_LIN.map(function(l,i){
-      if(l.tipo==='MO'){
-        return '<tr><td><span class="eti e2">Servicio</span></td><td>'+l.desc+'</td>'+
-        '<td class="der num">'+l.cant+'</td><td class="num der">'+S(l.precio)+'</td>'+
-        '<td colspan="2" class="hint">No aplica</td></tr>';
-      }
-      return '<tr'+(l.stock===false?' style="opacity:.5"':'')+'>'+
-        '<td><span class="eti e3">Repuesto</span></td><td>'+l.desc+'</td>'+
-        '<td class="der num">'+l.cant+'</td>'+
-        '<td class="num der">'+S(l.precio)+'</td>'+
-        '<td><button class="btn chico '+(l.stock===true?'ok':'sec')+'" style="min-height:34px;padding:0 10px" '+
-          'onclick="ventStock('+i+',true)">Hay</button> '+
-          '<button class="btn chico '+(l.stock===false?'peligro':'sec')+'" style="min-height:34px;padding:0 10px" '+
-          'onclick="ventStock('+i+',false)">No hay</button></td>'+
-        '<td><input value="'+(l.cod_alm||'')+'" placeholder="cód. RS" style="width:120px;padding:7px" '+
-          (l.stock===true?'':'disabled ')+'oninput="ventCod('+i+',this.value)"></td></tr>';
-    }).join('')
-    :'<tr><td colspan="6" class="vacio"><b>Sin detalle</b>Esta orden no tiene líneas registradas.</td></tr>')+
-    '</table></div>'+
-    '<div class="fila" style="margin-top:16px">'+
-      (pend
-        ? '<div class="aviso rojo" style="margin:0;flex:1">Faltan '+pend+' repuesto(s) por marcar.</div>'
-        : '<button class="btn chico" onclick="ventEnviarAsesor()">Guardar y enviar al asesor</button>')+
-    '</div><div id="ventMsg" style="margin-top:10px"></div>';
+    '<span class="donde">'+o.ot+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    '<h3>Orden de trabajo · '+o.ot+'</h3>'+
+    '<div class="hint" style="margin:-4px 0 12px">Repuestos: código de stock y precio. Servicios: solo precio. '+
+      'Puedes retirar, reemplazar o agregar líneas.</div>'+
+    '<div style="overflow-x:auto"><table><tr><th>Tipo</th><th>Concepto</th><th>Código stock</th>'+
+    '<th class="der">Cant</th><th class="der">Precio</th><th class="der">Subtotal</th><th></th></tr>'+
+    VENT_LIN.map(function(l,i){
+      var esRep=(l.tipo==='REP');
+      var marca=l.cambio==='A'?' <span class="eti e4">nuevo</span>'
+               :l.cambio==='R'?' <span class="eti e3">reemplazo</span>'
+               :l.cambio==='X'?' <span class="eti e1">retirado</span>':'';
+      var fila='<tr'+(l.incluir?'':' style="opacity:.45;text-decoration:line-through"')+'>'+
+        '<td><span class="eti '+(esRep?'e3':'e2')+'">'+(esRep?'Repuesto':'Servicio')+'</span></td>'+
+        '<td>'+l.desc+marca+(l.orig&&l.cambio==='R'?'<div class="hint" style="margin:2px 0 0">antes: '+l.orig+'</div>':'')+'</td>'+
+        '<td>'+(esRep?'<input value="'+(l.cod_alm||'')+'" placeholder="cód." style="width:110px;padding:7px" '+
+          (l.incluir?'':'disabled ')+'oninput="ventCod('+i+',this.value)">':'<span class="hint">—</span>')+'</td>'+
+        '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:60px;text-align:right;padding:7px" '+
+          (l.incluir?'':'disabled ')+'oninput="ventCant('+i+',this.value)"></td>'+
+        '<td class="der"><input type="number" min="0" value="'+l.final+'" style="width:96px;text-align:right;padding:7px" '+
+          (l.incluir?'':'disabled ')+'oninput="ventPrecio('+i+',this.value)"></td>'+
+        '<td class="num der"><b>'+S(l.incluir?l.final*l.cant:0)+'</b></td>'+
+        '<td style="white-space:nowrap">'+
+          (l.incluir
+            ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px" title="Reemplazar" onclick="ventReemplazar('+i+')">↔</button> '+
+              '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
+            : '<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="ventRestaurar('+i+')">↺</button>')+
+        '</td></tr>';
+      return fila;
+    }).join('')+'</table></div>'+
+
+    '<div class="fila" style="margin-top:14px;align-items:flex-end">'+
+      '<div style="min-width:160px"><label>Agregar repuesto</label><select id="ventCat" onchange="ventItems()">'+
+        '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
+      '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="ventItem"></select></div>'+
+      '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventAgregar()">Agregar</button></div>'+
+    '</div>'+
+    '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
+      '<div style="flex:2;min-width:190px"><label>Otro (libre)</label><input id="ventLibre" placeholder="Descripción"></div>'+
+      '<div style="min-width:110px"><label>Precio</label><input id="ventLibreP" type="number" min="0" placeholder="0"></div>'+
+      '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventAgregarLibre()">Agregar</button></div>'+
+    '</div>'+
+
+    '<div class="bloque-pres" style="margin-top:16px">'+
+      '<label style="margin:0 0 10px">OT definitiva</label>'+
+      '<div class="fila">'+
+        '<div class="kpi kpi-osc"><div class="v">'+S(t.sub)+'</div><div class="l">Subtotal</div></div>'+
+        '<div class="kpi kpi-osc"><div class="v">'+S(t.igv)+'</div><div class="l">IGV 18%</div></div>'+
+        '<div class="kpi kpi-osc rojo"><div class="v">'+S(t.tot)+'</div><div class="l">Total</div></div>'+
+      '</div>'+
+      (o.total?'<div class="hint" style="margin-top:8px">Preliminar aprobada: '+S(o.total)+' · diferencia '+
+        (t.tot-o.total>=0?'+':'')+S(t.tot-o.total)+'</div>':'')+
+    '</div>'+
+    (sinCod?'<div class="aviso rojo" style="margin-top:12px">'+sinCod+' repuesto(s) sin código de stock.</div>':'')+
+
+    ventBloqueDespacho()+
+
+    '<div class="dos-vias">'+
+      '<div class="via" style="background:#F0FBF3;border-color:#BFE6CE">'+
+        '<label>A · Enviar OT final al cliente</label>'+
+        '<div class="cel"><span class="num">+51</span>'+
+          '<input id="ventWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'"></div>'+
+        '<div class="hint" id="ventHint">El cliente aprueba la versión final desde su celular.</div>'+
+        '<button class="btn chico" style="background:#25D366;color:#0A2E19" onclick="ventEnviarFinal()">📤 Enviar OT FINAL</button>'+
+      '</div>'+
+      '<div class="via">'+
+        '<label>B · Continuar sin visto bueno</label>'+
+        '<div class="hint" style="margin:0">Cuando el cliente no aprueba por el link. Comentario obligatorio.</div>'+
+        '<button class="btn chico sec" onclick="ventSinVB()">Aprobar sin VB del cliente</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="ventMsg" style="margin-top:10px"></div>';
+  ventItems();
 }
-function ventStock(i,v){VENT_LIN[i].stock=v;if(!v)VENT_LIN[i].cod_alm='';ventRender()}
-function ventCod(i,v){VENT_LIN[i].cod_alm=v}
-function ventEnviarAsesor(){
-  var o=VENT_OT,msg=$('ventMsg');
-  var sin=VENT_LIN.filter(function(l){return l.tipo==='REP'&&l.stock===false});
-  var sinCod=VENT_LIN.filter(function(l){return l.stock===true&&l.tipo==='REP'&&!l.cod_alm}).length;
-  if(sinCod&&!confirm(sinCod+' repuesto(s) sin código de almacén. ¿Enviar igual?'))return;
-  msg.innerHTML='<div class="hint">Guardando…</div>';
-  var pend=VENT_LIN.length,err=0;
-  VENT_LIN.forEach(function(l){
-    sb.from('orden_detalle').update({stock_ok:l.stock,codigo_almacen:l.cod_alm||null,
-      cobrado:(l.stock===false?false:true)}).eq('id',l.id)
-     .then(function(r){ if(r.error)err++; if(--pend===0)cerrar(); },function(){ err++; if(--pend===0)cerrar(); });
+/* ---- despacho de repuestos al taller ---- */
+function pintarAvisoDespacho(){
+  var z=document.getElementById('avisoDespacho');
+  if(!z||!sb||!OT_NUM)return;
+  sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
+    if(!r.data)return;
+    cargarLineasBD(r.data.id,function(lin){
+      var reps=lin.filter(function(l){return l.incluir&&l.tipo==='REP'});
+      if(!reps.length)return;
+      var d=reps.filter(function(l){return l.desp}).length;
+      z.innerHTML='<div class="aviso '+(d===reps.length?'ok':'info')+'" style="margin-top:8px">📦 Repuestos despachados por almacén: <b>'+
+        d+' de '+reps.length+'</b>'+(d<reps.length?' · pendientes: '+reps.filter(function(l){return !l.desp}).map(function(l){return l.desc}).join(', '):'')+'</div>';
+    });
+  },function(){});
+}
+function ventBloqueDespacho(){
+  var reps=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'});
+  if(!reps.length)return '';
+  var hechos=reps.filter(function(l){return l.desp}).length,pend=reps.length-hechos;
+  return '<div class="card" style="margin:16px 0 0;border-color:'+(pend?'var(--borde)':'#BFE6CE')+'">'+
+    '<h3 style="font-size:15px">📦 Despacho al taller '+
+      '<span class="eti '+(pend?'e3':'e4')+'" style="margin-left:auto">'+hechos+' / '+reps.length+'</span></h3>'+
+    '<div class="hint" style="margin:-4px 0 10px">Marca lo que ya salió de almacén para que lo apliquen al vehículo. '+
+      'Puedes despachar parcial y volver cuando llegue el resto.</div>'+
+    '<div style="overflow-x:auto"><table>'+
+    VENT_LIN.map(function(l,i){
+      if(!(l.incluir&&l.tipo==='REP'))return '';
+      return '<tr>'+
+        '<td style="width:34px"><input type="checkbox" id="desp'+i+'" '+(l.desp?'checked disabled':'')+
+          ' style="width:22px;height:22px;accent-color:var(--verde)"></td>'+
+        '<td>'+l.cant+'x '+l.desc+(l.cod_alm?' <span class="num" style="font-size:11px;color:var(--mudo)">'+l.cod_alm+'</span>':'')+'</td>'+
+        '<td class="der">'+(l.desp
+          ?'<span class="eti e4">despachado '+selloHora(l.desp)+'</span>'
+          :'<span class="eti e3">pendiente</span>')+'</td></tr>';
+    }).join('')+'</table></div>'+
+    (pend
+      ? '<div class="fila" style="margin-top:12px">'+
+          '<button class="btn chico sec" onclick="ventDespachar(false)">Despachar marcados</button>'+
+          '<button class="btn chico ok" onclick="ventDespachar(true)">Despachar todo</button>'+
+        '</div>'
+      : '<div class="aviso ok" style="margin:10px 0 0">Todo despachado al taller.</div>')+
+    '<div id="despMsg"></div></div>';
+}
+function ventDespachar(todo){
+  var o=VENT_OT,ahora=new Date().toISOString(),quien=SESION?SESION.nombre:'ventanilla';
+  var sel=[];
+  VENT_LIN.forEach(function(l,i){
+    if(!(l.incluir&&l.tipo==='REP')||l.desp)return;
+    var cb=document.getElementById('desp'+i);
+    if(todo||(cb&&cb.checked))sel.push(l);
   });
-  if(!VENT_LIN.length)cerrar();
-  function cerrar(){
-    sb.from('ordenes').update({estado_ot:'DEF_ENVIADA',ventanilla_id:SESION?SESION.id:null,
-      est_ventanilla:new Date().toISOString()}).eq('id',o.id)
+  if(!sel.length){alert('Marca al menos un repuesto, o usa "Despachar todo".');return}
+  var msg=document.getElementById('despMsg');
+  if(msg)msg.innerHTML='<div class="hint">Registrando…</div>';
+  /* si la línea es nueva y aún no se guardó, primero se crea */
+  ventGuardarLineas(function(){
+    var pend=sel.length;
+    sel.forEach(function(l){
+      sb.from('orden_detalle').update({despachado_el:ahora,despachado_por:quien}).eq('id',l.id)
+       .then(function(){ l.desp=ahora;l.desp_por=quien; if(--pend===0)listo() },function(){ if(--pend===0)listo() });
+    });
+    function listo(){
+      var reps=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'});
+      var faltan=reps.filter(function(l){return !l.desp}).length;
+      auditar('DESPACHA','orden',o.ot,sel.length+' repuesto(s) al taller'+(faltan?' · faltan '+faltan:' · completo'));
+      ventRender();
+    }
+  });
+}
+function ventCod(i,v){VENT_LIN[i].cod_alm=v}
+function ventCant(i,v){VENT_LIN[i].cant=Math.max(1,Number(v)||1);ventRefrescarTotales()}
+function ventPrecio(i,v){VENT_LIN[i].final=Number(v)||0;ventRefrescarTotales()}
+function ventRefrescarTotales(){
+  /* solo los totales, para no perder el foco del campo que se está escribiendo */
+  var t=ventTotales(),o=VENT_OT;
+  var k=document.querySelectorAll('#ventDetalle .kpi-osc .v');
+  if(k.length>=3){k[0].textContent=S(t.sub);k[1].textContent=S(t.igv);k[2].textContent=S(t.tot)}
+  var subs=document.querySelectorAll('#ventDetalle table tr td:nth-child(6) b');
+  VENT_LIN.forEach(function(l,i){if(subs[i])subs[i].textContent=S(l.incluir?l.final*l.cant:0)});
+}
+function ventRetirar(i){
+  var l=VENT_LIN[i];
+  var m=prompt('Motivo para retirar "'+l.desc+'" (ej. sin stock, el cliente no lo quiere):');
+  if(m===null)return;
+  l.incluir=false;l.cambio='X';l.nota=m||'sin stock';
+  ventRender();
+}
+function ventRestaurar(i){
+  var l=VENT_LIN[i];l.incluir=true;l.cambio=(l.cambio==='X'?'':l.cambio);l.nota='';ventRender();
+}
+function ventReemplazar(i){
+  var l=VENT_LIN[i];
+  var nd=prompt('Reemplazar "'+l.desc+'" por:',l.desc);
+  if(nd===null||!nd.trim())return;
+  var np=prompt('Precio del reemplazo:',l.final);
+  if(np===null)return;
+  if(!l.orig)l.orig=l.desc;
+  l.desc=nd.trim();l.final=Number(np)||0;l.cambio='R';l.cod_alm='';
+  ventRender();
+}
+function ventItems(){
+  var s=document.getElementById('ventCat');if(!s)return;
+  var cat=s.value,lista=REPUESTOS.filter(function(r){return !cat||r.categoria===cat});
+  document.getElementById('ventItem').innerHTML='<option value="">— producto —</option>'+
+    lista.map(function(r){return '<option value="'+r.codigo+'">'+r.descripcion+' · '+S(r.precio)+'</option>'}).join('');
+}
+function ventAgregar(){
+  var cod=document.getElementById('ventItem').value;if(!cod)return;
+  var r=REPUESTOS.filter(function(x){return x.codigo===cod})[0];if(!r)return;
+  VENT_LIN.push({id:null,tipo:'REP',desc:r.descripcion,cant:1,precio:Number(r.precio),final:Number(r.precio),
+    stock:true,cod_alm:'',incluir:true,cambio:'A',orig:'',nota:'agregado en ventanilla'});
+  ventRender();
+}
+function ventAgregarLibre(){
+  var d=(document.getElementById('ventLibre').value||'').trim(),p=Number(document.getElementById('ventLibreP').value)||0;
+  if(!d){alert('Escribe la descripción.');return}
+  VENT_LIN.push({id:null,tipo:'REP',desc:d,cant:1,precio:p,final:p,stock:true,cod_alm:'',incluir:true,
+    cambio:'A',orig:'',nota:'agregado en ventanilla'});
+  ventRender();
+}
+/* Guarda todas las líneas en la base y luego ejecuta cb */
+function ventGuardarLineas(cb){
+  var o=VENT_OT,pend=VENT_LIN.length,err=0;
+  if(!pend){cb();return}
+  VENT_LIN.forEach(function(l){
+    var datos={descripcion:l.desc,cantidad:l.cant,precio_caja:l.final,cobrado:l.incluir,
+      stock_ok:l.incluir,codigo_almacen:l.cod_alm||null,cambio:l.cambio||null,
+      descripcion_original:l.orig||null,nota_cambio:l.nota||null};
+    var q=l.id
+      ? sb.from('orden_detalle').update(datos).eq('id',l.id).select('id')
+      : sb.from('orden_detalle').insert(Object.assign({orden_id:o.id,tipo:l.tipo,precio_taller:l.precio,agregado_por:'ventanilla'},datos)).select('id');
+    q.then(function(r){ if(r.error)err++; else if(!l.id&&r.data&&r.data[0])l.id=r.data[0].id; if(--pend===0)cb(err) },
+           function(){ err++; if(--pend===0)cb(err) });
+  });
+}
+function ventLinkFinal(){
+  if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
+  var o=VENT_OT,t=ventTotales();
+  var ln=VENT_LIN.map(function(l){
+    return (l.cant+'x '+l.desc).replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.incluir?l.final*l.cant:0)+'~'+(l.cambio||'');
+  }).join('|');
+  return APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+'v=cliente&f=d&ot='+encodeURIComponent(o.ot)+
+    '&pl='+encodeURIComponent(o.placa)+'&vh='+encodeURIComponent(o.veh||'')+'&cl='+encodeURIComponent(o.cliente)+
+    '&tf='+t.tot+'&ln='+encodeURIComponent(ln);
+}
+function ventEnviarFinal(){
+  var num=(document.getElementById('ventWA').value||'').replace(/\D/g,''),msg=$('ventMsg');
+  if(num.length<9){msg.innerHTML='<div class="aviso rojo" style="margin:0">Ingresa el celular del cliente.</div>';return}
+  var sinCod=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
+  if(sinCod&&!confirm(sinCod+' repuesto(s) sin código de stock. ¿Enviar igual?'))return;
+  var t=ventTotales(),o=VENT_OT;
+  var incl=VENT_LIN.filter(function(l){return l.incluir});
+  var cambios=VENT_LIN.filter(function(l){return l.cambio});
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  ventGuardarLineas(function(err){
+    sb.from('ordenes').update({estado_ot:'DEF_ENVIADA',total_taller:t.tot,ventanilla_id:SESION?SESION.id:null,
+      est_ventanilla:new Date().toISOString(),ot_def_enviada:new Date().toISOString()}).eq('id',o.id)
      .then(function(r){
        if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
-       auditar('VALIDA_STOCK','orden',o.ot,
-         VENT_LIN.filter(function(l){return l.tipo==='REP'}).length+' repuestos revisados'+
-         (sin.length?' · '+sin.length+' sin stock':''));
-       msg.innerHTML='<div class="aviso ok">Enviada al asesor de servicio.</div>';
-       setTimeout(pintarVentanilla,900);
+       auditar('ENVIA_DEFINITIVO','orden',o.ot,'OT final '+S(t.tot)+(cambios.length?' · '+cambios.length+' cambio(s)':''),t.tot);
+       var texto='*IZA MOTORS* — OT final '+o.ot+'\n'+
+         'Hola '+o.cliente+', ya validamos los repuestos de su '+o.placa+'. Este es el detalle definitivo'+
+         (cambios.length?' con los cambios realizados en almacén':'')+'.\n\n'+
+         incl.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.final*l.cant)+
+           (l.cambio==='A'?' (nuevo)':l.cambio==='R'?' (reemplazo)':'')}).join('\n')+
+         (VENT_LIN.filter(function(l){return l.cambio==='X'}).length
+           ?'\n_Retirados: '+VENT_LIN.filter(function(l){return l.cambio==='X'}).map(function(l){return l.desc}).join(', ')+'_':'')+
+         '\n*Total con IGV: '+S(t.tot)+'*\n'+
+         (o.total?'_Preliminar aprobada: '+S(o.total)+' · diferencia '+(t.tot-o.total>=0?'+':'')+S(t.tot-o.total)+'_\n':'')+
+         (ventLinkFinal()?'\nApruebe la OT final acá:\n'+ventLinkFinal()+'\n':'')+
+         '\nUna vez aprobada pasamos a facturación.';
+       msg.innerHTML='<div class="aviso ok" style="margin:0">Marcada como enviada. Confirma el envío en WhatsApp.</div>';
+       abrirWhatsApp(num,texto);
+       setTimeout(pintarVentanilla,1800);
+     },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión.</div>'});
+  });
+}
+function ventSinVB(){
+  var m=prompt('¿Por qué se aprueba la OT final sin el visto bueno del cliente?');
+  if(m===null)return;
+  if(!m||m.trim().length<5){alert('El comentario es obligatorio y debe ser específico.');return}
+  var t=ventTotales(),o=VENT_OT,msg=$('ventMsg');
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  ventGuardarLineas(function(){
+    sb.from('ordenes').update({estado_ot:'DEF_APROBADA',def_sin_vb:true,total_taller:t.tot,
+      ventanilla_id:SESION?SESION.id:null,est_ventanilla:new Date().toISOString(),
+      ot_def_enviada:new Date().toISOString(),ot_def_aprobada:new Date().toISOString()}).eq('id',o.id)
+     .then(function(r){
+       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+       auditar('DEF_SIN_VB','orden',o.ot,'SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:''),t.tot);
+       msg.innerHTML='<div class="aviso ok" style="margin:0">OT final aprobada sin VB del cliente. Pasa al asesor.</div>';
+       setTimeout(pintarVentanilla,1500);
      },function(){});
-  }
+  });
 }
 
 /* ============================================================
@@ -4282,7 +4564,7 @@ var ASE_OT=null,ASE_LIN=[],ASE_EST=0;
 function pintarAsesor(){
   ASE_OT=null;
   $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
-  cargarOrdenesBD(['DEF_ENVIADA','DEF_APROBADA'],function(lista){
+  cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     $('asesorLista').innerHTML=
       '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Estado</th><th class="der">Estimado</th><th></th></tr>'+
@@ -4294,13 +4576,13 @@ function pintarAsesor(){
         '<td class="num der">'+S(o.total)+'</td>'+
         '<td><button class="btn chico" onclick="aseAbrir('+o.id+')">Atender</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes validadas por ventanilla.</td></tr>')+
+      :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
       '</table></div>';
   });
 }
 function aseAbrir(id){
   $('asesorLista').innerHTML='<div class="hint">Abriendo…</div>';
-  cargarOrdenesBD(['DEF_ENVIADA','DEF_APROBADA'],function(lista){
+  cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarAsesor();return}
     ASE_OT=o;ASE_EST=Number(o.total)||0;
@@ -4705,7 +4987,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
       /* nada de datos de ejemplo: si el link no trae el detalle, se avisa */
       if(q.ln!==undefined&&q.f!=='r'){
         FICHA.lineas=q.ln?q.ln.split('|').map(function(x){
-          var p=x.split('~');return {d:p[0],p:Number(p[1])||0};
+          var p=x.split('~');return {d:p[0],p:Number(p[1])||0,c:p[2]||''};
         }):[];
       }
       if(q.tf)FICHA.total=Number(q.tf)||0;
@@ -4715,7 +4997,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
         FICHA.avance=75;
         if(q.ln){
           FICHA.lineas=q.ln.split('|').map(function(x){
-            var p=x.split('~');return {d:p[0],p:Number(p[1])||0};
+            var p=x.split('~');return {d:p[0],p:Number(p[1])||0,c:p[2]||''};
           });
         }
         if(q.tf)FICHA.total=Number(q.tf)||0;
