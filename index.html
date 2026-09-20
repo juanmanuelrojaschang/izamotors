@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v66</span>
+  <span class="demo-tag">v67</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -3860,9 +3860,11 @@ function enviarPreliminar(){
   }
   var d=datosOrden(),t=totalesV2(),hoy=new Date().toLocaleDateString('es-PE');
   var coment=($('sintoma').value||'').trim();
+  /* la revisión sube antes de armar el link: así el enlace nuevo lleva el número vigente */
+  PRELIM_REV=(PRELIM_REV||0)+1;
   var esP2msg = TIENE_P2 || EST_OT_ACT==='PRELIM_APROBADA';
   var texto='*IZA MOTORS* — Presupuesto preliminar'+(esP2msg?' 2':'')+' '+(OT_NUM||d.num)+
-    ((PRELIM_REV||0)>=1?' (actualizado)':'')+'\n'+
+    ((PRELIM_REV||0)>1?' (actualizado)':'')+'\n'+
     'Hola '+d.cliente+', '+(esP2msg
       ?'durante el trabajo de su '+d.veh+' (placa '+d.placa+') surgió un servicio adicional. Este es el presupuesto actualizado; reemplaza al anterior.'
       :'terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').')+'\n\n'+
@@ -3881,8 +3883,6 @@ function enviarPreliminar(){
      antes de saltar. La apertura va en el mismo toque, sin temporizador,
      porque iOS bloquea ventanas que no nacen directamente de un gesto. */
   try{
-    /* cada envío es una revisión nueva: el link anterior deja de servir */
-    PRELIM_REV=(PRELIM_REV||0)+1;
     var esP2 = TIENE_P2 || EST_OT_ACT==='PRELIM_APROBADA';
     guardarDetalleBD();
     if(esP2){
@@ -4026,7 +4026,14 @@ function renderFicha(){
   if(ta)ta.textContent=f.definitivo?'✓ Aprobar el monto final':'✓ Aprobar el servicio';
   if(f.aprobable&&!f.definitivo){
     validarLinkCliente(function(ok,motivo){
-      if(ok)return;
+      if(ok){
+        if((f.rv||0)>1||(f.pv||1)>=2){
+          $('cliResultado').innerHTML='<div class="aviso info" style="margin-top:14px;text-align:center">'+
+            '<b>Este es el presupuesto '+((f.pv||1)>=2?'actualizado (preliminar 2)':'actualizado')+'.</b><br>'+
+            'Si tenías un enlace anterior, ya no tiene efecto. Este es el vigente.</div>';
+        }
+        return;
+      }
       $('cliAcciones').style.display='none';
       $('cliResultado').innerHTML=motivo==='reemplazado'
         ? '<div class="aviso rojo" style="margin-top:14px;text-align:center"><b>Este presupuesto fue actualizado por el taller.</b><br>'+
