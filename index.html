@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v70</span>
+  <span class="demo-tag">v72</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -852,6 +852,13 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="fila" style="align-items:flex-end;margin-bottom:12px">
       <div style="flex:2;min-width:190px"><label>Buscar por placa, cliente u OT</label>
         <input id="ventTxt" placeholder="Ej. CTS-009, Rojas, OT-2026-00207" oninput="ventLista()"></div>
+      <div style="min-width:170px"><label>Estado de la OT</label>
+        <select id="ventEstado" onchange="ventLista()">
+          <option value="">Todos</option>
+          <option value="PRELIM_APROBADA">Prelim. aprobada</option>
+          <option value="PRELIM2_APROBADA">Prelim. 2 aprobada</option>
+          <option value="DEF_ENVIADA">Final enviada</option>
+        </select></div>
     </div>
     <div class="modo" style="max-width:360px;margin-bottom:12px">
       <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes en curso</button>
@@ -4172,7 +4179,7 @@ function cargarOrdenesBD(estadosOT,cb){
     .select('id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,'+
             'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)')
     .in('estado_ot',estadosOT).eq('sede_id',SEDE_ACTIVA)
-    .order('ingreso',{ascending:true}).limit(40)
+    .order('ingreso',{ascending:false}).limit(100)
     .then(function(r){
       if(r.error){conex('Error al cargar: '+r.error.message,true);cb([]);return}
       cb((r.data||[]).map(function(o){
@@ -4206,7 +4213,9 @@ function cargarLineasBD(ordenId,cb){
    VENTANILLA · codifica repuestos, ajusta la OT y arma la definitiva
    Trabaja sobre la base: cualquier equipo ve lo mismo.
    ============================================================ */
-var VENT_OT=null,VENT_LIN=[],VENT_TAB='ordenes';
+var VENT_OT=null,VENT_LIN=[],VENT_TAB='ordenes',VENT_ADD_ABIERTO=false,VENT_DET_ABIERTO=false;
+function ventToggleAgregar(){VENT_ADD_ABIERTO=!VENT_ADD_ABIERTO;ventRender()}
+function ventToggleDetalle(){VENT_DET_ABIERTO=!VENT_DET_ABIERTO;ventRender()}
 var VENT_ESTADOS=['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA'];
 
 function enviarAVentanilla(){
@@ -4246,7 +4255,8 @@ function ventLista(){
       },function(){res.innerHTML='<div class="hint">Error al consultar.</div>'});
     return;
   }
-  cargarOrdenesBD(VENT_ESTADOS,function(lista){
+  var fe=($('ventEstado')&&$('ventEstado').value)||'';
+  cargarOrdenesBD(fe?[fe]:VENT_ESTADOS,function(lista){
     lista=lista.filter(function(o){
       if(!txt)return true;
       return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
@@ -4276,7 +4286,7 @@ function ventAbrir(id){
   cargarOrdenesBD(VENT_ESTADOS,function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarVentanilla();return}
-    VENT_OT=o;
+    VENT_OT=o;VENT_ADD_ABIERTO=false;VENT_DET_ABIERTO=false;
     cargarLineasBD(id,function(lin){
       VENT_LIN=lin.map(function(l){l.orig_final=l.final;return l});
       $('ventHome').classList.add('oculto');
@@ -4301,7 +4311,10 @@ function ventRender(){
     '<span class="donde">'+o.ot+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
     '<h3>Orden de trabajo · '+o.ot+'</h3>'+
     '<div class="hint" style="margin:-4px 0 12px">Repuestos: código de stock y precio. Servicios: solo precio. '+
-      'Puedes retirar, reemplazar o agregar líneas.</div>'+
+      'Si algo no hay, retíralo (✕) y agrega el sustituto.</div>'+
+    (VENT_LIN.length?'':'<div class="aviso rojo"><b>Esta orden no tiene detalle guardado en la base.</b> '+
+      'Probablemente se creó con una versión anterior de la app. Puedes agregar las líneas acá abajo, '+
+      'o anularla y registrarla de nuevo desde el taller.</div>')+
     '<div style="overflow-x:auto"><table><tr><th>Tipo</th><th>Concepto</th><th>Código stock</th>'+
     '<th class="der">Cant</th><th class="der">Precio</th><th class="der">Subtotal</th><th></th></tr>'+
     VENT_LIN.map(function(l,i){
@@ -4321,27 +4334,44 @@ function ventRender(){
         '<td class="num der"><b>'+S(l.incluir?l.final*l.cant:0)+'</b></td>'+
         '<td style="white-space:nowrap">'+
           (l.incluir
-            ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px" title="Reemplazar" onclick="ventReemplazar('+i+')">↔</button> '+
-              '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
+            ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
             : '<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="ventRestaurar('+i+')">↺</button>')+
         '</td></tr>';
       return fila;
     }).join('')+'</table></div>'+
 
-    '<div class="fila" style="margin-top:14px;align-items:flex-end">'+
-      '<div style="min-width:160px"><label>Agregar repuesto</label><select id="ventCat" onchange="ventItems()">'+
-        '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
-      '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="ventItem"></select></div>'+
-      '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventAgregar()">Agregar</button></div>'+
+    '<div style="margin-top:12px">'+
+      '<button class="btn chico sec" onclick="ventToggleAgregar()">'+(VENT_ADD_ABIERTO?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
     '</div>'+
-    '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
-      '<div style="flex:2;min-width:190px"><label>Otro (libre)</label><input id="ventLibre" placeholder="Descripción"></div>'+
-      '<div style="min-width:110px"><label>Precio</label><input id="ventLibreP" type="number" min="0" placeholder="0"></div>'+
-      '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventAgregarLibre()">Agregar</button></div>'+
-    '</div>'+
+    (VENT_ADD_ABIERTO
+      ? '<div class="card" style="margin:10px 0 0;background:var(--gris)">'+
+        '<div class="fila" style="align-items:flex-end">'+
+          '<div style="min-width:160px"><label>Del catálogo</label><select id="ventCat" onchange="ventItems()">'+
+            '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
+          '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="ventItem"></select></div>'+
+          '<div style="flex:0 0 auto"><button class="btn chico" onclick="ventAgregar()">Agregar</button></div>'+
+        '</div>'+
+        '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
+          '<div style="flex:2;min-width:190px"><label>Otro (libre)</label><input id="ventLibre" placeholder="Descripción"></div>'+
+          '<div style="min-width:110px"><label>Precio</label><input id="ventLibreP" type="number" min="0" placeholder="0"></div>'+
+          '<div style="flex:0 0 auto"><button class="btn chico" onclick="ventAgregarLibre()">Agregar</button></div>'+
+        '</div></div>'
+      : '')+
 
     '<div class="bloque-pres" style="margin-top:16px">'+
       '<label style="margin:0 0 10px">OT definitiva</label>'+
+      '<button class="btn chico sec" style="margin-bottom:10px;background:#232A34;color:#E8ECF1;border-color:#39424F" '+
+        'onclick="ventToggleDetalle()">'+(VENT_DET_ABIERTO?'▲ Ocultar detalle':'▼ Ver factura completa')+'</button>'+
+      (VENT_DET_ABIERTO
+        ? '<table style="margin-bottom:10px"><tr><th>Concepto</th><th class="der">Cant</th><th class="der">Subtotal</th></tr>'+
+          VENT_LIN.filter(function(l){return l.incluir}).map(function(l){
+            return '<tr><td>'+l.desc+(l.cambio==='A'?' <span class="eti e4">nuevo</span>':'')+
+              (l.cod_alm?'<div class="hint" style="margin:2px 0 0">cód. '+l.cod_alm+'</div>':'')+'</td>'+
+              '<td class="der num">'+l.cant+'</td><td class="num der">'+S(l.final*l.cant)+'</td></tr>'}).join('')+
+          (VENT_LIN.filter(function(l){return !l.incluir}).length
+            ?'<tr><td colspan="3" class="hint">Retirados: '+VENT_LIN.filter(function(l){return !l.incluir}).map(function(l){return l.desc}).join(', ')+'</td></tr>':'')+
+          '</table>'
+        : '')+
       '<div class="fila">'+
         '<div class="kpi kpi-osc"><div class="v">'+S(t.sub)+'</div><div class="l">Subtotal</div></div>'+
         '<div class="kpi kpi-osc"><div class="v">'+S(t.igv)+'</div><div class="l">IGV 18%</div></div>'+
@@ -4461,16 +4491,7 @@ function ventRetirar(i){
 function ventRestaurar(i){
   var l=VENT_LIN[i];l.incluir=true;l.cambio=(l.cambio==='X'?'':l.cambio);l.nota='';ventRender();
 }
-function ventReemplazar(i){
-  var l=VENT_LIN[i];
-  var nd=prompt('Reemplazar "'+l.desc+'" por:',l.desc);
-  if(nd===null||!nd.trim())return;
-  var np=prompt('Precio del reemplazo:',l.final);
-  if(np===null)return;
-  if(!l.orig)l.orig=l.desc;
-  l.desc=nd.trim();l.final=Number(np)||0;l.cambio='R';l.cod_alm='';
-  ventRender();
-}
+
 function ventItems(){
   var s=document.getElementById('ventCat');if(!s)return;
   var cat=s.value,lista=REPUESTOS.filter(function(r){return !cat||r.categoria===cat});
