@@ -245,7 +245,8 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .pasoi.fut{color:var(--mudo)}
 .pasoi .pt{width:20px;height:20px;border-radius:50%;background:var(--gris2);color:var(--mudo);
   display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto}
-.pasoi .hh{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mudo)}
+.pasoi .hh{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mudo);white-space:nowrap;flex:0 0 auto;padding-left:8px}
+.pasoi>span:nth-child(2){min-width:0;flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .pasoi.sel{outline:2px solid var(--tinta);outline-offset:-2px}
 .dato-l{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--gris2);font-size:13.5px}
 .dato-l:last-child{border:0}
@@ -464,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v65</span>
+  <span class="demo-tag">v66</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -733,8 +734,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="fila" style="margin-top:16px">
           <div style="min-width:190px"><label>Comprobante que pide el cliente</label>
             <select id="gComprobante" onchange="cambioComprobante()">
-              <option value="">— preguntar al cliente —</option>
-              <option value="boleta">Boleta</option>
+              <option value="boleta" selected>Boleta</option>
               <option value="factura">Factura</option>
               <option value="ninguno">No requiere</option>
             </select></div>
@@ -1753,20 +1753,44 @@ function cambioComprobante(){
     inp.focus();
   }
 }
+var RUC_EMISOR='20524382235',RAZON_EMISOR='IZA MOTORS S.A.C.';
+/* Ticket térmico de 80 mm, centrado, impreso desde un marco oculto:
+   la app no cambia de pestaña y el usuario no pierde su lugar. */
+function imprimirTicket(titulo,cuerpo){
+  var css='@page{size:80mm auto;margin:3mm}'+
+    'html,body{margin:0;padding:0;background:#fff}'+
+    'body{font-family:-apple-system,Arial,sans-serif;font-size:12px;color:#000}'+
+    '.tk{width:72mm;margin:0 auto;padding:2mm 0}'+
+    'h1{font-size:15px;text-align:center;margin:0 0 1px;letter-spacing:.04em}'+
+    '.c{text-align:center}.mini{font-size:10px}'+
+    'table{width:100%;border-collapse:collapse;font-size:11px}td{padding:2px 0;vertical-align:top}'+
+    '.r{text-align:right;white-space:nowrap}hr{border:0;border-top:1px dashed #999;margin:6px 0}'+
+    '.tot{font-size:14px;font-weight:700}'+
+    '.firma{margin-top:24px;border-top:1px solid #000;text-align:center;font-size:10px;padding-top:4px}';
+  var html='<!doctype html><html><head><meta charset="utf-8"><title>'+titulo+'</title>'+
+    '<style>'+css+'</style></head><body><div class="tk">'+
+    '<h1>IZA MOTORS</h1>'+
+    '<div class="c mini">'+RAZON_EMISOR+' · RUC '+RUC_EMISOR+'</div>'+
+    '<div class="c mini">'+SEDE_NOMBRE+'</div><hr>'+cuerpo+'</div></body></html>';
+  var viejo=document.getElementById('marcoImpresion');
+  if(viejo)viejo.parentNode.removeChild(viejo);
+  var f=document.createElement('iframe');
+  f.id='marcoImpresion';
+  f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0';
+  document.body.appendChild(f);
+  var doc=f.contentWindow.document;
+  doc.open();doc.write(html);doc.close();
+  setTimeout(function(){
+    try{f.contentWindow.focus();f.contentWindow.print()}
+    catch(e){alert('No se pudo abrir la impresión: '+e.message)}
+  },350);
+}
 function imprimirPresupuesto(){
   var t=totalesV2(),d=datosOrden();
   var serv=LINEAS_SERV;
-  var w=window.open('','_blank','width=380,height=640');
-  if(!w){alert('Permite las ventanas emergentes para imprimir.');return}
-  w.document.write('<html><head><meta charset="utf-8"><title>'+d.num+'</title>'+
-   '<style>body{font-family:-apple-system,Arial,sans-serif;width:76mm;margin:0;padding:8px;font-size:12px}'+
-   'h1{font-size:15px;text-align:center;margin:0 0 2px}.c{text-align:center}'+
-   'table{width:100%;border-collapse:collapse;font-size:11px}td{padding:2px 0}'+
-   '.r{text-align:right}hr{border:0;border-top:1px dashed #999;margin:6px 0}'+
-   '.tot{font-size:14px;font-weight:700}</style></head><body>'+
-   '<h1>IZA MOTORS</h1><div class="c">'+SEDE_NOMBRE+'</div><hr>'+
-   '<div><b>'+d.num+'</b><br>'+new Date().toLocaleString('es-PE')+'</div>'+
-   '<div>Placa: <b>'+d.placa+'</b><br>'+d.veh+'<br>'+d.cliente+'</div><hr>'+
+  var cuerpo=
+   '<div><b>'+d.num+'</b> · '+new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})+'</div>'+
+   '<div>Placa: <b>'+d.placa+'</b> · '+d.veh+'</div><div>'+d.cliente+'</div><hr>'+
    '<b>SERVICIOS</b><table>'+
    (serv.length?serv.map(function(s){return '<tr><td>'+s.desc+'</td><td class="r">'+S(s.precio)+'</td></tr>'}).join('')
      :'<tr><td>—</td></tr>')+'</table>'+
@@ -1778,13 +1802,11 @@ function imprimirPresupuesto(){
    '<tr><td>Repuestos</td><td class="r">'+S(t.rp)+'</td></tr>'+
    '<tr><td>IGV 18%</td><td class="r">'+S(t.tot-t.mo-t.rp)+'</td></tr>'+
    '<tr class="tot"><td>TOTAL</td><td class="r">'+S(t.tot)+'</td></tr></table><hr>'+
-   '<div style="font-size:10px">Precios de repuestos referenciales. El monto final se confirma '+
+   '<div class="mini">Precios de repuestos referenciales. El monto final se confirma '+
    'con el asesor de servicio antes de facturar.</div>'+
-   '<div style="font-size:10px;margin-top:6px">Comprobante: '+
-   ($('gComprobante').value||'por confirmar')+'</div>'+
-   '</body></html>');
-  w.document.close();
-  setTimeout(function(){w.print()},400);
+   '<div class="mini" style="margin-top:6px">Comprobante: '+($('gComprobante').value||'boleta')+
+   (($('gComprobante').value==='factura'&&$('gRuc')&&$('gRuc').value)?' · RUC '+$('gRuc').value:'')+'</div>';
+  imprimirTicket(d.num,cuerpo);
   auditar('IMPRIME_PRESUPUESTO','orden',d.num,'Total '+S(t.tot),t.tot);
 }
 
@@ -4491,29 +4513,19 @@ function aseNoConforme(){
 function imprimirConformidad(){
   var t=aseTotales(),o=ASE_OT;
   var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var w=window.open('','_blank','width=380,height=640');
-  if(!w){alert('Permite las ventanas emergentes para imprimir.');return}
-  w.document.write('<html><head><meta charset="utf-8"><title>'+o.ot+'</title>'+
-   '<style>body{font-family:Arial,sans-serif;width:76mm;margin:0;padding:8px;font-size:12px}'+
-   'h1{font-size:15px;text-align:center;margin:0 0 2px}.c{text-align:center}'+
-   'table{width:100%;border-collapse:collapse;font-size:11px}td{padding:2px 0}'+
-   '.r{text-align:right}hr{border:0;border-top:1px dashed #999;margin:6px 0}'+
-   '.tot{font-size:14px;font-weight:700}.firma{margin-top:26px;border-top:1px solid #000;text-align:center;font-size:10px;padding-top:4px}'+
-   '</style></head><body>'+
-   '<h1>IZA MOTORS</h1><div class="c">'+SEDE_NOMBRE+'</div><hr>'+
-   '<div><b>'+o.ot+'</b> · '+new Date().toLocaleString('es-PE')+'<br>Placa: <b>'+o.placa+'</b><br>'+o.cliente+'</div><hr>'+
+  var cuerpo=
+   '<div><b>'+o.ot+'</b> · '+new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})+'</div>'+
+   '<div>Placa: <b>'+o.placa+'</b></div><div>'+o.cliente+'</div><hr>'+
    '<b>DETALLE DEFINITIVO</b><table>'+
    incl.map(function(l){return '<tr><td>'+l.cant+'x '+l.desc+'</td><td class="r">'+S(l.final*l.cant)+'</td></tr>'}).join('')+
    '</table><hr><table>'+
    '<tr><td>Subtotal</td><td class="r">'+S(t.sub)+'</td></tr>'+
    '<tr><td>IGV 18%</td><td class="r">'+S(t.igv)+'</td></tr>'+
    '<tr class="tot"><td>TOTAL</td><td class="r">'+S(t.tot)+'</td></tr></table><hr>'+
-   '<div style="font-size:10px">Estimado inicial: '+S(ASE_EST)+' · Diferencia: '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'</div>'+
+   '<div class="mini">Estimado inicial: '+S(ASE_EST)+' · Diferencia: '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'</div>'+
    '<div class="firma">Firma del cliente en conformidad</div>'+
-   '<div style="font-size:9px;margin-top:8px">Atendido por '+(SESION?SESION.nombre:'')+'</div>'+
-   '</body></html>');
-  w.document.close();
-  setTimeout(function(){w.print()},400);
+   '<div class="mini" style="margin-top:8px">Atendido por '+(SESION?SESION.nombre:'')+'</div>';
+  imprimirTicket(o.ot,cuerpo);
   auditar('IMPRIME_DEFINITIVO','orden',o.ot,'Detalle impreso',t.tot);
 }
 
