@@ -157,6 +157,19 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+/* ===== dos vías excluyentes, alineadas ===== */
+.dos-vias{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.via{display:flex;flex-direction:column;gap:10px;border:1.5px solid var(--borde);border-radius:12px;
+  padding:14px;background:var(--blanco);min-width:0}
+.via label{margin:0}
+.via .hint{margin:0;flex:1}
+.via .btn{width:100%;margin-top:auto}
+.via .cel{display:flex;align-items:center;gap:8px;min-width:0}
+.via .cel .num{color:var(--mudo);font-weight:700;flex:0 0 auto;font-size:15px}
+.via .cel input{flex:1;min-width:0;width:100%;font-family:'JetBrains Mono',monospace;font-size:17px;
+  letter-spacing:.04em;padding:10px 12px}
+@media(max-width:640px){.dos-vias{grid-template-columns:1fr}}
+
 /* ===== visibilidad por clase, no por estilo en línea ===== */
 .oculto{display:none!important}
 
@@ -439,7 +452,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v58</span>
+  <span class="demo-tag">v59</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -699,23 +712,22 @@ tr.sel td{background:var(--rojo-cl)}
           <button class="btn chico sec" onclick="imprimirPresupuesto()">🖨️ Imprimir presupuesto</button>
         </div>
 
-        <div class="grid g2" style="margin-top:16px;gap:12px;align-items:stretch">
-          <div class="card" style="margin:0;background:#F0FBF3;border-color:#BFE6CE">
+        <div class="dos-vias">
+          <div class="via" style="background:#F0FBF3;border-color:#BFE6CE">
             <label>A · Enviar al cliente</label>
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
-              <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
-              <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="9XX XXX XXX">
+            <div class="cel">
+              <span class="num">+51</span>
+              <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="944 255 192">
             </div>
-            <button class="btn chico" style="width:100%;background:#25D366;color:#0A2E19"
-                    onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
             <div class="hint" id="preHint">El cliente aprueba desde su celular.</div>
+            <button class="btn chico" style="background:#25D366;color:#0A2E19"
+                    onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
           </div>
-          <div class="card" style="margin:0">
+          <div class="via">
             <label>B · Iniciar sin visto bueno</label>
-            <div class="hint" style="margin:0 0 10px">Cuando el cliente no aprueba por el link.
-              Pide comentario obligatorio y queda registrado quién autorizó.</div>
-            <button class="btn chico sec" style="width:100%"
-                    onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
+            <div class="hint" style="margin:0">Cuando el cliente no aprueba por el link.
+              Pide comentario obligatorio y registra quién autorizó.</div>
+            <button class="btn chico sec" onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
           </div>
         </div>
 
@@ -3682,16 +3694,17 @@ function enviarPreliminar(){
     'No iniciamos ningún trabajo sin su aprobación.';
   /* PRIMERO el estado, DESPUÉS WhatsApp: al saltar a la app el navegador
      congela la página y lo que venga después puede no ejecutarse */
+  /* Estado primero, de forma síncrona: queda en memoria y en el navegador
+     antes de saltar. La apertura va en el mismo toque, sin temporizador,
+     porque iOS bloquea ventanas que no nacen directamente de un gesto. */
   guardarDetalleBD();
   setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot));
   hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada.</span> '+
-    'Se abre WhatsApp: confirma el envío desde ahí.';
-  setTimeout(function(){
-    var a=document.createElement('a');
-    a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
-    a.target='_blank';a.rel='noopener';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-  },150);
+    'Confirma el envío en WhatsApp.';
+  var a=document.createElement('a');
+  a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
+  a.target='_blank';a.rel='noopener';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 function enviarWA(tipo){
   var num=$('waNum').value.replace(/\D/g,'');
@@ -3702,11 +3715,9 @@ function enviarWA(tipo){
       'Se abre WhatsApp: confirma el envío. Luego asigna el mecánico.';
     auditar('ENVIA_CONSTANCIA','orden',OT_NUM,'Constancia de recepción');
   }
-  setTimeout(function(){
-    var a=document.createElement('a');
-    a.href=url;a.target='_blank';a.rel='noopener';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-  },120);
+  var a=document.createElement('a');
+  a.href=url;a.target='_blank';a.rel='noopener';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
   if(tipo==='presupuesto'&&OT_EST==='EN_DIAGNOSTICO'){
     setEstado('POR_APROBAR','Presupuesto de '+S(totales().tot)+' enviado al cliente');
   }
@@ -4163,12 +4174,10 @@ function aseEnviarFinal(){
         '\nUna vez aprobado pasamos a facturación.';
       auditar('ENVIA_DEFINITIVO','orden',o.ot,'Definitivo '+S(t.tot),t.tot);
       msg.innerHTML='<div class="aviso info" style="margin:0">Marcada como enviada. Se abre WhatsApp para que confirmes el envío.</div>';
-      setTimeout(function(){
-        var a=document.createElement('a');
-        a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
-        a.target='_blank';a.rel='noopener';
-        document.body.appendChild(a);a.click();document.body.removeChild(a);
-      },120);
+      var a=document.createElement('a');
+      a.href='https://wa.me/51'+num+'?text='+encodeURIComponent(texto);
+      a.target='_blank';a.rel='noopener';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(pintarAsesor,1800);
     },function(){});
   });
