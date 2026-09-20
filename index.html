@@ -104,7 +104,8 @@ main{max-width:1180px;margin:0 auto;padding:20px 16px 90px}
 
 /* checklist */
 .auto-wrap{position:relative;background:var(--gris);border:1px solid var(--borde);border-radius:12px;padding:10px;display:flex;justify-content:center}
-.punto{position:absolute;width:38px;height:38px;border-radius:50%;border:2px dashed #A9B2BD;background:rgba(255,255,255,.92);color:var(--mudo);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translate(-50%,-50%);font-family:'Barlow Condensed',Impact,sans-serif}
+.punto{position:absolute;width:44px;height:44px;border-radius:50%;border:2px dashed #A9B2BD;background:rgba(255,255,255,.94);color:var(--mudo);font-size:9px;line-height:1.05;font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;transform:translate(-50%,-50%);font-family:'Barlow Condensed',Impact,sans-serif;padding:2px}
+.punto.mal{font-size:18px}
 .punto.mal{border:2px solid var(--rojo);background:var(--rojo);color:#fff;border-style:solid}
 .punto.ok{border:2px solid var(--verde);background:#E7F5EE;color:var(--verde);border-style:solid}
 
@@ -463,7 +464,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v63</span>
+  <span class="demo-tag">v64</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -615,7 +616,13 @@ tr.sel td{background:var(--rojo-cl)}
         </svg>
       </div>
       <div class="hint" style="text-align:center">1 toque = revisado · 2 toques = daño registrado · 3 toques = limpia</div>
-      <div style="margin-top:18px"><label>Accesorios e inventario</label><div class="chips" id="accs"></div></div>
+      <div style="margin-top:18px"><label>Accesorios e inventario</label><div class="chips" id="accs"></div>
+        <div class="fila" style="margin-top:10px;align-items:center">
+          <div style="flex:1;min-width:170px"><input id="accExtra" placeholder="Otro accesorio (ej. cargador, alfombras)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();agregarAccesorioExtra()}"></div>
+          <button class="btn chico sec" style="flex:0 0 auto" onclick="agregarAccesorioExtra()">Agregar</button>
+        </div>
+      </div>
       <div class="fila" style="margin-top:16px">
         <div style="flex:1;min-width:170px"><label>Kilometraje de ingreso</label>
           <input id="kmIngreso" inputmode="numeric" placeholder="24,000" oninput="fmtKm(this)"></div>
@@ -633,19 +640,17 @@ tr.sel td{background:var(--rojo-cl)}
       <div class="aviso info">Obligatorio antes de recibir. Elimina los reclamos de "así no lo dejé".</div>
       <div class="ocr vacio" id="fotoCamBox" style="display:none"></div>
       <button class="btn full" onclick="fotoCam()">📷 Abrir cámara</button>
-      <button class="btn full sec" style="margin-top:8px" onclick="fotosDemo()">Usar fotos de ejemplo</button>
       <div id="galeria" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px"></div>
       <button class="btn full" style="margin-top:16px" onclick="paso(4)">Continuar a firma</button>
     </div>
 
     <!-- 4 firma y recepcion -->
     <div class="card" id="s4" style="display:none">
-      <h3>4 · Conformidad del cliente</h3>
+      <h3>4 · Registrar el ingreso</h3>
       <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">
-        El cliente firma el estado de ingreso del vehículo. El presupuesto llega después del diagnóstico.</p>
-      <canvas id="firma"></canvas>
+        Revisa el resumen y registra la recepción. La constancia por WhatsApp deja al cliente informado del estado de ingreso.</p>
+      <div id="resumenIngreso" style="margin-bottom:14px"></div>
       <div class="fila" style="margin-top:10px">
-        <button class="btn chico sec" onclick="limpiarFirma()">Borrar</button>
         <button class="btn chico ok" onclick="recibir()">Registrar recepción</button>
       </div>
 
@@ -1047,7 +1052,7 @@ var VEH={
    desde:2023,visitas:4,autos:1,puntos:520,nivel:'Plata',proxKm:2400,
    hist:[{f:'02/02/2026',t:'Mantenimiento 25,000 km',km:25000,m:520}]}
 };
-var ACCESORIOS=['Llanta de repuesto','Gata','Llave de ruedas','Extintor','Botiquín','Triángulos','Radio','Tapa de gasolina','Tarjeta de propiedad','SOAT vigente'];
+var ACCESORIOS=['Tarjeta de propiedad','Llanta de repuesto','Gata','Llave de ruedas','Extintor','Botiquín','Triángulos','Radio','Tapa de gasolina'];
 var CATALOGO=[
  {c:'MO-002',t:'MO',d:'Cambio de aceite y filtro',p:60,por:'5,000 km desde el último cambio'},
  {c:'RP-001',t:'REP',d:'Aceite 5W-30 sintético (4L)',p:180,por:'Consumo del modelo'},
@@ -2584,7 +2589,7 @@ function guardarOrden(){
   DB.set({
     ot:OT_NUM,placa:ORD.placa,veh:ORD.veh,cliente:ORD.cliente,tel:ORD.tel||'',
     estado:OT_EST,mec:MECANICO_OT||(($('gMec')&&$('gMec').value)||''),sel:sel,
-    estado_taller:EST_TALLER,estado_ot:EST_OT_ACT,hitos:HITOS,
+    estado_taller:EST_TALLER,estado_ot:EST_OT_ACT,hitos:HITOS,prelim_rev:PRELIM_REV,tiene_p2:TIENE_P2,
     lineas_serv:LINEAS_SERV,lineas_rep:LINEAS_REP,
     bit:BITACORA,minis:FOTOS_MINI.slice(0,3),total:totalesV2().tot,
     info:($('gInfo')?$('gInfo').innerHTML:''),
@@ -2599,6 +2604,7 @@ function abrirOrden(ot){
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
+  PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;armarFOT();
   LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];
   PANEL_SEL=null;ACC_ABIERTO='taller';
   clearInterval(tint);$('crono').classList.remove('on');
@@ -2619,10 +2625,12 @@ function abrirOrden(ot){
    y líneas, y se pisa lo que el navegador tenía guardado. */
 function sincronizarDesdeBase(){
   if(!sb||!OT_NUM)return;
-  sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre,total_taller,comprobante_tipo,comprobante_ruc,diagnostico')
+  sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre,total_taller,comprobante_tipo,comprobante_ruc,diagnostico,prelim_rev,tiene_prelim2')
     .eq('numero',OT_NUM).maybeSingle().then(function(r){
       if(!r.data)return;
       var d=r.data,cambio=false;
+      if(typeof d.prelim_rev==='number'&&d.prelim_rev>PRELIM_REV)PRELIM_REV=d.prelim_rev;
+      if(d.tiene_prelim2&&!TIENE_P2){TIENE_P2=true;armarFOT();cambio=true}
       if(d.estado_taller&&d.estado_taller!==EST_TALLER){EST_TALLER=d.estado_taller;cambio=true}
       if((d.estado_ot||'')!==(EST_OT_ACT||'')){EST_OT_ACT=d.estado_ot||'';cambio=true}
       if(d.mecanico_nombre&&!MECANICO_OT){MECANICO_OT=d.mecanico_nombre;
@@ -2727,7 +2735,7 @@ function paso(n){
     var ki=$('kmIngreso');
     if(ki&&!ki.value&&ACTUAL)ki.value=(Number(ACTUAL.km)||0).toLocaleString('es-PE');
   }
-  if(n===4)prepararFirma();
+  if(n===4)pintarResumenIngreso();
 }
 
 /* ============ MODO DE INGRESO DE PLACA ============ */
@@ -2887,27 +2895,52 @@ function pintarFicha(v){
 }
 
 /* ============ CHECKLIST ============ */
-var ZONAS=[['Capó',50,22],['Techo',50,50],['Maletera',50,80],['Puerta izq.',22,45],['Puerta der.',78,45],
-           ['Faro izq.',26,12],['Faro der.',74,12],['Llanta D.I.',14,20],['Llanta D.D.',86,20],
-           ['Llanta P.I.',14,74],['Llanta P.D.',86,74],['Parabrisas',50,34]];
+/* Cada zona: nombre completo (se parte en dos líneas), posición.
+   Un toque marca daño (✕); otro toque lo quita. Sin marca = estaba bien. */
+var ZONAS=[['Capó',50,20],['Parabrisa',50,33],['Techo',50,50],['Maletera',50,82],
+           ['Puerta del. izq.',20,40],['Puerta del. der.',80,40],
+           ['Puerta tras. izq.',20,58],['Puerta tras. der.',80,58],
+           ['Faro izq.',27,10],['Faro der.',73,10],
+           ['Llanta del. izq.',10,22],['Llanta del. der.',90,22],
+           ['Llanta tras. izq.',10,74],['Llanta tras. der.',90,74]];
 var estadoZ={};
+function etiquetaZona(n){
+  var p=n.split(' ');
+  if(p.length<=1)return n;
+  var mitad=Math.ceil(p.length/2);
+  return p.slice(0,mitad).join(' ')+'<br>'+p.slice(mitad).join(' ');
+}
 (function(){
   var w=$('autoWrap');
   ZONAS.forEach(function(z,i){
     var d=document.createElement('div');
     d.className='punto';d.style.left=z[1]+'%';d.style.top=z[2]+'%';
-    d.textContent=z[0].split(' ')[0].slice(0,4);d.title=z[0];
-    d.onclick=function(){var e=(estadoZ[i]||0)+1;if(e>2)e=0;estadoZ[i]=e;
-      d.className='punto'+(e===1?' ok':e===2?' mal':'');
-      d.textContent=e===2?'✕':e===1?'✓':z[0].split(' ')[0].slice(0,4)};
+    d.innerHTML=etiquetaZona(z[0]);d.title=z[0];
+    d.onclick=function(){
+      var e=(estadoZ[i]===2)?0:2;estadoZ[i]=e;
+      d.className='punto'+(e===2?' mal':'');
+      d.innerHTML=e===2?'✕':etiquetaZona(z[0]);
+    };
     w.appendChild(d);
   });
-  var c=$('accs');
+  pintarAccesorios();
+})();
+function pintarAccesorios(){
+  var c=$('accs');if(!c)return;
+  c.innerHTML='';
   ACCESORIOS.forEach(function(ac,i){
-    var bt=document.createElement('button');bt.className='chip'+(i<4?' on':'');bt.textContent=ac;
+    var bt=document.createElement('button');bt.className='chip'+(i===0?' on':'');bt.textContent=ac;
     bt.onclick=function(){bt.classList.toggle('on')};c.appendChild(bt);
   });
-})();
+}
+function agregarAccesorioExtra(){
+  var inp=$('accExtra'),v=(inp.value||'').trim();
+  if(!v)return;
+  var c=$('accs');
+  var bt=document.createElement('button');bt.className='chip on';bt.textContent=v;
+  bt.onclick=function(){bt.classList.toggle('on')};c.appendChild(bt);
+  inp.value='';
+}
 function danosLista(){
   return Object.keys(estadoZ).filter(function(k){return estadoZ[k]===2}).map(function(k){return ZONAS[k][0]});
 }
@@ -2929,11 +2962,10 @@ function fotoDemo(txt,col){
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
 function fotosDemo(){
-  FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';
-  VISTAS.forEach(function(v){
-    var u=fotoDemo(v[0],v[1]);FOTOS.push(u);
-    var i=document.createElement('img');i.className='foto';i.src=u;$('galeria').appendChild(i);
-  });
+  /* versión real: no se inventan fotos. Sin cámara, se registra sin fotos. */
+  var box=$('fotoCamBox');
+  if(box){box.style.display='flex';box.className='ocr vacio';
+    box.innerHTML='<div class="txt">Sin acceso a la cámara en este equipo. Puedes registrar sin fotos.</div>'}
 }
 var STREAMF=null;
 function fotoCam(){
@@ -3003,17 +3035,19 @@ function totales(){
 
 /* ============ FIRMA ============ */
 var cx,dib=false;
-function prepararFirma(){
-  var c=$('firma');c.width=c.offsetWidth*2;c.height=360;
-  cx=c.getContext('2d');cx.scale(2,2);cx.lineWidth=2.4;cx.lineCap='round';cx.strokeStyle='#15181D';
-  function pos(e){var r=c.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return {x:p.clientX-r.left,y:p.clientY-r.top}}
-  function ini(e){dib=true;var p=pos(e);cx.beginPath();cx.moveTo(p.x,p.y);e.preventDefault()}
-  function mov(e){if(!dib)return;var p=pos(e);cx.lineTo(p.x,p.y);cx.stroke();e.preventDefault()}
-  function fin(){dib=false}
-  c.onmousedown=ini;c.onmousemove=mov;c.onmouseup=fin;c.onmouseleave=fin;
-  c.ontouchstart=ini;c.ontouchmove=mov;c.ontouchend=fin;
+function pintarResumenIngreso(){
+  var z=$('resumenIngreso');if(!z)return;
+  var v=ACTUAL||{},km=kmNum('kmIngreso')||Number(v.km)||0;
+  function fila(a,b){return '<div class="dato-l"><span>'+a+'</span><span>'+(b||'—')+'</span></div>'}
+  z.innerHTML=fila('Placa',v.placa)+fila('Vehículo',[v.marca,v.modelo,v.anio].filter(Boolean).join(' '))+
+    fila('Cliente',v.cliente)+fila('Km de ingreso',km?km.toLocaleString('es-PE'):'—')+
+    fila('Combustible',$('cmb')?$('cmb').textContent:'—')+
+    fila('Daños',(danosLista().length?danosLista().join(', '):'ninguno'))+
+    fila('Accesorios',(accesoriosLista().length?accesoriosLista().join(', '):'—'))+
+    fila('Fotos',FOTOS.length||0);
 }
-function limpiarFirma(){var c=$('firma');cx.clearRect(0,0,c.width,c.height)}
+
+
 
 /* ============ MÁQUINA DE ESTADOS DE LA ORDEN ============ */
 var OT_EST='',OT_NUM='OT-2026-00184';
@@ -3036,7 +3070,7 @@ function recibir(){
   $('gInfo').innerHTML=v.marca+' '+v.modelo+' · <b class="num">'+v.placa+'</b> · '+v.cliente+' · '+v.tel+
     '<br>Daños: <b>'+(danosLista().length?danosLista().join(', '):'ninguno')+'</b> · Fotos: <b>'+FOTOS.length+
     '</b> · Km ingreso: <b>'+kmIng.toLocaleString('es-PE')+'</b>'+
-    ' · Combustible: <b>'+$('cmb').textContent+'</b> · Firma: <b style="color:var(--verde)">capturada</b>';
+    ' · Combustible: <b>'+$('cmb').textContent+'</b>';
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
   var sel=$('gMec');
   sel.innerHTML='<option value="">— elige un mecánico —</option>'+
@@ -3050,9 +3084,10 @@ function recibir(){
   }
   BITACORA={};
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
+  TIENE_P2=false;PRELIM_REV=0;EDITANDO_OT=false;armarFOT();
   HITOS['T_REGISTRO']=selloHora();
   HITOS['T_RECIBIDO']=selloHora();
-  setEstado('RECIBIDO','Vehículo recibido con firma del cliente');
+  setEstado('RECIBIDO','Vehículo recibido · constancia por WhatsApp');
   renderFlujos();
   $('zonaConstancia').style.display='block';
   $('zonaConstancia').scrollIntoView({behavior:'smooth',block:'start'});
@@ -3071,13 +3106,23 @@ var F_TALLER=[
  {k:'LISTO',         t:'Listo',          ic:'✨'},
  {k:'ENTREGADO',     t:'Entregado',      ic:'🚗'}
 ];
-var F_OT=[
+var F_OT_BASE=[
  {k:'PRELIM_ENVIADA', t:'Prelim. enviada',  ic:'📤'},
  {k:'PRELIM_APROBADA',t:'Prelim. aprobada', ic:'✅'},
  {k:'DEF_ENVIADA',    t:'Final enviada',    ic:'📤'},
  {k:'DEF_APROBADA',   t:'Final aprobada',   ic:'✅'},
  {k:'PAGADA',         t:'OT pagada',        ic:'💳'}
 ];
+var F_OT_P2=[
+ {k:'PRELIM2_ENVIADA', t:'Prelim. 2 enviada',  ic:'📤'},
+ {k:'PRELIM2_APROBADA',t:'Prelim. 2 aprobada', ic:'✅'}
+];
+var F_OT=F_OT_BASE.slice();
+var TIENE_P2=false,PRELIM_REV=0,EDITANDO_OT=false,ENVIANDO=false;
+/* Solo si se creó una segunda preliminar aparecen sus dos pasos */
+function armarFOT(){
+  F_OT=TIENE_P2 ? F_OT_BASE.slice(0,2).concat(F_OT_P2,F_OT_BASE.slice(2)) : F_OT_BASE.slice();
+}
 var EST_TALLER='RECIBIDO',EST_OT_ACT='',HITOS={},MECANICO_OT='';
 var ACC_ABIERTO='taller',PANEL_SEL=null;
 
@@ -3087,6 +3132,7 @@ var RESP={
   EN_DIAGNOSTICO:['jefe_taller','mecanico'], EN_PROCESO:['jefe_taller','mecanico'],
   LISTO:['jefe_taller'], ENTREGADO:['jefe_taller'],
   PRELIM_ENVIADA:['jefe_taller'], PRELIM_APROBADA:['cliente'],
+  PRELIM2_ENVIADA:['jefe_taller'], PRELIM2_APROBADA:['cliente'],
   DEF_ENVIADA:['ventanilla'], DEF_APROBADA:['cliente','asesor'], PAGADA:['caja']
 };
 var RESP_NOMBRE={jefe_taller:'el jefe de taller',recepcion:'recepción',mecanico:'el mecánico',
@@ -3117,11 +3163,13 @@ function setTaller(k,nota){
   renderFlujos();renderGestion();
 }
 function setOT(k,nota){
+  if(k.indexOf('PRELIM2')===0){TIENE_P2=true}
+  armarFOT();
   if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return}
-  EST_OT_ACT=k;PANEL_SEL=null;
+  EST_OT_ACT=k;PANEL_SEL=null;EDITANDO_OT=false;
   HITOS['O_'+k]=selloHora();
-  /* la aprobación preliminar libera el trabajo en el taller */
-  if(k==='PRELIM_APROBADA'&&idxTaller(EST_TALLER)<idxTaller('EN_PROCESO')){
+  /* la aprobación preliminar (1 o 2) libera el trabajo en el taller */
+  if((k==='PRELIM_APROBADA'||k==='PRELIM2_APROBADA')&&idxTaller(EST_TALLER)<idxTaller('EN_PROCESO')){
     EST_TALLER='EN_PROCESO';
     HITOS['T_EN_PROCESO']=HITOS['O_'+k];
   }
@@ -3154,7 +3202,7 @@ function guardarFlujos(){
     else guardarOrden();   /* si el número cambió, la entrada local se crea acá */
   }catch(e){}
   if(sb&&OT_NUM){
-    var p={estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null};
+    var p={estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null,prelim_rev:PRELIM_REV,tiene_prelim2:TIENE_P2};
     if(EST_OT_ACT==='PRELIM_ENVIADA')p.ot_prelim_enviada=new Date().toISOString();
     if(EST_OT_ACT==='DEF_ENVIADA')p.ot_def_enviada=new Date().toISOString();
     if(EST_OT_ACT==='PAGADA')p.ot_pagada=new Date().toISOString();
@@ -3249,7 +3297,7 @@ function renderPanel(){
   var paso=lista[iSel]||{t:'',ic:''};
 
   /* las tarjetas de acción solo salen en la etapa que toca */
-  var esAccion=(iSel===iAct)||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
+  var esAccion=(iSel===iAct)||EDITANDO_OT||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
                (sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'&&EST_TALLER==='EN_DIAGNOSTICO');
   /* estando en una etapa de la OT, el responsable puede no ser quien mira:
      igual se muestran las acciones disponibles para su rol */
@@ -3263,8 +3311,9 @@ function renderPanel(){
     : 'Mecánico asignado · puedes cambiarlo';
   var bMec=document.getElementById('btnMec');
   if(bMec)bMec.textContent=(EST_TALLER==='RECIBIDO')?'Iniciar diagnóstico':'Cambiar mecánico';
-  var tocaPres = !EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
-                 ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'));
+  var tocaPres = (!EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
+                 ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO')))
+                 || EDITANDO_OT;
   $('gPres').style.display=(tocaPres&&puede)?'block':'none';
   if(tocaPres&&puede&&!SERVICIOS.length)cargarCatalogoV2();
   if(tocaPres&&puede)setTimeout(pintarPresupuesto,60);
@@ -3299,7 +3348,7 @@ function datosDelPaso(f,k,paso){
       fila('Combustible',$('cmb')?$('cmb').textContent:'—')+
       fila('Daños marcados',(danosLista().length?danosLista().join(', '):'ninguno'))+
       fila('Accesorios',(accesoriosLista().length?accesoriosLista().join(', '):'—'))+
-      fila('Fotos',FOTOS.length||0)+fila('Firma','capturada');
+      fila('Fotos',FOTOS.length||0);
   }
   else if(k==='RECIBIDO'){
     filas=fila('Hora de recepción',hh)+fila('Recibido por',SESION?SESION.nombre:'—')+
@@ -3343,6 +3392,16 @@ function datosDelPaso(f,k,paso){
       fila('Monto aprobado',S(tp.tot))+
       fila('Condiciones','servicios a precio firme · repuestos referenciales, sujetos a stock')+
       fila('Efecto','el taller inicia el trabajo');
+  }
+  else if(k==='PRELIM2_ENVIADA'){
+    var t2=totalesV2();
+    filas=fila('Enviada',hh)+fila('Motivo','servicio adicional surgido durante el trabajo')+
+      fila('Estimado actualizado',S(t2.tot))+fila('Link anterior','sin efecto');
+  }
+  else if(k==='PRELIM2_APROBADA'){
+    var b2=BITACORA['PRELIM2_APROBADA']||{};
+    filas=fila('Aprobada',hh)+fila('Por',(b2.nota||'').indexOf('SIN CONFIRMACIÓN')===0?'taller (sin confirmación)':d.cliente)+
+      fila('Monto',S(totalesV2().tot));
   }
   else if(k==='DEF_ENVIADA'){ filas=fila('Enviado por ventanilla',hh)+fila('Incluye','stock validado y códigos de almacén'); }
   else if(k==='DEF_APROBADA'){ filas=fila('Aprobado',hh)+fila('Efecto','pasa a caja para el cobro'); }
@@ -3416,6 +3475,20 @@ function renderAcciones(){
     avisos='<div class="aviso ok"><b>Preliminar aprobada.</b> El taller trabaja. Al terminar, ventanilla valida '+
       'stock y arma la definitiva.</div>';
   }
+  if(EST_OT_ACT==='PRELIM2_ENVIADA'){
+    avisos='<div class="aviso info"><b>Preliminar 2 enviada.</b> Esperando que el cliente apruebe la versión actualizada. '+
+      'El link de la primera versión ya no funciona.</div>';
+    botones='<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
+  }
+  if(EST_OT_ACT==='PRELIM2_APROBADA'){
+    avisos='<div class="aviso ok"><b>Preliminar 2 aprobada.</b> El taller continúa con el alcance actualizado.</div>';
+  }
+  /* Editar la OT: mientras el vehículo no esté listo y no se haya aprobado la segunda versión */
+  if(['PRELIM_ENVIADA','PRELIM_APROBADA','PRELIM2_ENVIADA'].indexOf(EST_OT_ACT)>-1&&
+     idxTaller(EST_TALLER)<idxTaller('LISTO')&&!EDITANDO_OT){
+    botones+=' <button class="btn chico sec" onclick="editarOT()">✎ Editar OT'+
+      (EST_OT_ACT==='PRELIM_APROBADA'?' · crea preliminar 2':'')+'</button>';
+  }
   if(EST_OT_ACT==='DEF_ENVIADA'){
     avisos='<div class="aviso info"><b>Definitiva enviada.</b> Esperando la aprobación del monto final.</div>';
   }
@@ -3440,6 +3513,19 @@ function renderAcciones(){
   $('gBotones').innerHTML=botones;
   renderEditar();
 }
+function editarOT(){
+  var creaP2=(EST_OT_ACT==='PRELIM_APROBADA');
+  var msg=creaP2
+    ? 'La preliminar ya fue aprobada. Al editarla se crea la PRELIMINAR 2, que el cliente deberá aprobar de nuevo. ¿Continuar?'
+    : 'Vas a modificar la preliminar. Al reenviarla, el link que ya tiene el cliente dejará de funcionar. ¿Continuar?';
+  if(!confirm(msg))return;
+  if(creaP2){TIENE_P2=true;armarFOT();guardarFlujos()}
+  EDITANDO_OT=true;
+  auditar('EDITA_OT','orden',OT_NUM,creaP2?'Abre preliminar 2':'Modifica preliminar antes de aprobación');
+  PANEL_SEL={f:'ot',k:creaP2?'PRELIM2_ENVIADA':EST_OT_ACT};
+  renderFlujos();
+  setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
+}
 function continuarSinConfirmar(){
   if(!LINEAS_SERV.length&&!LINEAS_REP.length){
     alert('Arma primero el presupuesto: no se puede iniciar el trabajo sin detalle.');return;
@@ -3453,7 +3539,7 @@ function continuarSinConfirmar(){
     setOT('PRELIM_ENVIADA','Preliminar no enviada al cliente · inicio autorizado internamente');
   }
   var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
-  setOT('PRELIM_APROBADA',nota);
+  setOT((EST_OT_ACT==='PRELIM2_ENVIADA'||TIENE_P2)?'PRELIM2_APROBADA':'PRELIM_APROBADA',nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
   alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
 }
@@ -3681,6 +3767,8 @@ function linkCliente(fase){
     '&pl='+encodeURIComponent(d.placa)+'&vh='+encodeURIComponent(d.veh)+
     '&cl='+encodeURIComponent(d.cliente)+
     '&tf='+t.tot+'&ln='+encodeURIComponent(ln)+
+    '&rv='+(PRELIM_REV||0)+
+    '&pv='+((TIENE_P2||EST_OT_ACT==='PRELIM_APROBADA'||EST_OT_ACT==='PRELIM2_ENVIADA')?2:1)+
     '&f='+(fase==='recepcion'?'r':'p');
   var base=APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+q;
   /* miniaturas de la recepción, mientras quepan en el enlace */
@@ -3747,8 +3835,12 @@ function enviarPreliminar(){
   }
   var d=datosOrden(),t=totalesV2(),hoy=new Date().toLocaleDateString('es-PE');
   var coment=($('sintoma').value||'').trim();
-  var texto='*IZA MOTORS* — Presupuesto preliminar '+(OT_NUM||d.num)+'\n'+
-    'Hola '+d.cliente+', terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').\n\n'+
+  var esP2msg = TIENE_P2 || EST_OT_ACT==='PRELIM_APROBADA';
+  var texto='*IZA MOTORS* — Presupuesto preliminar'+(esP2msg?' 2':'')+' '+(OT_NUM||d.num)+
+    ((PRELIM_REV||0)>=1?' (actualizado)':'')+'\n'+
+    'Hola '+d.cliente+', '+(esP2msg
+      ?'durante el trabajo de su '+d.veh+' (placa '+d.placa+') surgió un servicio adicional. Este es el presupuesto actualizado; reemplaza al anterior.'
+      :'terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').')+'\n\n'+
     (coment?'_'+coment+'_\n\n':'')+
     '*Servicios*\n'+(LINEAS_SERV.length?LINEAS_SERV.map(function(l){return '• '+l.desc+' — '+S(l.precio)}).join('\n'):'• —')+'\n'+
     (LINEAS_REP.length?'\n*Repuestos y accesorios (referencial)*\n'+
@@ -3764,9 +3856,17 @@ function enviarPreliminar(){
      antes de saltar. La apertura va en el mismo toque, sin temporizador,
      porque iOS bloquea ventanas que no nacen directamente de un gesto. */
   try{
+    /* cada envío es una revisión nueva: el link anterior deja de servir */
+    PRELIM_REV=(PRELIM_REV||0)+1;
+    var esP2 = TIENE_P2 || EST_OT_ACT==='PRELIM_APROBADA';
     guardarDetalleBD();
-    setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot));
-    hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada.</span> '+
+    if(esP2){
+      setOT('PRELIM2_ENVIADA','Preliminar 2 enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
+    } else {
+      setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
+    }
+    hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada'+
+      (PRELIM_REV>1?' (revisión '+PRELIM_REV+', el link anterior quedó sin efecto)':'')+'.</span> '+
       'Confirma el envío en WhatsApp.';
   }catch(e){
     hint.innerHTML='<span style="color:var(--rojo)">Error al marcar el estado: '+e.message+'</span>';
@@ -3816,6 +3916,7 @@ function mostrarBuscador(){ ir('recepcion'); }
 function filtrarOT(){}
 function fichaCheckin(fase){
   var esCliente=document.body.classList.contains('modo-cliente');
+  var FASE_F=fase;
   var d=esCliente?{num:OT_NUM||'',placa:'—',veh:'',cliente:''}:datosOrden();
   var t=esCliente?{tot:0}:totales(),lin=[];
   if(!esCliente){
@@ -3826,8 +3927,8 @@ function fichaCheckin(fase){
   return {ot:OT_NUM||d.num,placa:d.placa,veh:d.veh,cliente:d.cliente,
     estado:esRec?'Recibido · diagnóstico en curso':'Esperando tu aprobación del servicio',
     lineas:esRec?[]:lin,total:esRec?0:t.tot,
-    fotos:(FOTOS.length?FOTOS.slice(0,4):null),
-    avance:esRec?20:55,aprobable:!esRec};
+    fotos:(FOTOS_MINI.length?FOTOS_MINI.slice(0,3):null),
+    avance:esRec?20:55,aprobable:!esRec,fase:FASE_F};
 }
 function fichaCheckinVEH(placa){
   Object.keys(VEH).forEach(function(k){if(VEH[k].placa===placa)ACTUAL=VEH[k]});
@@ -3844,6 +3945,19 @@ function fichaDesdeOT(ot){
     aprobable:(o.estado==='POR_APROBAR')};
   mostrarFicha();
 }
+function validarLinkCliente(cb){
+  var f=FICHA;
+  if(!sb||!f||!f.ot||f.fase!=='p'){cb(true);return}
+  sb.from('ordenes').select('prelim_rev,estado_ot').eq('numero',f.ot).maybeSingle().then(function(r){
+    if(!r.data){cb(true);return}
+    var d=r.data;
+    if(d.prelim_rev&&f.rv&&f.rv<d.prelim_rev){cb(false,'reemplazado');return}
+    var yaAprobada=(f.pv>=2&&['PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA','PAGADA'].indexOf(d.estado_ot)>-1)||
+                   (f.pv===1&&['PRELIM_APROBADA','PRELIM2_ENVIADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA','PAGADA'].indexOf(d.estado_ot)>-1);
+    if(yaAprobada){cb(false,'aprobada');return}
+    cb(true);
+  },function(){cb(true)});
+}
 function renderFicha(){
   var f=FICHA;if(!f)return;
   if(document.body.classList.contains('modo-cliente')&&(!f.placa||f.placa==='—')){
@@ -3858,8 +3972,10 @@ function renderFicha(){
   $('cliVeh').textContent=f.veh+' · '+f.cliente;
   $('cliEstado').textContent=f.estado;
   $('cliAvance').style.width=f.avance+'%';
-  var fotos=f.fotos||VISTAS.map(function(x){return fotoDemo(x[0],x[1])});
-  $('cliFotos').innerHTML=fotos.map(function(u){return '<img class="foto" src="'+u+'">'}).join('');
+  var fotos=f.fotos||[];
+  $('cliFotos').innerHTML=fotos.length
+    ? fotos.map(function(u){return '<img class="foto" src="'+u+'">'}).join('')
+    : '<div class="hint" style="margin:0">Sin fotos registradas en el ingreso.</div>';
   if(f.lineas.length){
     var sub=f.lineas.reduce(function(a,l){return a+l.p},0);
     $('cliPres').innerHTML='<table>'+f.lineas.map(function(l){
@@ -3883,6 +3999,17 @@ function renderFicha(){
   $('cliAcciones').style.display=f.aprobable?'block':'none';
   var ta=document.getElementById('txtAprobar');
   if(ta)ta.textContent=f.definitivo?'✓ Aprobar el monto final':'✓ Aprobar el servicio';
+  if(f.aprobable&&!f.definitivo){
+    validarLinkCliente(function(ok,motivo){
+      if(ok)return;
+      $('cliAcciones').style.display='none';
+      $('cliResultado').innerHTML=motivo==='reemplazado'
+        ? '<div class="aviso rojo" style="margin-top:14px;text-align:center"><b>Este presupuesto fue actualizado por el taller.</b><br>'+
+          'Este enlace ya no tiene efecto. Revisa el mensaje más reciente de WhatsApp.</div>'
+        : '<div class="aviso ok" style="margin-top:14px;text-align:center"><b>Este presupuesto ya fue aprobado.</b><br>'+
+          'No hace falta volver a confirmarlo.</div>';
+    });
+  }
   $('cliResultado').innerHTML=f.aprobable?'':
     '<div class="hint" style="text-align:center;margin-top:10px">Esta orden no tiene aprobaciones pendientes.</div>';
 }
@@ -3891,9 +4018,10 @@ function cliAprobar(){
   var esDef=FICHA&&FICHA.definitivo;
   /* se escribe en la base para que el taller lo vea desde cualquier aparato */
   if(sb&&FICHA&&FICHA.ot){
+    var esP2=(FICHA.pv||1)>=2;
     var patch=esDef
       ? {estado_ot:'DEF_APROBADA',estado:'LISTO',ot_def_aprobada:new Date().toISOString()}
-      : {estado_ot:'PRELIM_APROBADA',estado:'EN_PROCESO',estado_taller:'EN_PROCESO',
+      : {estado_ot:esP2?'PRELIM2_APROBADA':'PRELIM_APROBADA',estado:'EN_PROCESO',estado_taller:'EN_PROCESO',
          ot_prelim_aprobada:new Date().toISOString()};
     sb.from('ordenes').update(patch).eq('numero',FICHA.ot).then(function(){},function(){});
     sb.from('auditoria').insert({
@@ -3911,7 +4039,7 @@ function cliAprobar(){
         ? 'Cliente aprobó el detalle definitivo desde su link'
         : 'Cliente aprobó el servicio desde su link'};
       DB.set(d);
-      d.estado_ot=esDef?'DEF_APROBADA':'PRELIM_APROBADA';
+      d.estado_ot=esDef?'DEF_APROBADA':(((FICHA.pv||1)>=2)?'PRELIM2_APROBADA':'PRELIM_APROBADA');
       if(!esDef&&(!d.estado_taller||d.estado_taller==='EN_DIAGNOSTICO'))d.estado_taller='EN_PROCESO';
       DB.set(d);
       if(!document.body.classList.contains('modo-cliente')&&OT_NUM===ot){
@@ -4022,7 +4150,7 @@ function enviarAVentanilla(){
 function pintarVentanilla(){
   VENT_OT=null;
   $('ventLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
-  cargarOrdenesBD(['PRELIM_APROBADA'],function(lista){
+  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA'],function(lista){
     $('ventLista').innerHTML=
       '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Taller</th><th class="der">En taller</th><th class="der">Estimado</th><th></th></tr>'+
@@ -4041,7 +4169,7 @@ function pintarVentanilla(){
 }
 function ventAbrir(id){
   $('ventLista').innerHTML='<div class="hint">Abriendo…</div>';
-  cargarOrdenesBD(['PRELIM_APROBADA'],function(lista){
+  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA'],function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarVentanilla();return}
     VENT_OT=o;
@@ -4551,6 +4679,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
       if(q.s!==undefined){SEL={};q.s.split('.').forEach(function(i){if(i!=='')SEL[parseInt(i,10)]=true})}
       else {SEL={};[0,1,2].forEach(function(i){SEL[i]=true})}
       FICHA=fichaCheckin(q.f==='r'?'r':(q.f==='d'?'d':'p'));
+      FICHA.rv=Number(q.rv)||0;FICHA.pv=Number(q.pv)||1;
       /* nada de datos de ejemplo: si el link no trae el detalle, se avisa */
       if(q.ln!==undefined&&q.f!=='r'){
         FICHA.lineas=q.ln?q.ln.split('|').map(function(x){
