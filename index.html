@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v74</span>
+  <span class="demo-tag">v75</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -800,7 +800,9 @@ tr.sel td{background:var(--rojo-cl)}
         <div id="editZona" class="oculto"></div>
       </div>
       <div class="card" id="gAvance" style="display:none">
-        <h3>Siguiente paso</h3>
+        <h3 style="cursor:pointer" onclick="document.getElementById('sigZona').classList.toggle('oculto');this.querySelector('.fl').textContent=document.getElementById('sigZona').classList.contains('oculto')?'▼':'▲'">
+          Siguiente paso <span class="fl" style="margin-left:auto;color:var(--mudo);font-size:14px">▼</span></h3>
+        <div id="sigZona" class="oculto">
         <div class="hint" style="margin:-6px 0 12px">Qué corresponde hacer ahora según el punto en que está la orden.</div>
         <div id="gAvisos"></div>
         <div class="fila" style="margin-top:8px" id="gBotones"></div>
@@ -895,12 +897,8 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= ASESOR DE SERVICIO ================= -->
 <section class="vista" id="v-asesor">
   <div class="card">
-    <div class="navproc"><button class="atras" onclick="ir('recepcion')">← Volver</button>
-      <span class="donde">Confirmación con el cliente</span></div>
     <h3>🤝 Asesor de servicio</h3>
-    <div class="aviso rojo"><b>Módulo por mejorar.</b> Acá el asesor confirma el pedido frente al cliente,
-      puede agregar productos, quitar lo que el cliente no quiera, devolver la orden a ventanilla
-      y, si el pago es con tarjeta, cobrar en el momento.</div>
+    <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">Recibe la OT final aprobada, ajusta ítems con el cliente y cobra con tarjeta.</p>
     <div id="asesorLista"></div>
   </div>
 </section>
@@ -1428,9 +1426,9 @@ var ROLES={
                  vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','bitacora']},
   jefe_taller:  {t:'Jefe de Taller',        d:'Recepción de vehículos y gestión del piso',
                  vistas:['recepcion','taller','bitacora']},
-  ventanilla:   {t:'Ventanilla',            d:'Valida stock y codifica · por construir',
+  ventanilla:   {t:'Ventanilla',            d:'Valida stock, codifica y arma la OT final',
                  vistas:['ventanilla']},
-  asesor:       {t:'Asesor de Servicio',    d:'Confirma con el cliente y cobra tarjeta · por mejorar',
+  asesor:       {t:'Asesor de Servicio',    d:'Cierra con el cliente y cobra con tarjeta',
                  vistas:['asesor']},
   caja:         {t:'Caja',                  d:'Valida el cobro contra RS-TALLER',
                  vistas:['caja']}
@@ -4459,6 +4457,10 @@ function ventRender(){
         '</div></div>'
       : '')+
 
+    '<div class="fila" style="margin-top:12px">'+
+      '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
+      '<span class="hint" style="align-self:center;margin:0">Códigos, precios y líneas, sin enviar ni aprobar.</span>'+
+    '</div>'+
     '<div class="bloque-pres" style="margin-top:16px">'+
       '<label style="margin:0 0 10px">OT definitiva</label>'+
       '<button class="btn chico sec" style="margin-bottom:10px;background:#232A34;color:#E8ECF1;border-color:#39424F" '+
@@ -4485,10 +4487,6 @@ function ventRender(){
 
     ventBloqueDespacho()+
 
-    '<div class="fila" style="margin-top:14px">'+
-      '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
-      '<span class="hint" style="align-self:center;margin:0">Guarda códigos, precios y líneas sin enviar ni aprobar.</span>'+
-    '</div>'+
     '<div class="dos-vias">'+
       '<div class="via" style="background:#F0FBF3;border-color:#BFE6CE">'+
         '<label>A · Enviar OT final al cliente</label>'+
@@ -4747,35 +4745,44 @@ function aseRender(){
   var o=ASE_OT,t=aseTotales();
   var cats=[];REPUESTOS.forEach(function(r){if(cats.indexOf(r.categoria)===-1&&r.categoria)cats.push(r.categoria)});
   var snap={lineas:ASE_LIN.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:l.incluir?0:1,k:l.cambio}}),total:t.tot};
+  var bloqueado=!!o.voucher;
   $('asesorLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarAsesor()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    (bloqueado?'':
+      '<div style="overflow-x:auto"><table><tr><th>Concepto</th><th>Código</th><th class="der">Cant</th><th class="der">Precio</th><th></th></tr>'+
+      ASE_LIN.map(function(l,i){
+        return '<tr'+(l.incluir?'':' style="opacity:.45;text-decoration:line-through"')+'>'+
+          '<td>'+l.desc+(l.cambio==='A'?' <span class="eti e4">nuevo</span>':'')+'</td>'+
+          '<td class="num" style="font-size:12px;color:var(--mudo)">'+(l.tipo==='REP'?(l.cod_alm||'—'):'')+'</td>'+
+          '<td class="der num">'+l.cant+'</td><td class="num der">'+S(l.final)+'</td>'+
+          '<td>'+(l.incluir
+            ?'<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" onclick="aseQuitar('+i+')">✕</button>'
+            :'<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="aseRestaurar('+i+')">↺</button>')+'</td></tr>';
+      }).join('')+'</table></div>'+
+      '<div style="margin-top:12px">'+
+        '<button class="btn chico sec" onclick="aseToggleAdd()">'+(ASE_ADD?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
+      '</div>'+
+      (ASE_ADD
+        ? '<div class="card" style="margin:10px 0 0;background:var(--gris)">'+
+          '<div class="fila" style="align-items:flex-end">'+
+            '<div style="min-width:150px"><label>Categoría</label><select id="aseCat" onchange="aseItems()">'+
+              '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
+            '<div style="flex:2;min-width:180px"><label>Producto</label><select id="aseItem"></select></div>'+
+          '</div>'+
+          '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
+            '<div style="min-width:150px"><label>Código de stock</label><input id="aseCod" placeholder="obligatorio"></div>'+
+            '<div style="flex:0 0 auto"><button class="btn chico" onclick="aseAgregar()">Agregar</button></div>'+
+          '</div></div>'
+        : ''))+
     facturaNegra(snap,'OT final aprobada')+
-    (o.voucher
+    (bloqueado
       ? '<div class="aviso ok" style="margin-top:12px"><b>Cobro con tarjeta registrado</b> por '+(o.tarjeta_por||'')+
         (o.tarjeta_el?' · '+selloHora(o.tarjeta_el):'')+'. Pendiente de validación en caja.<br>'+
         '<a href="'+o.voucher+'" target="_blank" rel="noopener">Ver voucher</a></div>'
-      : '<div style="margin-top:12px">'+
-          '<button class="btn chico sec" onclick="aseToggleAdd()">'+(ASE_ADD?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
-        '</div>'+
-        (ASE_ADD
-          ? '<div class="card" style="margin:10px 0 0;background:var(--gris)">'+
-            '<div class="fila" style="align-items:flex-end">'+
-              '<div style="min-width:160px"><label>Del catálogo</label><select id="aseCat" onchange="aseItems()">'+
-                '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
-              '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="aseItem"></select></div>'+
-              '<div style="flex:0 0 auto"><button class="btn chico" onclick="aseAgregar()">Agregar</button></div>'+
-            '</div>'+
-            '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
-              '<div style="flex:2;min-width:190px"><label>Otro (libre)</label><input id="aseLibre" placeholder="Descripción"></div>'+
-              '<div style="min-width:110px"><label>Precio</label><input id="aseLibreP" type="number" min="0" placeholder="0"></div>'+
-              '<div style="flex:0 0 auto"><button class="btn chico" onclick="aseAgregarLibre()">Agregar</button></div>'+
-            '</div></div>'
-          : '')+
-        '<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
+      : '<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
           '<h3 style="font-size:15px">💳 Cobrar con tarjeta</h3>'+
-          '<div class="hint" style="margin:-4px 0 10px">Solo tarjeta desde el asesor. Toma la foto del voucher como validación; '+
-            'caja confirma el cobro después.</div>'+
+          '<div class="hint" style="margin:-4px 0 10px">Toma la foto del voucher como validación; caja confirma el cobro después.</div>'+
           '<input type="file" id="aseVoucher" accept="image/*" capture="environment" onchange="aseVoucherCargado(this)" style="padding:8px">'+
           '<div id="aseVoucherPrev" style="margin-top:8px"></div>'+
           '<div class="fila" style="margin-top:10px">'+
@@ -4785,6 +4792,27 @@ function aseRender(){
     '<div id="aseMsg" style="margin-top:10px"></div>';
   aseItems();
 }
+function aseQuitar(i){
+  var l=ASE_LIN[i];
+  var m=prompt('Motivo para quitar "'+l.desc+'":');
+  if(m===null)return;
+  sb.from('orden_detalle').update({cobrado:false,cambio:'X',nota_cambio:'quitado por el asesor: '+(m||'sin detalle')}).eq('id',l.id)
+   .then(function(){
+     l.incluir=false;l.cambio='X';
+     auditar('QUITA_ITEM','orden',ASE_OT.ot,l.desc+' · '+(m||'sin detalle'),l.final);
+     aseActualizarTotal();aseRender();
+   },function(){});
+}
+function aseRestaurar(i){
+  var l=ASE_LIN[i];
+  sb.from('orden_detalle').update({cobrado:true,cambio:null,nota_cambio:null}).eq('id',l.id).then(function(){
+    l.incluir=true;l.cambio='';aseActualizarTotal();aseRender();
+  },function(){});
+}
+function aseActualizarTotal(){
+  var t=aseTotales();
+  sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
+}
 function aseToggleAdd(){ASE_ADD=!ASE_ADD;aseRender()}
 function aseItems(){
   var s=document.getElementById('aseCat');if(!s)return;
@@ -4792,13 +4820,13 @@ function aseItems(){
   document.getElementById('aseItem').innerHTML='<option value="">— producto —</option>'+
     lista.map(function(r){return '<option value="'+r.codigo+'">'+r.descripcion+' · '+S(r.precio)+'</option>'}).join('');
 }
-function aseInsertar(desc,precio){
+function aseInsertar(desc,precio,cod){
   sb.from('orden_detalle').insert({orden_id:ASE_OT.id,tipo:'REP',descripcion:desc,cantidad:1,
     precio_taller:precio,precio_caja:precio,stock_ok:true,cobrado:true,agregado_por:'asesor',cambio:'A',
-    nota_cambio:'agregado por el asesor'}).select().single()
+    codigo_almacen:cod,nota_cambio:'agregado por el asesor'}).select().single()
    .then(function(res){
      if(res.error){$('aseMsg').innerHTML='<div class="aviso rojo">'+res.error.message+'</div>';return}
-     ASE_LIN.push({id:res.data.id,tipo:'REP',desc:desc,cant:1,precio:precio,final:precio,stock:true,cod_alm:'',incluir:true,cambio:'A'});
+     ASE_LIN.push({id:res.data.id,tipo:'REP',desc:desc,cant:1,precio:precio,final:precio,stock:true,cod_alm:cod,incluir:true,cambio:'A'});
      auditar('AGREGA_ITEM','orden',ASE_OT.ot,desc+' · '+S(precio),precio);
      var t=aseTotales();
      sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
@@ -4806,14 +4834,11 @@ function aseInsertar(desc,precio){
    },function(){});
 }
 function aseAgregar(){
-  var cod=document.getElementById('aseItem').value;if(!cod)return;
+  var cod=document.getElementById('aseItem').value;if(!cod){alert('Elige el producto.');return}
   var r=REPUESTOS.filter(function(x){return x.codigo===cod})[0];if(!r)return;
-  aseInsertar(r.descripcion,Number(r.precio));
-}
-function aseAgregarLibre(){
-  var d=(document.getElementById('aseLibre').value||'').trim(),p=Number(document.getElementById('aseLibreP').value)||0;
-  if(!d){alert('Escribe la descripción.');return}
-  aseInsertar(d,p);
+  var stock=(document.getElementById('aseCod').value||'').trim();
+  if(!stock){alert('Ingresa el código de stock.');document.getElementById('aseCod').focus();return}
+  aseInsertar(r.descripcion,Number(r.precio),stock);
 }
 function aseVoucherCargado(inp){
   var f=inp.files&&inp.files[0];if(!f)return;
@@ -4842,7 +4867,8 @@ function aseCobrarTarjeta(){
   for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
   sb.storage.from('fotos').upload(nombre,new Blob([arr],{type:'image/jpeg'}),{contentType:'image/jpeg'})
    .then(function(up){
-     if(up.error){msg.innerHTML='<div class="aviso rojo">No se pudo subir: '+up.error.message+'</div>';return}
+     if(up.error){msg.innerHTML='<div class="aviso rojo">No se pudo subir: '+up.error.message+
+       (/bucket/i.test(up.error.message)?'<br><b>Falta crear el bucket "fotos" en Supabase (paso16).</b>':'')+'</div>';return}
      var url=sb.storage.from('fotos').getPublicUrl(nombre).data.publicUrl;
      sb.from('ordenes').update({forma_pago:'tarjeta',voucher_url:url,pago_tarjeta_por:SESION?SESION.nombre:'asesor',
        pago_tarjeta_el:new Date().toISOString(),total_taller:t.tot,asesor_id:SESION?SESION.id:null,
