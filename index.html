@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v76</span>
+  <span class="demo-tag">v77</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -494,6 +494,26 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="fila" style="margin-top:14px">
       <button class="btn chico ok" onclick="confirmarMotivoVB()">Autorizar</button>
       <button class="btn chico sec" onclick="cerrarMotivoVB()">Cancelar</button>
+    </div>
+  </div>
+</div>
+<div class="drawer" id="modalRet" onclick="if(event.target===this)cerrarMotivoRet()">
+  <div class="panel" style="right:auto;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:360px;max-width:92vw;border-radius:14px">
+    <h3 class="sinbar" style="font-size:18px;margin-bottom:6px">Retirar producto</h3>
+    <div class="hint" id="retNombre" style="margin:0 0 12px"></div>
+    <label>Motivo</label>
+    <select id="retMotivo" onchange="document.getElementById('retOtroZona').classList.toggle('oculto',this.value!=='Otros')">
+      <option>A solicitud del cliente</option>
+      <option>Error interno</option>
+      <option>Otros</option>
+    </select>
+    <div id="retOtroZona" class="oculto" style="margin-top:10px">
+      <label>Indicar</label>
+      <input id="retOtro" placeholder="Detalle">
+    </div>
+    <div class="fila" style="margin-top:14px">
+      <button class="btn chico ok" onclick="confirmarMotivoRet()">Retirar</button>
+      <button class="btn chico sec" onclick="cerrarMotivoRet()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -3379,7 +3399,13 @@ function renderPanel(){
   $('gAvance').style.display=(esAccion&&puede)?'block':'none';
   $('gEditar').style.display=(esAccion&&puede)?'block':'none';
 
-  if(esAccion&&puede){ p.innerHTML=avisoCruce(); renderAcciones(); return; }
+  if(esAccion&&puede){
+    p.innerHTML=avisoCruce()+'<div id="gAccPanel"></div>'+
+      (sel.f==='ot'?'<div id="snapEtapa" style="margin-top:12px"></div>':'');
+    renderAcciones();
+    if(sel.f==='ot')setTimeout(function(){pintarSnapshotEtapa(sel.k)},60);
+    return;
+  }
 
   if(esAccion&&!puede){
     p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
@@ -3479,7 +3505,14 @@ function pintarSnapshotEtapa(etapa){
     sb.from('orden_snapshots').select('*').eq('orden_id',r.data.id).eq('etapa',etapa)
       .order('creado',{ascending:false}).limit(1).then(function(rs){
         var s=(rs.data||[])[0];
-        z.innerHTML=s?facturaNegra(s,'OT en esta etapa'):'<div class="hint">Esta etapa no dejó una foto de la OT.</div>';
+        if(s){z.innerHTML=facturaNegra(s,'OT en esta etapa');return}
+        /* sin foto guardada: se muestra lo contratado según la base */
+        cargarLineasBD(r.data.id,function(lin){
+          if(!lin.length){z.innerHTML='<div class="hint">Esta etapa no dejó una foto de la OT.</div>';return}
+          var snap={lineas:lin.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:l.incluir?0:1,k:l.cambio}}),
+                    total:lin.filter(function(l){return l.incluir}).reduce(function(a,l){return a+l.final*l.cant},0)*1.18};
+          z.innerHTML=facturaNegra(snap,'OT contratada');
+        });
       },function(){z.innerHTML=''});
   },function(){});
 }
@@ -3586,7 +3619,10 @@ function renderAcciones(){
   }
 
   $('gAvisos').innerHTML=avisos;
-  $('gBotones').innerHTML=botones;
+  $('gBotones').innerHTML='';
+  var acc=document.getElementById('gAccPanel');
+  if(acc)acc.innerHTML=botones?'<div class="card" style="margin:0 0 12px"><h3 style="font-size:15px">Acciones</h3>'+
+    '<div class="fila">'+botones+'</div></div>':'';
   renderEditar();
 }
 function editarOT(){
@@ -3602,7 +3638,26 @@ function editarOT(){
   renderFlujos();
   setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
 }
-var VB_CB=null;
+var VB_CB=null,RET_CB=null;
+function pedirMotivoRet(nombre,cb){
+  RET_CB=cb;
+  document.getElementById('retNombre').textContent=nombre;
+  document.getElementById('retMotivo').value='A solicitud del cliente';
+  document.getElementById('retOtro').value='';
+  document.getElementById('retOtroZona').classList.add('oculto');
+  document.getElementById('modalRet').classList.add('on');
+}
+function cerrarMotivoRet(){document.getElementById('modalRet').classList.remove('on');RET_CB=null}
+function confirmarMotivoRet(){
+  var m=document.getElementById('retMotivo').value;
+  if(m==='Otros'){
+    var o=(document.getElementById('retOtro').value||'').trim();
+    if(o.length<3){alert('Indica el motivo.');return}
+    m='Otros: '+o;
+  }
+  var cb=RET_CB;cerrarMotivoRet();
+  if(cb)cb(m);
+}
 function pedirMotivoVB(cb){
   VB_CB=cb;
   var s=document.getElementById('vbMotivo');s.value='Cliente acepta presencialmente';
@@ -4594,10 +4649,7 @@ function ventRefrescarTotales(){
 }
 function ventRetirar(i){
   var l=VENT_LIN[i];
-  var m=prompt('Motivo para retirar "'+l.desc+'" (ej. sin stock, el cliente no lo quiere):');
-  if(m===null)return;
-  l.incluir=false;l.cambio='X';l.nota=m||'sin stock';
-  ventRender();
+  pedirMotivoRet(l.desc,function(m){ l.incluir=false;l.cambio='X';l.nota=m;ventRender(); });
 }
 function ventRestaurar(i){
   var l=VENT_LIN[i];l.incluir=true;l.cambio=(l.cambio==='X'?'':l.cambio);l.nota='';ventRender();
@@ -4789,6 +4841,13 @@ function aseRender(){
     (bloqueado?'':'<div class="fila" style="margin-top:12px;align-items:center">'+
       '<button class="btn chico sec" onclick="aseGuardar()">💾 Guardar</button>'+
       '<span id="aseGuardadoMsg" class="hint" style="margin:0">Guarda los ítems tal como están.</span></div>')+
+    '<div class="card" style="margin:12px 0 0;background:#F0FBF3;border-color:#BFE6CE">'+
+      '<label>Enviar detalle al cliente · informativo</label>'+
+      '<div class="cel" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+        '<span class="num" style="color:var(--mudo);font-weight:700">+51</span>'+
+        '<input id="aseWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'" style="flex:1;min-width:0"></div>'+
+      '<button class="btn chico" style="background:#25D366;color:#0A2E19" onclick="aseEnviarDetalle()">📤 Enviar detalle por WhatsApp</button>'+
+    '</div>'+
     (bloqueado
       ? '<div class="aviso ok" style="margin-top:12px"><b>Cobro con tarjeta registrado</b> por '+(o.tarjeta_por||'')+
         (o.tarjeta_el?' · '+selloHora(o.tarjeta_el):'')+'. Pendiente de validación en caja.<br>'+
@@ -4807,8 +4866,10 @@ function aseRender(){
 }
 function aseQuitar(i){
   var l=ASE_LIN[i];
-  var m=prompt('Motivo para quitar "'+l.desc+'":');
-  if(m===null)return;
+  pedirMotivoRet(l.desc,function(m){ aseQuitarCon(i,m) });
+}
+function aseQuitarCon(i,m){
+  var l=ASE_LIN[i];
   sb.from('orden_detalle').update({cobrado:false,cambio:'X',nota_cambio:'quitado por el asesor: '+(m||'sin detalle')}).eq('id',l.id)
    .then(function(){
      l.incluir=false;l.cambio='X';
@@ -4825,6 +4886,18 @@ function aseRestaurar(i){
 function aseActualizarTotal(){
   var t=aseTotales();
   sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
+}
+function aseEnviarDetalle(){
+  var num=(document.getElementById('aseWA').value||'').replace(/\D/g,'');
+  if(num.length<9){alert('Ingresa el celular del cliente.');return}
+  var o=ASE_OT,t=aseTotales();
+  var incl=ASE_LIN.filter(function(l){return l.incluir});
+  var texto='*IZA MOTORS* — Detalle de su orden '+o.ot+'\n'+
+    'Hola '+o.cliente+', le compartimos el detalle final de su '+o.placa+':\n\n'+
+    incl.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.final*l.cant)}).join('\n')+
+    '\n*Total con IGV: '+S(t.tot)+'*\n\nGracias por confiar en IZA Motors.';
+  auditar('ENVIA_DETALLE','orden',o.ot,'Detalle informativo por WhatsApp',t.tot);
+  abrirWhatsApp(num,texto);
 }
 function aseGuardar(){
   var g=document.getElementById('aseGuardadoMsg');if(g)g.textContent='Guardando…';
