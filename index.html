@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v77</span>
+  <span class="demo-tag">v78</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -932,6 +932,18 @@ tr.sel td{background:var(--rojo-cl)}
 </section>
 
 <!-- ================= TALLER ================= -->
+<section class="vista" id="v-tienda">
+  <div class="card">
+    <h3>Tienda · órdenes por estación</h3>
+    <div class="hint" style="margin:-4px 0 10px">Ventanilla: el tiempo corre desde la aprobación de la preliminar. Asesor y caja: desde la aprobación de la final.</div>
+    <div class="kanban" id="kanbanTienda"></div>
+  </div>
+  <div class="card">
+    <h3>Detalle de la estación</h3>
+    <div style="overflow-x:auto"><table id="tablaTienda"></table></div>
+  </div>
+</section>
+
 <section class="vista" id="v-taller">
   <div class="card">
     <h3>Taller Las Américas · ocupación</h3>
@@ -1210,7 +1222,7 @@ var MODULOS={
     {v:'recepcion',t:'Clientes'},
     {v:'ventanilla',t:'Ventanilla'},{v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'productividad',t:'Productividad'},{v:'bitacora',t:'Bitácora y transacciones'}]},
+    {v:'taller',t:'Taller'},{v:'tienda',t:'Tienda'},{v:'productividad',t:'Productividad'},{v:'bitacora',t:'Bitácora y transacciones'}]},
   usuarios:{t:'Usuarios',vistas:[{v:'usuarios',t:'Usuarios y permisos'}]}
 };
 var MODULO_ACT='taller';
@@ -1424,7 +1436,7 @@ function ir(v){
   document.querySelectorAll('.vista').forEach(function(s){s.classList.toggle('on',s.id==='v-'+v)});
 
   window.scrollTo(0,0);
-  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();
+  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='tienda')pintarTienda();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -1440,11 +1452,11 @@ try{ sb=supabase.createClient(SB_URL,SB_KEY); }catch(e){ console.error('Supabase
 
 var ROLES={
   admin_general:{t:'Administrador General', d:'Acceso total, todas las sedes',
-                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','bitacora','usuarios']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','usuarios']},
   admin_local:  {t:'Administrador Local',   d:'Acceso completo a su local',
-                 vistas:['recepcion','taller','ventanilla','asesor','caja','productividad','bitacora']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora']},
   jefe_taller:  {t:'Jefe de Taller',        d:'Recepción de vehículos y gestión del piso',
-                 vistas:['recepcion','taller','bitacora']},
+                 vistas:['recepcion','taller','tienda','bitacora']},
   ventanilla:   {t:'Ventanilla',            d:'Valida stock, codifica y arma la OT final',
                  vistas:['ventanilla']},
   asesor:       {t:'Asesor de Servicio',    d:'Cierra con el cliente y cobra con tarjeta',
@@ -3741,24 +3753,48 @@ function reset(){
 var ETAPA_SEL='EN_PROCESO',OT_SEL=null;
 
 var TODAS_ETAPA={};
+var ETAPAS_T=[
+ {k:'RECIBIDO',      t:'Recibido',       ic:'🔑'},
+ {k:'EN_DIAGNOSTICO',t:'En diagnóstico', ic:'🔍'},
+ {k:'EN_PROCESO',    t:'En proceso',     ic:'🔧'},
+ {k:'LISTO',         t:'Listo',          ic:'✨'},
+ {k:'ENTREGADO',     t:'Entregado hoy',  ic:'🚗'}
+];
+var KAN_T=[],KAN_TIENDA=[],ETAPA_SEL='RECIBIDO',OT_SEL=null,TIENDA_SEL='despacho';
+function minsDesde(iso){ return iso?Math.round((Date.now()-new Date(iso))/60000):null }
+
 function pintarTaller(){
-  var enPiso=0;
-  ETAPAS.forEach(function(e){ if(e.k!=='ENTREGADO') enPiso+=deEtapa(e.k).length; });
+  if(!sb)return;
+  sb.from('ordenes')
+    .select('id,numero,estado_taller,estado_ot,total_taller,ingreso,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,nivel)')
+    .eq('sede_id',SEDE_ACTIVA).not('estado_taller','eq','ANULADO')
+    .order('ingreso',{ascending:true}).limit(300)
+    .then(function(r){
+      var hoy=new Date();hoy.setHours(0,0,0,0);
+      KAN_T=(r.data||[]).map(function(o){
+        var v=o.vehiculos||{},c=o.clientes||{};
+        return {id:o.id,ot:o.numero,placa:v.placa||'—',veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
+          cliente:c.nombre||'—',nivel:c.nivel||'Plata',estado:o.estado_taller||'RECIBIDO',estado_ot:o.estado_ot||'',
+          importe:Number(o.total_taller||0),tec:o.mecanico_nombre||'—',ingreso:o.ingreso,
+          mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
+      }).filter(function(o){ return o.estado!=='ENTREGADO'||new Date(o.ingreso)>=hoy; });
+      pintarKanbanTaller();
+    },function(){});
+}
+function deEtapa(k){return KAN_T.filter(function(o){return o.estado===k})}
+function pintarKanbanTaller(){
+  var enPiso=KAN_T.filter(function(o){return o.estado!=='ENTREGADO'}).length;
   var cap=Math.round(enPiso/60*100);
-  document.getElementById('kanban').innerHTML=ETAPAS.filter(function(e){return e.k!=='ENTREGADO'}).map(function(e){
+  document.getElementById('kanban').innerHTML=ETAPAS_T.map(function(e){
     var ots=deEtapa(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
-        imp=ots.reduce(function(a,o){return a+o.importe},0),
-        vis=ots.slice(0,5);
+        imp=ots.reduce(function(a,o){return a+o.importe},0),vis=ots.slice(0,5);
     var lista=vis.map(function(o){
       return '<div class="pl" onclick="event.stopPropagation();elegirOT(&quot;'+e.k+'&quot;,&quot;'+o.ot+'&quot;)">'+
         '<b>'+o.placa+'</b><span>'+tiempo(o.mins)+'</span></div>'}).join('');
-    var pie=ots.length>5
-      ? '<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>'
-      : '';
+    var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
     return '<div class="kb'+(ETAPA_SEL===e.k?' on':'')+'" onclick="verEtapa(&quot;'+e.k+'&quot;)">'+
       '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
-      '<div class="n">'+ots.length+'</div>'+
-      '<div class="sub">'+S(imp)+'</div>'+
+      '<div class="n">'+ots.length+'</div><div class="sub">'+S(imp)+'</div>'+
       (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
       '<div class="lista abierta">'+lista+pie+'</div></div>';
   }).join('');
@@ -3771,15 +3807,77 @@ function pintarTaller(){
       '<div class="barra" style="height:12px"><i class="'+(cap>85?'bajo':'')+'" style="width:'+Math.min(100,cap)+'%"></i></div>';
   }
   var sel=document.getElementById('selEtapa');
-  sel.innerHTML=ETAPAS.map(function(e){
-    return '<option value="'+e.k+'"'+(ETAPA_SEL===e.k?' selected':'')+'>'+e.ic+' '+e.t+' · '+deEtapa(e.k).length+
-      (e.k==='ENTREGADO'?' (ya salieron)':'')+'</option>'}).join('');
+  if(sel)sel.innerHTML=ETAPAS_T.map(function(e){
+    return '<option value="'+e.k+'"'+(ETAPA_SEL===e.k?' selected':'')+'>'+e.ic+' '+e.t+' · '+deEtapa(e.k).length+'</option>'}).join('');
   pintarTabla();
 }
-function deEtapa(k){return OTS.filter(function(o){return o.estado===k})}
-function verEtapa(k){ETAPA_SEL=k;OT_SEL=null;pintarTaller();}
-function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarTaller();
+function verEtapa(k){ETAPA_SEL=k;OT_SEL=null;pintarKanbanTaller();}
+function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarKanbanTaller();
   document.getElementById('tablaEtapa').scrollIntoView({behavior:'smooth',block:'center'});}
+
+/* ---- Tienda: ventanilla despacho, ventanilla ppto aprobado, asesor, caja ---- */
+var ETAPAS_TIENDA=[
+ {k:'despacho',  t:'Ventanilla · despacho', ic:'📦'},
+ {k:'ppto',      t:'Ventanilla · ppto aprobado', ic:'🏷️'},
+ {k:'asesor',    t:'Asesor', ic:'🤝'},
+ {k:'caja',      t:'Caja · cobro', ic:'💳'}
+];
+function pintarTienda(){
+  if(!sb)return;
+  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA'],function(lista){
+    var ids=lista.map(function(o){return o.id});
+    if(!ids.length){KAN_TIENDA=[];pintarKanbanTienda();return}
+    sb.from('orden_detalle').select('orden_id,tipo,cobrado,despachado_el').in('orden_id',ids).then(function(r){
+      var por={};
+      (r.data||[]).forEach(function(l){
+        if(l.tipo!=='REP'||l.cobrado===false)return;
+        por[l.orden_id]=por[l.orden_id]||{t:0,d:0};
+        por[l.orden_id].t++; if(l.despachado_el)por[l.orden_id].d++;
+      });
+      KAN_TIENDA=[];
+      lista.forEach(function(o){
+        var c=por[o.id]||{t:0,d:0};
+        var enPpto=(o.estado_ot==='PRELIM_APROBADA'||o.estado_ot==='PRELIM2_APROBADA'||o.estado_ot==='DEF_ENVIADA');
+        if(enPpto&&c.t>c.d)KAN_TIENDA.push(Object.assign({},o,{est:'despacho',mins:minsDesde(o.aprob)||0,extra:c.d+'/'+c.t+' despachados'}));
+        if(enPpto)KAN_TIENDA.push(Object.assign({},o,{est:'ppto',mins:minsDesde(o.aprob)||0,
+          extra:o.estado_ot==='DEF_ENVIADA'?'final enviada':'por armar final'}));
+        if(o.estado_ot==='DEF_APROBADA'&&!o.voucher)KAN_TIENDA.push(Object.assign({},o,{est:'asesor',mins:minsDesde(o.def_aprob)||0,extra:'por cerrar'}));
+        if(o.estado_ot==='DEF_APROBADA')KAN_TIENDA.push(Object.assign({},o,{est:'caja',mins:minsDesde(o.def_aprob)||0,
+          extra:o.voucher?'validar voucher':'por cobrar'}));
+      });
+      pintarKanbanTienda();
+    },function(){});
+  });
+}
+function deTienda(k){return KAN_TIENDA.filter(function(o){return o.est===k})}
+function pintarKanbanTienda(){
+  document.getElementById('kanbanTienda').innerHTML=ETAPAS_TIENDA.map(function(e){
+    var ots=deTienda(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
+        imp=ots.reduce(function(a,o){return a+o.total},0),vis=ots.slice(0,5);
+    var lista=vis.map(function(o){
+      return '<div class="pl"><b>'+o.placa+'</b><span'+(o.mins>240?' style="color:var(--rojo);font-weight:700"':'')+'>'+tiempo(o.mins)+'</span></div>'}).join('');
+    var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
+    return '<div class="kb'+(TIENDA_SEL===e.k?' on':'')+'" onclick="verTienda(&quot;'+e.k+'&quot;)">'+
+      '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
+      '<div class="n">'+ots.length+'</div><div class="sub">'+S(imp)+'</div>'+
+      (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
+      '<div class="lista abierta">'+lista+pie+'</div></div>';
+  }).join('');
+  var e=ETAPAS_TIENDA.filter(function(x){return x.k===TIENDA_SEL})[0];
+  var ots=deTienda(TIENDA_SEL).slice().sort(function(a,b){return b.mins-a.mins});
+  document.getElementById('tablaTienda').innerHTML=
+    '<tr><th colspan="7" style="font-size:13px;color:var(--tinta);text-transform:none;letter-spacing:0;padding-bottom:12px">'+
+      '<span style="font-size:19px">'+e.ic+'</span> <b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+' órdenes</th></tr>'+
+    '<tr><th>OT</th><th>Placa</th><th>Cliente</th><th>Situación</th><th class="der">Tiempo</th><th class="der">Importe</th></tr>'+
+    (ots.length?ots.map(function(o){
+      return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td><td><span class="eti '+(o.mins>240?'e1':'e3')+'">'+o.extra+'</span></td>'+
+        '<td class="num der'+(o.mins>240?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
+        '<td class="num der">'+S(o.total)+'</td></tr>';
+    }).join(''):'<tr><td colspan="6" class="vacio"><b>Sin órdenes</b>Nada pendiente en esta estación.</td></tr>');
+}
+function verTienda(k){TIENDA_SEL=k;pintarKanbanTienda();
+  document.getElementById('tablaTienda').scrollIntoView({behavior:'smooth',block:'center'});}
 
 function pintarTabla(){
   var orden=document.getElementById('selOrden').value;
@@ -3787,17 +3885,17 @@ function pintarTabla(){
   if(orden==='importe')ots.sort(function(a,b){return b.importe-a.importe});
   else if(orden==='fidelidad')ots.sort(function(a,b){return RANK_NIV[b.nivel]-RANK_NIV[a.nivel]||b.mins-a.mins});
   else ots.sort(function(a,b){return b.mins-a.mins});
-  var et=ETAPAS.filter(function(e){return e.k===ETAPA_SEL})[0];
+  var et=ETAPAS_T.filter(function(e){return e.k===ETAPA_SEL})[0]||ETAPAS_T[0];
   var tot=ots.reduce(function(a,o){return a+o.importe},0);
   document.getElementById('tablaEtapa').innerHTML=
    '<tr><th colspan="8" style="font-size:13px;color:var(--tinta);text-transform:none;letter-spacing:0;padding-bottom:12px">'+
      '<span style="font-size:19px">'+et.ic+'</span> <b class="cond" style="font-size:19px">'+et.t+'</b> · '+ots.length+' vehículos · '+S(tot)+'</th></tr>'+
    '<tr><th>OT</th><th>Placa</th><th>Vehículo</th><th>Cliente</th><th>Nivel</th>'+
-   '<th>Trabajo</th><th>Técnico</th><th class="der">En taller</th><th class="der">Importe</th></tr>'+
+   '<th>OT</th><th>Mecánico</th><th class="der">En taller</th><th class="der">Importe</th></tr>'+
    ots.map(function(o){
      return '<tr class="'+(OT_SEL===o.ot?'sel':'')+'"><td class="num">'+o.ot+'</td>'+
      '<td class="num"><b>'+o.placa+'</b></td><td>'+o.veh+'</td><td>'+o.cliente+'</td>'+
-     '<td><span class="niv n-'+o.nivel+'">'+o.nivel+'</span></td><td>'+o.tarea+'</td><td>'+o.tec+'</td>'+
+     '<td><span class="niv n-'+o.nivel+'">'+o.nivel+'</span></td><td>'+(o.estado_ot||'—').replace(/_/g,' ')+'</td><td>'+o.tec+'</td>'+
      '<td class="num der'+(o.mins>1440?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
      '<td class="num der">'+S(o.importe)+'</td></tr>';
    }).join('');
@@ -4327,7 +4425,7 @@ function facturaNegra(snap,titulo){
 function cargarOrdenesBD(estadosOT,cb){
   if(!sb){cb([]);return}
   sb.from('ordenes')
-    .select('id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,'+
+    .select('id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,'+
             'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)')
     .in('estado_ot',estadosOT).eq('sede_id',SEDE_ACTIVA)
     .order('ingreso',{ascending:false}).limit(100)
@@ -4342,6 +4440,8 @@ function cargarOrdenesBD(estadosOT,cb){
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
           forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
           tarjeta_el:o.pago_tarjeta_el||null,comp:o.comprobante_tipo||'boleta',ruc:o.comprobante_ruc||'',
+          aprob:o.ot_prelim2_aprobada||o.ot_prelim_aprobada||null,def_aprob:o.ot_def_aprobada||null,
+          mec:o.mecanico_nombre||'',
           mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
       }));
     },function(){cb([])});
@@ -5044,7 +5144,7 @@ function renderCobro(){
       '<div style="min-width:170px"><label>Cajero que autoriza</label><select id="cajaUser">'+
         '<option value="">— seleccionar —</option>'+CAJEROS.map(function(c){
           return '<option value="'+c.u+'"'+(SESION&&SESION.usuario===c.u?' selected':'')+'>'+c.n+'</option>'}).join('')+'</select></div>'+
-      '<div style="min-width:120px"><label>Clave del cajero</label><input id="cajaClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>'+
+      '<div style="min-width:120px'+(CAJA_MODO==='efectivo'?'':';display:none')+'"><label>Clave del cajero</label><input id="cajaClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>'+
       '<div style="min-width:170px"><label>N° de comprobante</label><input id="cajaFact" placeholder="'+(o.comp==='factura'?'F001-004512':'B001-004512')+'"></div>'+
     '</div>';
   var cuerpo='';
@@ -5128,12 +5228,17 @@ function confirmarCobro(modo){
       fact=($('cajaFact').value||'').trim(),msg=$('cajaMsg');
   var caj=CAJEROS.filter(function(c){return c.u===uid})[0];
   if(!caj){alert('Selecciona el cajero que autoriza.');return}
-  if(clave.length<4){alert('Ingresa la clave del cajero.');$('cajaClave').focus();return}
+  var esEfectivo=(modo==='efectivo');
+  if(esEfectivo&&clave.length<4){alert('En efectivo se requiere la clave del cajero.');$('cajaClave').focus();return}
   if(fact.length<5){alert('Ingresa el comprobante emitido.');$('cajaFact').focus();return}
   if(modo==='tarjeta'&&!CAJA_VOUCHER){alert('Falta la foto del voucher.');return}
   var tot=cajaTotal(),o=CAJA_OT;
   msg.innerHTML='<div class="hint">Validando…</div>';
-  sb.rpc('validar_pin',{p_usuario:uid,p_pin:clave}).then(function(r){
+  /* con tarjeta la evidencia es el voucher; la clave solo se exige en efectivo */
+  var validar=esEfectivo
+    ? sb.rpc('validar_pin',{p_usuario:uid,p_pin:clave})
+    : Promise.resolve({data:[{id:null}]});
+  validar.then(function(r){
     if(r.error||!r.data||!r.data.length){
       msg.innerHTML='<div class="aviso rojo">Clave incorrecta para '+caj.n+'. El cobro no se registró.</div>';
       $('cajaClave').value='';return;
