@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v73</span>
+  <span class="demo-tag">v74</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -475,6 +475,28 @@ tr.sel td{background:var(--rojo-cl)}
 <div class="cab2" id="cab2">
   <div class="usr" id="usrNom"></div>
   <div class="rol" id="usrRol"></div>
+</div>
+<div class="drawer" id="modalVB" onclick="if(event.target===this)cerrarMotivoVB()">
+  <div class="panel" style="right:auto;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:360px;max-width:92vw;border-radius:14px">
+    <h3 class="sinbar" style="font-size:18px;margin-bottom:6px">Sin visto bueno del cliente</h3>
+    <div class="hint" style="margin:0 0 12px">Queda registrado quién autorizó y por qué.</div>
+    <label>Motivo</label>
+    <select id="vbMotivo" onchange="document.getElementById('vbOtroZona').classList.toggle('oculto',this.value!=='Otro')">
+      <option value="">— elegir —</option>
+      <option>Cliente sin celular</option>
+      <option>Cliente acepta verbalmente</option>
+      <option>Cliente de flota</option>
+      <option>Otro</option>
+    </select>
+    <div id="vbOtroZona" class="oculto" style="margin-top:10px">
+      <label>Indicar</label>
+      <input id="vbOtro" placeholder="Detalle del motivo">
+    </div>
+    <div class="fila" style="margin-top:14px">
+      <button class="btn chico ok" onclick="confirmarMotivoVB()">Autorizar</button>
+      <button class="btn chico sec" onclick="cerrarMotivoVB()">Cancelar</button>
+    </div>
+  </div>
 </div>
 <div class="drawer" id="drawer" onclick="if(event.target===this)toggleDrawer()">
   <div class="panel">
@@ -773,8 +795,9 @@ tr.sel td{background:var(--rojo-cl)}
 
       <!-- fase 2: aprobacion y cierre -->
       <div class="card" id="gEditar">
-        <h3>Datos internos de la orden</h3>
-        <div id="editZona"></div>
+        <h3 style="cursor:pointer" onclick="document.getElementById('editZona').classList.toggle('oculto');this.querySelector('.fl').textContent=document.getElementById('editZona').classList.contains('oculto')?'▼':'▲'">
+          Datos internos de la orden <span class="fl" style="margin-left:auto;color:var(--mudo);font-size:14px">▼</span></h3>
+        <div id="editZona" class="oculto"></div>
       </div>
       <div class="card" id="gAvance" style="display:none">
         <h3>Siguiente paso</h3>
@@ -3582,13 +3605,33 @@ function editarOT(){
   renderFlujos();
   setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
 }
+var VB_CB=null;
+function pedirMotivoVB(cb){
+  VB_CB=cb;
+  var s=document.getElementById('vbMotivo');s.value='';
+  document.getElementById('vbOtro').value='';
+  document.getElementById('vbOtroZona').classList.add('oculto');
+  document.getElementById('modalVB').classList.add('on');
+}
+function cerrarMotivoVB(){document.getElementById('modalVB').classList.remove('on');VB_CB=null}
+function confirmarMotivoVB(){
+  var m=document.getElementById('vbMotivo').value;
+  if(!m){alert('Elige un motivo.');return}
+  if(m==='Otro'){
+    var o=(document.getElementById('vbOtro').value||'').trim();
+    if(o.length<4){alert('Indica el motivo.');return}
+    m='Otro: '+o;
+  }
+  var cb=VB_CB;cerrarMotivoVB();
+  if(cb)cb(m);
+}
 function continuarSinConfirmar(){
   if(!LINEAS_SERV.length&&!LINEAS_REP.length){
     alert('Arma primero el presupuesto: no se puede iniciar el trabajo sin detalle.');return;
   }
-  var m=prompt('¿Por qué se inicia sin el visto bueno del cliente?\n(Ej. autorizó por teléfono, es cliente de flota, dejó el auto con instrucciones)');
-  if(m===null)return;
-  if(!m||m.trim().length<5){alert('El comentario es obligatorio y debe ser específico.');return}
+  pedirMotivoVB(function(m){ continuarSinConfirmarCon(m) });
+}
+function continuarSinConfirmarCon(m){
   var esP2=(EST_OT_ACT==='PRELIM2_ENVIADA'||TIENE_P2||EST_OT_ACT==='PRELIM_APROBADA');
   var kEnv=esP2?'PRELIM2_ENVIADA':'PRELIM_ENVIADA', kApr=esP2?'PRELIM2_APROBADA':'PRELIM_APROBADA';
   /* si la preliminar nunca se envió, el paso "enviada" queda cumplido con esta misma hora,
@@ -4442,6 +4485,10 @@ function ventRender(){
 
     ventBloqueDespacho()+
 
+    '<div class="fila" style="margin-top:14px">'+
+      '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
+      '<span class="hint" style="align-self:center;margin:0">Guarda códigos, precios y líneas sin enviar ni aprobar.</span>'+
+    '</div>'+
     '<div class="dos-vias">'+
       '<div class="via" style="background:#F0FBF3;border-color:#BFE6CE">'+
         '<label>A · Enviar OT final al cliente</label>'+
@@ -4628,10 +4675,18 @@ function ventEnviarFinal(){
      },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión.</div>'});
   });
 }
-function ventSinVB(){
-  var m=prompt('¿Por qué se aprueba la OT final sin el visto bueno del cliente?');
-  if(m===null)return;
-  if(!m||m.trim().length<5){alert('El comentario es obligatorio y debe ser específico.');return}
+function ventGuardar(){
+  var msg=$('ventMsg'),t=ventTotales(),o=VENT_OT;
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  ventGuardarLineas(function(err){
+    sb.from('ordenes').update({total_taller:t.tot}).eq('id',o.id).then(function(){},function(){});
+    auditar('GUARDA_VENTANILLA','orden',o.ot,'Avance guardado · '+S(t.tot),t.tot);
+    msg.innerHTML=err?'<div class="aviso rojo" style="margin:0">Algunas líneas no se guardaron.</div>'
+                     :'<div class="aviso ok" style="margin:0">Avance guardado. Puedes volver después.</div>';
+  });
+}
+function ventSinVB(){ pedirMotivoVB(function(m){ ventSinVBCon(m) }) }
+function ventSinVBCon(m){
   var t=ventTotales(),o=VENT_OT,msg=$('ventMsg');
   msg.innerHTML='<div class="hint">Guardando…</div>';
   ventGuardarLineas(function(){
@@ -4639,7 +4694,8 @@ function ventSinVB(){
       ventanilla_id:SESION?SESION.id:null,est_ventanilla:new Date().toISOString(),
       ot_def_enviada:new Date().toISOString(),ot_def_aprobada:new Date().toISOString()}).eq('id',o.id)
      .then(function(r){
-       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+
+         (r.error.message.indexOf('schema cache')>-1?'<br><b>Falta correr un paso SQL en Supabase (paso13).</b>':'')+'</div>';return}
        auditar('DEF_SIN_VB','orden',o.ot,'SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:''),t.tot);
        guardarSnapshot(o.id,'DEF_APROBADA',VENT_LIN,t.tot,'Sin VB del cliente · '+m.trim());
        msg.innerHTML='<div class="aviso ok" style="margin:0">OT final aprobada sin VB del cliente. Pasa al asesor.</div>';
