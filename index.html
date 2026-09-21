@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v72</span>
+  <span class="demo-tag">v73</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -884,32 +884,10 @@ tr.sel td{background:var(--rojo-cl)}
 
 <!-- ================= CAJA (link propio) ================= -->
 <section class="vista" id="v-caja">
-  <div class="card" style="max-width:820px;margin:0 auto">
-    <h3>💳 Caja · órdenes listas para cobrar</h3>
-    <div class="aviso info">Pantalla exclusiva de caja. El taller no puede cerrar ni cobrar una orden.</div>
-    <div style="overflow-x:auto"><table id="cajaTabla"></table></div>
-    <div id="cajaMsg"></div>
-  </div>
-
-  <div class="card" id="cajaDetalle" style="display:none;max-width:820px;margin:0 auto">
-    <h3>Validar consumos antes de cobrar</h3>
-    <div id="cobroCab" style="margin-bottom:14px"></div>
-    <div class="aviso rojo">Desmarca lo que no se entregó y corrige los precios si cambiaron. Se cobra lo que quede marcado.</div>
-    <div style="overflow-x:auto"><table id="cobroLineas"></table></div>
-    <div id="cobroTot" style="margin-top:16px"></div>
-    <div class="fila" style="margin-top:16px">
-      <div style="min-width:200px"><label>Cajero que autoriza *</label>
-        <select id="cajaUser" onchange="cajaClaveReset()"></select></div>
-      <div style="min-width:150px"><label>Clave personal *</label>
-        <input id="cajaClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>
-      <div style="min-width:190px"><label>N° de comprobante emitido *</label>
-        <input id="cajaFact" placeholder="F001-004512"></div>
-    </div>
-    <div class="fila" style="margin-top:14px">
-      <button class="btn chico oscuro" onclick="confirmarCobro()">Registrar pago real</button>
-      <button class="btn chico sec" onclick="pintarCaja()">Volver</button>
-    </div>
-    <div class="hint" id="cajaHint">Cada cobro queda firmado con el cajero que lo autorizó.</div>
+  <div class="card">
+    <h3>💳 Caja</h3>
+    <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">Cobra en efectivo o con tarjeta, y valida los cobros con tarjeta que registró el asesor.</p>
+    <div id="cajaZona"></div>
   </div>
 </section>
 
@@ -2689,6 +2667,16 @@ function sincronizarDesdeBase(){
       if(d.prelim_sin_vb&&!HITOS['SINVB_PRELIM_APROBADA']&&!HITOS['SINVB_PRELIM2_APROBADA']){
         HITOS['SINVB_'+(d.tiene_prelim2?'PRELIM2_APROBADA':'PRELIM_APROBADA')]=true;cambio=true}
       if(d.def_sin_vb&&!HITOS['SINVB_DEF_APROBADA']){HITOS['SINVB_DEF_APROBADA']=true;cambio=true}
+      /* horas de los hitos guardados en la base, para lo hecho en otros equipos */
+      var mapaH={ot_prelim_enviada:'O_PRELIM_ENVIADA',ot_prelim_aprobada:'O_PRELIM_APROBADA',
+        ot_prelim2_enviada:'O_PRELIM2_ENVIADA',ot_prelim2_aprobada:'O_PRELIM2_APROBADA',
+        ot_def_enviada:'O_DEF_ENVIADA',ot_def_aprobada:'O_DEF_APROBADA',ot_pagada:'O_PAGADA'};
+      Object.keys(mapaH).forEach(function(c){ if(d[c]&&!HITOS[mapaH[c]]){HITOS[mapaH[c]]=selloHora(d[c]);cambio=true} });
+      sb.from('orden_snapshots').select('etapa,creado').eq('orden_id',d.id).order('creado').then(function(rs){
+        var ch=false;
+        (rs.data||[]).forEach(function(s){ if(!HITOS['O_'+s.etapa]){HITOS['O_'+s.etapa]=selloHora(s.creado);ch=true} });
+        if(ch){guardarOrden();renderFlujos()}
+      },function(){});
       if(d.estado_taller&&d.estado_taller!==EST_TALLER){EST_TALLER=d.estado_taller;cambio=true}
       if((d.estado_ot||'')!==(EST_OT_ACT||'')){EST_OT_ACT=d.estado_ot||'';cambio=true}
       if(d.mecanico_nombre&&!MECANICO_OT){MECANICO_OT=d.mecanico_nombre;
@@ -3458,8 +3446,22 @@ function datosDelPaso(f,k,paso){
   else if(k==='DEF_APROBADA'){ filas=fila('Aprobado',hh)+fila('Efecto','pasa a caja para el cobro'); }
   else if(k==='PAGADA'){ filas=fila('Pagada',hh)+fila('Efecto','el vehículo puede entregarse'); }
 
+  var conSnap=(f==='ot');
+  if(conSnap)setTimeout(function(){pintarSnapshotEtapa(k)},60);
   return '<div class="card"><h3>'+paso.ic+' '+paso.t+
-    ' <span class="eti e4" style="margin-left:auto">completada</span></h3>'+filas+'</div>';
+    ' <span class="eti e4" style="margin-left:auto">completada</span></h3>'+filas+
+    (conSnap?'<div id="snapEtapa" style="margin-top:12px"><div class="hint">Cargando la OT de esta etapa…</div></div>':'')+'</div>';
+}
+function pintarSnapshotEtapa(etapa){
+  var z=document.getElementById('snapEtapa');if(!z||!sb||!OT_NUM)return;
+  sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
+    if(!r.data){z.innerHTML='';return}
+    sb.from('orden_snapshots').select('*').eq('orden_id',r.data.id).eq('etapa',etapa)
+      .order('creado',{ascending:false}).limit(1).then(function(rs){
+        var s=(rs.data||[])[0];
+        z.innerHTML=s?facturaNegra(s,'OT en esta etapa'):'<div class="hint">Esta etapa no dejó una foto de la OT.</div>';
+      },function(){z.innerHTML=''});
+  },function(){});
 }
 
 function toggleMenu(id){
@@ -3597,6 +3599,10 @@ function continuarSinConfirmar(){
   var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
   setOT(kApr,nota);
   if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true}).eq('numero',OT_NUM).then(function(){},function(){});
+  snapshotPorNumero(OT_NUM,kApr,
+    LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
+      .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
+    totalesV2().tot,nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
   alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
 }
@@ -3922,6 +3928,10 @@ function enviarPreliminar(){
     } else {
       setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
     }
+    snapshotPorNumero(OT_NUM,esP2?'PRELIM2_ENVIADA':'PRELIM_ENVIADA',
+      LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
+        .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
+      t.tot,'Revisión '+PRELIM_REV);
     hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada'+
       (PRELIM_REV>1?' (revisión '+PRELIM_REV+': si había un link anterior, quedó sin efecto)':'')+'.</span> '+
       'Confirma el envío en WhatsApp.';
@@ -4094,6 +4104,9 @@ function cliAprobar(){
       : {estado_ot:esP2?'PRELIM2_APROBADA':'PRELIM_APROBADA',estado:'EN_PROCESO',estado_taller:'EN_PROCESO',
          ot_prelim_aprobada:new Date().toISOString()};
     sb.from('ordenes').update(patch).eq('numero',FICHA.ot).then(function(){},function(){});
+    snapshotPorNumero(FICHA.ot,patch.estado_ot,
+      (FICHA.lineas||[]).map(function(l){return {desc:l.d,cant:1,precio:l.p,c:l.c}}),
+      FICHA.total,'Aprobado por el cliente desde su link');
     sb.from('auditoria').insert({
       usuario_nom:FICHA.cliente||'Cliente',rol:'cliente',accion:esDef?'APRUEBA_FINAL':'APRUEBA_SERVICIO',
       entidad:'orden',referencia:FICHA.ot,detalle:'Aprobado desde el link',monto:FICHA.total||null
@@ -4173,10 +4186,53 @@ function guardarDetalleBD(){
   },function(){});
 }
 
+/* Número corto para pantallas chicas: OT-2026-00201 → OT 201 */
+function otCorto(n){
+  var m=String(n||'').match(/(\d+)$/);
+  return m?'OT '+String(Number(m[1])):String(n||'');
+}
+/* Foto de la OT en un hito: líneas y total tal como quedaron */
+function guardarSnapshot(ordenId,etapa,lineas,total,nota){
+  if(!sb||!ordenId)return;
+  var ln=(lineas||[]).map(function(l){
+    return {d:l.desc||l.d||'',c:l.cant||1,p:Number((l.final!==undefined?l.final:l.precio)||l.p||0),
+            t:l.tipo||'',x:(l.incluir===false||l.c==='X')?1:0,k:l.cambio||l.c||''};
+  });
+  sb.from('orden_snapshots').insert({orden_id:ordenId,etapa:etapa,lineas:ln,total:total||0,
+    nota:nota||null,usuario:SESION?SESION.nombre:(document.body.classList.contains('modo-cliente')?'cliente':null)})
+   .then(function(){},function(){});
+}
+function snapshotPorNumero(numero,etapa,lineas,total,nota){
+  if(!sb||!numero)return;
+  sb.from('ordenes').select('id').eq('numero',numero).maybeSingle().then(function(r){
+    if(r.data)guardarSnapshot(r.data.id,etapa,lineas,total,nota);
+  },function(){});
+}
+/* Factura en negro a partir de un snapshot */
+function facturaNegra(snap,titulo){
+  var ln=snap.lineas||[];
+  var act=ln.filter(function(l){return !l.x}),ret=ln.filter(function(l){return l.x});
+  var sub=act.reduce(function(a,l){return a+l.p*l.c},0),igv=Math.round(sub*0.18);
+  return '<div class="bloque-pres"><label style="margin:0 0 8px">'+titulo+
+    (snap.creado?' · <span class="num" style="font-size:11px">'+selloHora(snap.creado)+'</span>':'')+
+    (snap.usuario?' · '+snap.usuario:'')+'</label>'+
+    '<table><tr><th>Concepto</th><th class="der">Cant</th><th class="der">Subtotal</th></tr>'+
+    (act.length?act.map(function(l){
+      return '<tr><td>'+l.d+(l.k==='A'?' <span class="eti e4">nuevo</span>':'')+'</td>'+
+        '<td class="der num">'+l.c+'</td><td class="num der">'+S(l.p*l.c)+'</td></tr>'}).join('')
+      :'<tr><td colspan="3" class="hint">Sin líneas</td></tr>')+
+    (ret.length?'<tr><td colspan="3" class="hint">Retirados: '+ret.map(function(l){return l.d}).join(', ')+'</td></tr>':'')+
+    '</table>'+
+    '<div class="fila" style="margin-top:10px">'+
+      '<div class="kpi kpi-osc"><div class="v">'+S(sub)+'</div><div class="l">Subtotal</div></div>'+
+      '<div class="kpi kpi-osc"><div class="v">'+S(igv)+'</div><div class="l">IGV 18%</div></div>'+
+      '<div class="kpi kpi-osc rojo"><div class="v">'+S(Number(snap.total)||sub+igv)+'</div><div class="l">Total</div></div>'+
+    '</div>'+(snap.nota?'<div class="hint" style="margin-top:8px">'+snap.nota+'</div>':'')+'</div>';
+}
 function cargarOrdenesBD(estadosOT,cb){
   if(!sb){cb([]);return}
   sb.from('ordenes')
-    .select('id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,'+
+    .select('id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,'+
             'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)')
     .in('estado_ot',estadosOT).eq('sede_id',SEDE_ACTIVA)
     .order('ingreso',{ascending:false}).limit(100)
@@ -4189,6 +4245,8 @@ function cargarOrdenesBD(estadosOT,cb){
           cliente:c.nombre||'—',tel:c.telefono||'',
           estado_ot:o.estado_ot,estado_taller:o.estado_taller,
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
+          forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
+          tarjeta_el:o.pago_tarjeta_el||null,comp:o.comprobante_tipo||'boleta',ruc:o.comprobante_ruc||'',
           mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
       }));
     },function(){cb([])});
@@ -4266,10 +4324,10 @@ function ventLista(){
       (lista.length?lista.map(function(o){
         var chip=o.estado_ot==='DEF_ENVIADA'?'<span class="eti e3">Final enviada</span>'
                :'<span class="eti e4">'+(o.estado_ot==='PRELIM2_APROBADA'?'Prelim. 2 aprobada':'Prelim. aprobada')+'</span>';
-        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
         '<td>'+o.cliente+'</td><td>'+chip+'</td>'+
-        '<td class="num der'+(o.mins>1440?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
-        '<td><button class="btn chico" onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
+        '<td class="num der'+(o.mins>1440?' alto':'')+'" style="white-space:nowrap">'+tiempo(o.mins)+'</td>'+
+        '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado.</td></tr>')+
       '</table></div>';
@@ -4308,8 +4366,8 @@ function ventRender(){
   var sinCod=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
   $('ventDetalle').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
-    '<span class="donde">'+o.ot+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
-    '<h3>Orden de trabajo · '+o.ot+'</h3>'+
+    '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    '<h3>Orden de trabajo · '+otCorto(o.ot)+'</h3>'+
     '<div class="hint" style="margin:-4px 0 12px">Repuestos: código de stock y precio. Servicios: solo precio. '+
       'Si algo no hay, retíralo (✕) y agrega el sustituto.</div>'+
     (VENT_LIN.length?'':'<div class="aviso rojo"><b>Esta orden no tiene detalle guardado en la base.</b> '+
@@ -4552,6 +4610,7 @@ function ventEnviarFinal(){
      .then(function(r){
        if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
        auditar('ENVIA_DEFINITIVO','orden',o.ot,'OT final '+S(t.tot)+(cambios.length?' · '+cambios.length+' cambio(s)':''),t.tot);
+       guardarSnapshot(o.id,'DEF_ENVIADA',VENT_LIN,t.tot,cambios.length?cambios.length+' cambio(s) en ventanilla':null);
        var texto='*IZA MOTORS* — OT final '+o.ot+'\n'+
          'Hola '+o.cliente+', ya validamos los repuestos de su '+o.placa+'. Este es el detalle definitivo'+
          (cambios.length?' con los cambios realizados en almacén':'')+'.\n\n'+
@@ -4582,6 +4641,7 @@ function ventSinVB(){
      .then(function(r){
        if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
        auditar('DEF_SIN_VB','orden',o.ot,'SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:''),t.tot);
+       guardarSnapshot(o.id,'DEF_APROBADA',VENT_LIN,t.tot,'Sin VB del cliente · '+m.trim());
        msg.innerHTML='<div class="aviso ok" style="margin:0">OT final aprobada sin VB del cliente. Pasa al asesor.</div>';
        setTimeout(pintarVentanilla,1500);
      },function(){});
@@ -4589,10 +4649,11 @@ function ventSinVB(){
 }
 
 /* ============================================================
-   ASESOR DE SERVICIO · precio final y cierre con el cliente
+   ASESOR DE SERVICIO · OT final aprobada
+   Puede agregar repuestos y cobrar con tarjeta (foto del voucher);
+   el cobro queda pendiente de validación en caja.
    ============================================================ */
-var TOLERANCIA=0.10;
-var ASE_OT=null,ASE_LIN=[],ASE_EST=0;
+var ASE_OT=null,ASE_LIN=[],ASE_ADD=false,ASE_VOUCHER=null;
 
 function pintarAsesor(){
   ASE_OT=null;
@@ -4600,262 +4661,152 @@ function pintarAsesor(){
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     $('asesorLista').innerHTML=
       '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>Estado</th><th class="der">Estimado</th><th></th></tr>'+
+      '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td>'+
-        '<td><span class="eti '+(o.estado_ot==='DEF_APROBADA'?'e4':'e3')+'">'+
-        (o.estado_ot==='DEF_APROBADA'?'Aprobada':'Por confirmar')+'</span></td>'+
+        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">pendiente</span>';
+        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td><td>'+pago+'</td>'+
         '<td class="num der">'+S(o.total)+'</td>'+
-        '<td><button class="btn chico" onclick="aseAbrir('+o.id+')">Atender</button></td></tr>';
+        '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="aseAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
       '</table></div>';
   });
 }
 function aseAbrir(id){
-  $('asesorLista').innerHTML='<div class="hint">Abriendo…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarAsesor();return}
-    ASE_OT=o;ASE_EST=Number(o.total)||0;
-    cargarLineasBD(id,function(lin){ ASE_LIN=lin; aseRender(); });
+    ASE_OT=o;ASE_ADD=false;ASE_VOUCHER=null;
+    cargarLineasBD(id,function(lin){ ASE_LIN=lin; aseRender(); window.scrollTo({top:0,behavior:'smooth'}); });
   });
 }
 function aseTotales(){
   var sub=0;
   ASE_LIN.forEach(function(l){ if(l.incluir)sub+=Number(l.final||0)*Number(l.cant||1) });
-  var igv=Math.round(sub*0.18),tot=sub+igv;
-  var dif=ASE_EST?((tot-ASE_EST)/ASE_EST):0;
-  return {sub:sub,igv:igv,tot:tot,dif:dif};
+  var igv=Math.round(sub*0.18);
+  return {sub:sub,igv:igv,tot:sub+igv};
 }
 function aseRender(){
-  var o=ASE_OT,t=aseTotales(),excede=t.dif>TOLERANCIA;
+  var o=ASE_OT,t=aseTotales();
   var cats=[];REPUESTOS.forEach(function(r){if(cats.indexOf(r.categoria)===-1&&r.categoria)cats.push(r.categoria)});
+  var snap={lineas:ASE_LIN.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:l.incluir?0:1,k:l.cambio}}),total:t.tot};
   $('asesorLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarAsesor()">← Volver a la lista</button>'+
-    '<span class="donde">Orden <b>'+o.ot+'</b> · '+o.placa+' · '+o.cliente+'</span></div>'+
-    '<div style="overflow-x:auto"><table><tr><th>Cobrar</th><th>Concepto</th><th>Almacén</th>'+
-    '<th class="der">Cant</th><th class="der">Referencial</th><th class="der">Precio final</th><th class="der">Subtotal</th></tr>'+
-    ASE_LIN.map(function(l,i){
-      var sinStock=(l.stock===false);
-      return '<tr'+(l.incluir?'':' style="opacity:.45"')+'>'+
-       '<td><input type="checkbox" '+(l.incluir?'checked':'')+' onchange="aseIncluir('+i+',this.checked)" '+
-         'style="width:22px;height:22px;accent-color:var(--rojo)"></td>'+
-       '<td>'+l.desc+(sinStock?' <span class="eti e1">sin stock</span>':'')+'</td>'+
-       '<td class="num" style="font-size:12px;color:var(--mudo)">'+(l.cod_alm||'—')+'</td>'+
-       '<td class="der num">'+l.cant+'</td>'+
-       '<td class="num der" style="color:var(--mudo)">'+S(l.precio)+'</td>'+
-       '<td class="der"><input type="number" min="0" value="'+l.final+'" style="width:100px;text-align:right;padding:7px" '+
-         'oninput="aseFinal('+i+',this.value)"></td>'+
-       '<td class="num der"><b>'+S((l.incluir?l.final*l.cant:0))+'</b></td></tr>';
-    }).join('')+'</table></div>'+
-    '<div class="fila" style="margin-top:14px">'+
-      '<div style="min-width:170px"><label>Agregar producto</label><select id="aseCat" onchange="aseItems()">'+
-        '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
-      '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="aseItem"></select></div>'+
-      '<div style="flex:0 0 auto;align-self:flex-end"><button class="btn chico sec" onclick="aseAgregar()">Agregar</button></div>'+
-    '</div>'+
-    '<div class="grid g4" style="margin-top:16px">'+
-      kpi(S(ASE_EST),'Estimado aprobado','tinta')+
-      kpi(S(t.tot),'Total a cobrar')+
-      kpi((t.dif>=0?'+':'')+Math.round(t.dif*100)+'%','Variación',excede?'':'verde')+
-      kpi(ASE_LIN.filter(function(l){return !l.incluir}).length,'Conceptos excluidos','tinta')+
-    '</div>'+
-    (excede
-      ? '<div class="aviso rojo" style="margin-top:14px"><b>Supera en más de '+Math.round(TOLERANCIA*100)+
-        '% el estimado aprobado.</b> Conviene que el cliente apruebe el definitivo, salvo que pague ahora.</div>'
-      : '<div class="aviso ok" style="margin-top:14px">Dentro del margen aprobado por el cliente.</div>')+
-    '<div class="fila" style="margin-top:14px">'+
-      '<button class="btn chico ok" onclick="aseConformidad()">Cerrar con el cliente</button>'+
-      '<button class="btn chico sec" onclick="aseDevolver()">Devolver a ventanilla</button>'+
-    '</div>'+
+    '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    facturaNegra(snap,'OT final aprobada')+
+    (o.voucher
+      ? '<div class="aviso ok" style="margin-top:12px"><b>Cobro con tarjeta registrado</b> por '+(o.tarjeta_por||'')+
+        (o.tarjeta_el?' · '+selloHora(o.tarjeta_el):'')+'. Pendiente de validación en caja.<br>'+
+        '<a href="'+o.voucher+'" target="_blank" rel="noopener">Ver voucher</a></div>'
+      : '<div style="margin-top:12px">'+
+          '<button class="btn chico sec" onclick="aseToggleAdd()">'+(ASE_ADD?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
+        '</div>'+
+        (ASE_ADD
+          ? '<div class="card" style="margin:10px 0 0;background:var(--gris)">'+
+            '<div class="fila" style="align-items:flex-end">'+
+              '<div style="min-width:160px"><label>Del catálogo</label><select id="aseCat" onchange="aseItems()">'+
+                '<option value="">— categoría —</option>'+cats.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
+              '<div style="flex:2;min-width:190px"><label>&nbsp;</label><select id="aseItem"></select></div>'+
+              '<div style="flex:0 0 auto"><button class="btn chico" onclick="aseAgregar()">Agregar</button></div>'+
+            '</div>'+
+            '<div class="fila" style="margin-top:8px;align-items:flex-end">'+
+              '<div style="flex:2;min-width:190px"><label>Otro (libre)</label><input id="aseLibre" placeholder="Descripción"></div>'+
+              '<div style="min-width:110px"><label>Precio</label><input id="aseLibreP" type="number" min="0" placeholder="0"></div>'+
+              '<div style="flex:0 0 auto"><button class="btn chico" onclick="aseAgregarLibre()">Agregar</button></div>'+
+            '</div></div>'
+          : '')+
+        '<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
+          '<h3 style="font-size:15px">💳 Cobrar con tarjeta</h3>'+
+          '<div class="hint" style="margin:-4px 0 10px">Solo tarjeta desde el asesor. Toma la foto del voucher como validación; '+
+            'caja confirma el cobro después.</div>'+
+          '<input type="file" id="aseVoucher" accept="image/*" capture="environment" onchange="aseVoucherCargado(this)" style="padding:8px">'+
+          '<div id="aseVoucherPrev" style="margin-top:8px"></div>'+
+          '<div class="fila" style="margin-top:10px">'+
+            '<button class="btn chico ok" onclick="aseCobrarTarjeta()">Registrar cobro con tarjeta · '+S(t.tot)+'</button>'+
+          '</div>'+
+        '</div>')+
     '<div id="aseMsg" style="margin-top:10px"></div>';
   aseItems();
 }
-function aseIncluir(i,v){ASE_LIN[i].incluir=v;aseRender()}
-function aseFinal(i,v){ASE_LIN[i].final=Number(v)||0;aseRender()}
+function aseToggleAdd(){ASE_ADD=!ASE_ADD;aseRender()}
 function aseItems(){
   var s=document.getElementById('aseCat');if(!s)return;
   var cat=s.value,lista=REPUESTOS.filter(function(r){return !cat||r.categoria===cat});
   document.getElementById('aseItem').innerHTML='<option value="">— producto —</option>'+
     lista.map(function(r){return '<option value="'+r.codigo+'">'+r.descripcion+' · '+S(r.precio)+'</option>'}).join('');
 }
-function aseAgregar(){
-  var cod=document.getElementById('aseItem').value;if(!cod)return;
-  var r=REPUESTOS.filter(function(x){return x.codigo===cod})[0];if(!r)return;
-  sb.from('orden_detalle').insert({orden_id:ASE_OT.id,tipo:'REP',
-    descripcion:r.descripcion+' (agregado por asesor)',cantidad:1,
-    precio_taller:Number(r.precio),precio_caja:Number(r.precio),
-    stock_ok:true,cobrado:true,agregado_por:'asesor'}).select().single()
+function aseInsertar(desc,precio){
+  sb.from('orden_detalle').insert({orden_id:ASE_OT.id,tipo:'REP',descripcion:desc,cantidad:1,
+    precio_taller:precio,precio_caja:precio,stock_ok:true,cobrado:true,agregado_por:'asesor',cambio:'A',
+    nota_cambio:'agregado por el asesor'}).select().single()
    .then(function(res){
      if(res.error){$('aseMsg').innerHTML='<div class="aviso rojo">'+res.error.message+'</div>';return}
-     ASE_LIN.push({id:res.data.id,tipo:'REP',desc:res.data.descripcion,cant:1,
-       precio:Number(r.precio),final:Number(r.precio),stock:true,cod_alm:'',incluir:true});
-     auditar('AGREGA_ITEM','orden',ASE_OT.ot,r.descripcion,r.precio);
+     ASE_LIN.push({id:res.data.id,tipo:'REP',desc:desc,cant:1,precio:precio,final:precio,stock:true,cod_alm:'',incluir:true,cambio:'A'});
+     auditar('AGREGA_ITEM','orden',ASE_OT.ot,desc+' · '+S(precio),precio);
+     var t=aseTotales();
+     sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
      aseRender();
    },function(){});
 }
-function aseGuardarLineas(cb){
-  var pend=ASE_LIN.length;
-  if(!pend){cb();return}
-  ASE_LIN.forEach(function(l){
-    sb.from('orden_detalle').update({precio_caja:l.final,cobrado:l.incluir}).eq('id',l.id)
-     .then(function(){ if(--pend===0)cb() },function(){ if(--pend===0)cb() });
-  });
+function aseAgregar(){
+  var cod=document.getElementById('aseItem').value;if(!cod)return;
+  var r=REPUESTOS.filter(function(x){return x.codigo===cod})[0];if(!r)return;
+  aseInsertar(r.descripcion,Number(r.precio));
 }
-
-function aseConformidad(){
+function aseAgregarLibre(){
+  var d=(document.getElementById('aseLibre').value||'').trim(),p=Number(document.getElementById('aseLibreP').value)||0;
+  if(!d){alert('Escribe la descripción.');return}
+  aseInsertar(d,p);
+}
+function aseVoucherCargado(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(e){
+    /* se reduce la foto para que suba rápido */
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas'),k=Math.min(1,1200/Math.max(img.width,img.height));
+      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      ASE_VOUCHER=c.toDataURL('image/jpeg',0.8);
+      document.getElementById('aseVoucherPrev').innerHTML='<img src="'+ASE_VOUCHER+'" style="max-width:220px;border-radius:8px;border:1px solid var(--borde)">';
+    };
+    img.src=e.target.result;
+  };
+  fr.readAsDataURL(f);
+}
+function aseCobrarTarjeta(){
+  var msg=$('aseMsg');
+  if(!ASE_VOUCHER){msg.innerHTML='<div class="aviso rojo" style="margin:0">Falta la foto del voucher.</div>';return}
   var t=aseTotales(),o=ASE_OT;
-  var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var fuera=ASE_LIN.filter(function(l){return !l.incluir});
-  $('aseMsg').innerHTML=
-   '<div class="card" style="margin:14px 0 0;border-color:var(--rojo)">'+
-   '<h3>Detalle final · ¿cómo lo confirma el cliente?</h3>'+
-   '<table><tr><th>Concepto</th><th class="der">Importe</th></tr>'+
-   incl.map(function(l){
-     var cambio=(Number(l.final)!==Number(l.precio));
-     return '<tr><td>'+l.desc+(cambio?' <span class="eti e3">ajustado desde '+S(l.precio)+'</span>':'')+'</td>'+
-     '<td class="num der">'+S(l.final*l.cant)+'</td></tr>';
-   }).join('')+
-   (fuera.length?'<tr><td colspan="2" class="hint">Retirados: '+fuera.map(function(l){return l.desc}).join(', ')+'</td></tr>':'')+
-   '<tr><td>IGV 18%</td><td class="num der">'+S(t.igv)+'</td></tr>'+
-   '<tr><td><b>TOTAL</b></td><td class="num der"><b style="color:var(--rojo);font-size:17px">'+S(t.tot)+'</b></td></tr>'+
-   '</table>'+
-   '<div class="grid g2" style="margin-top:12px">'+
-     kpi(S(ASE_EST),'Aprobó inicialmente','tinta')+
-     kpi((t.dif>=0?'+':'')+S(t.tot-ASE_EST),'Diferencia')+
-   '</div>'+
-   '<div class="grid g2" style="margin-top:18px;gap:14px">'+
-     '<div class="card" style="margin:0">'+
-       '<h3 style="font-size:15px">A · No paga ahora</h3>'+
-       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">Se le envía el definitivo por WhatsApp '+
-       'y lo aprueba desde su celular.</p>'+
-       '<div class="fila" style="align-items:center">'+
-         '<div style="flex:1;min-width:150px"><div style="display:flex;align-items:center;gap:7px">'+
-           '<span class="num" style="color:var(--mudo);font-weight:700">+51</span>'+
-           '<input id="aseWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'"></div></div>'+
-         '<button class="btn chico" style="flex:0 0 auto;background:#25D366;color:#0A2E19" '+
-           'onclick="aseEnviarFinal()">Enviar definitivo</button>'+
-       '</div>'+
-     '</div>'+
-     '<div class="card" style="margin:0;border-color:var(--verde)">'+
-       '<h3 style="font-size:15px">B · Paga ahora</h3>'+
-       '<p style="font-size:13px;color:var(--mudo);margin:0 0 12px">El pago es la confirmación. '+
-       'Elige la forma de pago y pasa a caja.</p>'+
-       '<div class="fila" style="align-items:flex-end">'+
-         '<div style="flex:1;min-width:150px"><label>Forma de pago</label>'+
-           '<select id="asePago2"><option value="">— elegir —</option>'+
-           '<option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option>'+
-           '<option value="transferencia">Transferencia</option></select></div>'+
-         '<button class="btn chico ok" style="flex:0 0 auto" onclick="asePagaAhora()">Pasa a caja</button>'+
-       '</div>'+
-     '</div>'+
-   '</div>'+
-   '<div class="fila" style="margin-top:14px">'+
-     '<button class="btn chico sec" onclick="imprimirConformidad()">🖨️ Imprimir detalle</button>'+
-     '<button class="btn chico peligro" onclick="aseNoConforme()">El cliente no acepta</button>'+
-   '</div>'+
-   '<div id="aseFirmaMsg" style="margin-top:10px"></div></div>';
-  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-}
-
-function linkFinal(){
-  if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
-  var o=ASE_OT,t=aseTotales();
-  var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var ln=incl.map(function(l){return (l.cant+'x '+l.desc).replace(/[~|&]/g,' ').slice(0,44)+'~'+(l.final*l.cant)}).join('|');
-  var q='v=cliente&f=d&ot='+encodeURIComponent(o.ot)+
-        '&pl='+encodeURIComponent(o.placa)+'&vh='+encodeURIComponent(o.veh||'')+
-        '&cl='+encodeURIComponent(o.cliente)+
-        '&tf='+t.tot+'&ln='+encodeURIComponent(ln);
-  return APP_URL+(APP_URL.indexOf('?')>-1?'&':'?')+q;
-}
-function aseEnviarFinal(){
-  var num=(document.getElementById('aseWA').value||'').replace(/\D/g,'');
-  var msg=document.getElementById('aseFirmaMsg');
-  if(num.length<9){msg.innerHTML='<div class="aviso rojo" style="margin:0">Ingresa el número del cliente.</div>';return}
-  var t=aseTotales(),o=ASE_OT;
-  var incl=ASE_LIN.filter(function(l){return l.incluir});
-  msg.innerHTML='<div class="hint">Guardando…</div>';
-  aseGuardarLineas(function(){
-    sb.from('ordenes').update({total_taller:t.tot,asesor_id:SESION?SESION.id:null,
-      est_asesor:new Date().toISOString(),ot_def_enviada:new Date().toISOString()})
-     .eq('id',o.id).then(function(){
-      var texto='*IZA MOTORS* — Detalle definitivo '+o.ot+'\n'+
-        'Hola '+o.cliente+', ya validamos los repuestos de su '+o.placa+'.\n\n'+
-        '*Detalle final*\n'+
-        incl.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.final*l.cant)}).join('\n')+'\n'+
-        '*Total con IGV: '+S(t.tot)+'*\n'+
-        (ASE_EST?'_Estimado inicial: '+S(ASE_EST)+' · diferencia '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'_\n':'')+
-        (linkFinal()?'\nApruebe el detalle definitivo acá:\n'+linkFinal()+'\n':'')+
-        '\nUna vez aprobado pasamos a facturación.';
-      auditar('ENVIA_DEFINITIVO','orden',o.ot,'Definitivo '+S(t.tot),t.tot);
-      msg.innerHTML='<div class="aviso info" style="margin:0">Marcada como enviada. Se abre WhatsApp para que confirmes el envío.</div>';
-      abrirWhatsApp(num,texto);
-      setTimeout(pintarAsesor,1800);
-    },function(){});
-  });
-}
-function asePagaAhora(){
-  var pago=document.getElementById('asePago2').value;
-  var msg=document.getElementById('aseFirmaMsg');
-  if(!pago){msg.innerHTML='<div class="aviso rojo" style="margin:0">Elige la forma de pago.</div>';return}
-  var t=aseTotales(),o=ASE_OT;
-  msg.innerHTML='<div class="hint">Guardando…</div>';
-  aseGuardarLineas(function(){
-    sb.from('ordenes').update({estado_ot:'DEF_APROBADA',forma_pago:pago,total_taller:t.tot,
-      asesor_id:SESION?SESION.id:null,est_asesor:new Date().toISOString(),
-      ot_def_aprobada:new Date().toISOString()}).eq('id',o.id)
-     .then(function(r){
-       if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
-       auditar('CONFIRMA_PAGO_DIRECTO','orden',o.ot,'Pago '+pago+' · final '+S(t.tot),t.tot);
-       msg.innerHTML='<div class="aviso ok" style="margin:0">Enviada a caja'+
-         (pago==='tarjeta'?'. Con tarjeta, caja solo valida el monto.':'.')+'</div>';
-       setTimeout(pintarAsesor,1300);
-     },function(){});
-  });
-}
-function aseDevolver(){
-  var m=prompt('¿Por qué vuelve a ventanilla?');
-  if(m===null)return;
-  sb.from('ordenes').update({estado_ot:'PRELIM_APROBADA'}).eq('id',ASE_OT.id).then(function(){
-    auditar('DEVUELVE_VENTANILLA','orden',ASE_OT.ot,m||'sin motivo');
-    $('aseMsg').innerHTML='<div class="aviso rojo">Devuelta a ventanilla.</div>';
-    setTimeout(pintarAsesor,1100);
-  },function(){});
-}
-function aseNoConforme(){
-  var m=prompt('¿Qué observó el cliente?');
-  if(m===null)return;
-  auditar('RECHAZA_CLIENTE','orden',ASE_OT.ot,m||'sin detalle',aseTotales().tot);
-  document.getElementById('aseFirmaMsg').innerHTML=
-    '<div class="aviso rojo" style="margin:0">Registrado. Ajusta el detalle o devuélvela a ventanilla.</div>';
-}
-function imprimirConformidad(){
-  var t=aseTotales(),o=ASE_OT;
-  var incl=ASE_LIN.filter(function(l){return l.incluir});
-  var cuerpo=
-   '<div><b>'+o.ot+'</b> · '+new Date().toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})+'</div>'+
-   '<div>Placa: <b>'+o.placa+'</b></div><div>'+o.cliente+'</div><hr>'+
-   '<b>DETALLE DEFINITIVO</b><table>'+
-   incl.map(function(l){return '<tr><td>'+l.cant+'x '+l.desc+'</td><td class="r">'+S(l.final*l.cant)+'</td></tr>'}).join('')+
-   '</table><hr><table>'+
-   '<tr><td>Subtotal</td><td class="r">'+S(t.sub)+'</td></tr>'+
-   '<tr><td>IGV 18%</td><td class="r">'+S(t.igv)+'</td></tr>'+
-   '<tr class="tot"><td>TOTAL</td><td class="r">'+S(t.tot)+'</td></tr></table><hr>'+
-   '<div class="mini">Estimado inicial: '+S(ASE_EST)+' · Diferencia: '+(t.dif>=0?'+':'')+S(t.tot-ASE_EST)+'</div>'+
-   '<div class="firma">Firma del cliente en conformidad</div>'+
-   '<div class="mini" style="margin-top:8px">Atendido por '+(SESION?SESION.nombre:'')+'</div>';
-  imprimirTicket(o.ot,cuerpo);
-  auditar('IMPRIME_DEFINITIVO','orden',o.ot,'Detalle impreso',t.tot);
+  msg.innerHTML='<div class="hint">Subiendo voucher…</div>';
+  var nombre='vouchers/'+o.ot+'-'+Date.now()+'.jpg';
+  var bin=atob(ASE_VOUCHER.split(',')[1]);var arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  sb.storage.from('fotos').upload(nombre,new Blob([arr],{type:'image/jpeg'}),{contentType:'image/jpeg'})
+   .then(function(up){
+     if(up.error){msg.innerHTML='<div class="aviso rojo">No se pudo subir: '+up.error.message+'</div>';return}
+     var url=sb.storage.from('fotos').getPublicUrl(nombre).data.publicUrl;
+     sb.from('ordenes').update({forma_pago:'tarjeta',voucher_url:url,pago_tarjeta_por:SESION?SESION.nombre:'asesor',
+       pago_tarjeta_el:new Date().toISOString(),total_taller:t.tot,asesor_id:SESION?SESION.id:null,
+       est_asesor:new Date().toISOString()}).eq('id',o.id)
+      .then(function(r){
+        if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+        auditar('COBRA_TARJETA','orden',o.ot,'Voucher registrado · pendiente de validación en caja',t.tot);
+        guardarSnapshot(o.id,'PAGO_TARJETA',ASE_LIN,t.tot,'Cobro con tarjeta registrado por el asesor');
+        msg.innerHTML='<div class="aviso ok" style="margin:0">Cobro con tarjeta registrado. Caja debe validarlo.</div>';
+        setTimeout(pintarAsesor,1500);
+      },function(){});
+   },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión al subir.</div>'});
 }
 
 /* ============================================================
-   CAJA · valida el cobro contra RS-TALLER · lee de la base
+   CAJA · efectivo (declarativo), tarjeta (con voucher) o
+   validación del cobro con tarjeta hecho por el asesor
    ============================================================ */
 var CAJEROS=[{u:'mrivera',n:'Mónica Rivera'},{u:'jcastro',n:'Julio Castro'},{u:'pvargas',n:'Paola Vargas'}];
-var CAJA_OT=null,CAJA_LIN=[];
+var CAJA_OT=null,CAJA_LIN=[],CAJA_VOUCHER=null,CAJA_MODO='';
 
 function linkCaja(){
   if(!APP_URL||APP_URL.indexOf('http')!==0)return '';
@@ -4869,115 +4820,157 @@ function copiarLinkCaja(){
   } else alert(l);
 }
 function pintarCaja(){
-  CAJA_OT=null;
-  $('cajaDetalle').style.display='none';
-  $('cajaTabla').parentNode.style.display='block';
-  $('cajaTabla').innerHTML='<tr><td class="hint">Cargando…</td></tr>';
+  CAJA_OT=null;CAJA_VOUCHER=null;CAJA_MODO='';
+  var z=$('cajaZona');z.innerHTML='<div class="hint">Cargando…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
-    $('cajaTabla').innerHTML='<tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>Taller</th><th class="der">Enviado por taller</th><th></th></tr>'+
+    z.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        return '<tr><td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td>'+
-        '<td><span class="eti '+(o.estado_taller==='LISTO'?'e4':'e3')+'">'+
-          String(o.estado_taller||'').replace('_',' ')+'</span></td>'+
-        '<td class="num der">'+S(o.total)+'</td>'+
-        '<td><button class="btn chico oscuro" onclick="abrirCobro('+o.id+')">Revisar y cobrar</button></td></tr>';
+        var pago=o.voucher?'<span class="eti e3">tarjeta · validar</span>':'<span class="eti e2">por cobrar</span>';
+        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
+        '<td>'+o.cliente+'</td><td>'+pago+'</td><td class="num der">'+S(o.total)+'</td>'+
+        '<td><button class="btn chico oscuro" style="min-height:36px;padding:0 10px" onclick="abrirCobro('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="6" class="vacio"><b>Nada por cobrar</b>No hay órdenes con el detalle aprobado.</td></tr>');
+      :'<tr><td colspan="6" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
+      '</table></div>';
   });
 }
 function abrirCobro(id){
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarCaja();return}
-    CAJA_OT=o;
-    cargarLineasBD(id,function(lin){
-      CAJA_LIN=lin.filter(function(l){return l.incluir});
-      $('cajaTabla').parentNode.style.display='none';
-      $('cajaDetalle').style.display='block';
-      renderCobro();
-      window.scrollTo({top:0,behavior:'smooth'});
-    });
+    CAJA_OT=o;CAJA_VOUCHER=null;CAJA_MODO=o.voucher?'validar':'';
+    cargarLineasBD(id,function(lin){ CAJA_LIN=lin.filter(function(l){return l.incluir}); renderCobro(); window.scrollTo({top:0,behavior:'smooth'}); });
   });
 }
+function cajaTotal(){
+  var sub=CAJA_LIN.reduce(function(a,l){return a+(Number(l.final)||0)*Number(l.cant||1)},0);
+  return sub+Math.round(sub*0.18);
+}
 function renderCobro(){
-  var o=CAJA_OT;
-  $('cobroCab').innerHTML='<b class="cond" style="font-size:20px">'+o.ot+'</b> · '+
-    '<span class="num">'+o.placa+'</span> · '+o.cliente+
-    (o.estado_taller!=='LISTO'?' <span class="eti e3">vehículo aún en taller</span>':'');
-  $('cobroLineas').innerHTML='<tr><th></th><th>Concepto</th><th class="der">Cant</th>'+
-    '<th class="der">Precio asesor</th><th class="der">Precio a cobrar</th></tr>'+
-    CAJA_LIN.map(function(l,i){
-      return '<tr'+(l.incluir?'':' style="opacity:.45"')+'>'+
-      '<td><input type="checkbox" '+(l.incluir?'checked':'')+' onchange="cobroToggle('+i+',this.checked)" '+
-      'style="width:22px;height:22px;accent-color:var(--rojo)"></td>'+
-      '<td>'+l.desc+'</td><td class="der num">'+l.cant+'</td>'+
-      '<td class="num der" style="color:var(--mudo)">'+S(l.final)+'</td>'+
-      '<td class="der"><input type="number" value="'+l.final+'" min="0" '+(l.incluir?'':'disabled ')+
-      'oninput="cobroPrecio('+i+',this.value)" style="width:110px;text-align:right;padding:8px"></td></tr>';
-    }).join('');
-  cobroTotales();
-  var su=$('cajaUser');
-  if(su&&!su.options.length){
-    su.innerHTML='<option value="">— seleccionar —</option>'+
-      CAJEROS.map(function(c){return '<option value="'+c.u+'">'+c.n+'</option>'}).join('');
+  var o=CAJA_OT,tot=cajaTotal();
+  var snap={lineas:CAJA_LIN.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:0,k:l.cambio}}),total:tot};
+  var bloqueCajero=
+    '<div class="fila" style="margin-top:12px;align-items:flex-end">'+
+      '<div style="min-width:170px"><label>Cajero que autoriza</label><select id="cajaUser">'+
+        '<option value="">— seleccionar —</option>'+CAJEROS.map(function(c){return '<option value="'+c.u+'">'+c.n+'</option>'}).join('')+'</select></div>'+
+      '<div style="min-width:120px"><label>Clave del cajero</label><input id="cajaClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>'+
+      '<div style="min-width:170px"><label>N° de comprobante</label><input id="cajaFact" placeholder="'+(o.comp==='factura'?'F001-004512':'B001-004512')+'"></div>'+
+    '</div>';
+  var cuerpo='';
+  if(CAJA_MODO==='validar'){
+    cuerpo='<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
+      '<h3 style="font-size:15px">Validar cobro con tarjeta</h3>'+
+      '<div class="hint" style="margin:-4px 0 10px">Registrado por '+(o.tarjeta_por||'el asesor')+
+        (o.tarjeta_el?' · '+selloHora(o.tarjeta_el):'')+'. Revisa el voucher contra el monto y emite el comprobante.</div>'+
+      '<img src="'+o.voucher+'" style="max-width:260px;border-radius:8px;border:1px solid var(--borde)">'+
+      bloqueCajero+
+      '<div class="fila" style="margin-top:12px">'+
+        '<button class="btn chico ok" onclick="confirmarCobro(&quot;tarjeta_validada&quot;)">Validar cobro · '+S(tot)+'</button>'+
+        '<button class="btn chico sec" onclick="cajaRechazarVoucher()">Voucher no coincide</button>'+
+      '</div></div>';
+  } else if(CAJA_MODO==='efectivo'){
+    cuerpo='<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
+      '<h3 style="font-size:15px">Cobro en efectivo</h3>'+
+      '<div class="hint" style="margin:-4px 0 10px">Declarativo: el cajero confirma que recibió el monto.</div>'+
+      bloqueCajero+
+      '<div class="fila" style="margin-top:12px">'+
+        '<button class="btn chico ok" onclick="confirmarCobro(&quot;efectivo&quot;)">Registrar cobro · '+S(tot)+'</button>'+
+        '<button class="btn chico sec" onclick="cajaModo(&quot;&quot;)">Cancelar</button>'+
+      '</div></div>';
+  } else if(CAJA_MODO==='tarjeta'){
+    cuerpo='<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
+      '<h3 style="font-size:15px">Cobro con tarjeta</h3>'+
+      '<div class="hint" style="margin:-4px 0 10px">Toma la foto del voucher como validación.</div>'+
+      '<input type="file" id="cajaVoucherInp" accept="image/*" capture="environment" onchange="cajaVoucherCargado(this)" style="padding:8px">'+
+      '<div id="cajaVoucherPrev" style="margin-top:8px"></div>'+
+      bloqueCajero+
+      '<div class="fila" style="margin-top:12px">'+
+        '<button class="btn chico ok" onclick="confirmarCobro(&quot;tarjeta&quot;)">Registrar cobro · '+S(tot)+'</button>'+
+        '<button class="btn chico sec" onclick="cajaModo(&quot;&quot;)">Cancelar</button>'+
+      '</div></div>';
+  } else {
+    cuerpo='<div class="grid g2" style="margin-top:14px;gap:12px">'+
+      '<button class="btn" onclick="cajaModo(&quot;efectivo&quot;)">💵 Cobrar en efectivo</button>'+
+      '<button class="btn sec" onclick="cajaModo(&quot;tarjeta&quot;)">💳 Cobrar con tarjeta</button>'+
+    '</div>';
   }
+  $('cajaZona').innerHTML=
+    '<div class="navproc"><button class="atras" onclick="pintarCaja()">← Volver a la lista</button>'+
+    '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    '<div class="hint">Comprobante: <b>'+o.comp+'</b>'+(o.ruc?' · RUC '+o.ruc:'')+
+      (o.estado_taller!=='LISTO'&&o.estado_taller!=='ENTREGADO'?' · <span class="eti e3">vehículo aún en taller</span>':'')+'</div>'+
+    facturaNegra(snap,'OT a cobrar')+cuerpo+
+    '<div id="cajaMsg" style="margin-top:10px"></div>';
 }
-function cobroTotales(){
-  var o=CAJA_OT;
-  var sub=CAJA_LIN.filter(function(l){return l.incluir})
-    .reduce(function(a,l){return a+(Number(l.final)||0)*Number(l.cant||1)},0);
-  var igv=Math.round(sub*0.18),tot=sub+igv,dif=tot-o.total;
-  $('cobroTot').innerHTML='<div class="fila">'+
-    kpi(S(o.total),'Enviado por taller','tinta')+
-    kpi(S(tot),'Total a cobrar')+
-    kpi((dif===0?'sin cambios':(dif>0?'+':'')+S(dif)),'Diferencia',dif===0?'verde':'')+'</div>';
-  return tot;
+function cajaModo(m){CAJA_MODO=m;CAJA_VOUCHER=null;renderCobro()}
+function cajaVoucherCargado(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas'),k=Math.min(1,1200/Math.max(img.width,img.height));
+      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      CAJA_VOUCHER=c.toDataURL('image/jpeg',0.8);
+      document.getElementById('cajaVoucherPrev').innerHTML='<img src="'+CAJA_VOUCHER+'" style="max-width:220px;border-radius:8px;border:1px solid var(--borde)">';
+    };
+    img.src=e.target.result;
+  };
+  fr.readAsDataURL(f);
 }
-function cobroToggle(i,v){CAJA_LIN[i].incluir=v;renderCobro()}
-function cobroPrecio(i,v){CAJA_LIN[i].final=Number(v)||0;cobroTotales()}
-function cajaClaveReset(){var e=$('cajaClave');if(e){e.value='';e.focus()}}
-function confirmarCobro(){
+function cajaRechazarVoucher(){
+  var m=prompt('¿Qué no coincide? (monto, fecha, tarjeta…)');
+  if(m===null)return;
+  sb.from('ordenes').update({voucher_url:null,forma_pago:null,pago_tarjeta_por:null,pago_tarjeta_el:null}).eq('id',CAJA_OT.id)
+   .then(function(){
+     auditar('RECHAZA_VOUCHER','orden',CAJA_OT.ot,m||'sin detalle');
+     alert('Voucher rechazado. La orden vuelve a "por cobrar"; el asesor debe revisar.');
+     pintarCaja();
+   },function(){});
+}
+function confirmarCobro(modo){
   var uid=($('cajaUser').value||''),clave=($('cajaClave').value||'').trim(),
       fact=($('cajaFact').value||'').trim(),msg=$('cajaMsg');
   var caj=CAJEROS.filter(function(c){return c.u===uid})[0];
   if(!caj){alert('Selecciona el cajero que autoriza.');return}
   if(clave.length<4){alert('Ingresa la clave del cajero.');$('cajaClave').focus();return}
-  if(fact.length<5){alert('Ingresa el comprobante emitido (ej. F001-004512).');$('cajaFact').focus();return}
-  var activas=CAJA_LIN.filter(function(l){return l.incluir});
-  if(!activas.length){alert('Debe quedar al menos un concepto por cobrar.');return}
-  var tot=cobroTotales(),ot=CAJA_OT,hora=selloHora();
+  if(fact.length<5){alert('Ingresa el comprobante emitido.');$('cajaFact').focus();return}
+  if(modo==='tarjeta'&&!CAJA_VOUCHER){alert('Falta la foto del voucher.');return}
+  var tot=cajaTotal(),o=CAJA_OT;
   msg.innerHTML='<div class="hint">Validando…</div>';
   sb.rpc('validar_pin',{p_usuario:uid,p_pin:clave}).then(function(r){
     if(r.error||!r.data||!r.data.length){
       msg.innerHTML='<div class="aviso rojo">Clave incorrecta para '+caj.n+'. El cobro no se registró.</div>';
       $('cajaClave').value='';return;
     }
-    var cajeroId=r.data[0].id,pend=CAJA_LIN.length;
-    CAJA_LIN.forEach(function(l){
-      sb.from('orden_detalle').update({precio_caja:l.final,cobrado:l.incluir}).eq('id',l.id)
-       .then(function(){ if(--pend===0)cerrar(cajeroId) },function(){ if(--pend===0)cerrar(cajeroId) });
-    });
-    if(!CAJA_LIN.length)cerrar(cajeroId);
+    var cajeroId=r.data[0].id;
+    if(modo==='tarjeta'){
+      var nombre='vouchers/'+o.ot+'-caja-'+Date.now()+'.jpg';
+      var bin=atob(CAJA_VOUCHER.split(',')[1]);var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      sb.storage.from('fotos').upload(nombre,new Blob([arr],{type:'image/jpeg'}),{contentType:'image/jpeg'})
+       .then(function(up){
+         var url=up.error?null:sb.storage.from('fotos').getPublicUrl(nombre).data.publicUrl;
+         cerrar(cajeroId,'tarjeta',url);
+       },function(){cerrar(cajeroId,'tarjeta',null)});
+    } else cerrar(cajeroId,modo==='tarjeta_validada'?'tarjeta':'efectivo',o.voucher||null);
   },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión con la base.</div>'});
 
-  function cerrar(cajeroId){
-    sb.from('ordenes').update({estado_ot:'PAGADA',total_cobrado:tot,comprobante:fact,
-      cajero_id:cajeroId,est_caja:new Date().toISOString(),ot_pagada:new Date().toISOString()})
-     .eq('id',ot.id).then(function(r2){
-       if(r2.error){msg.innerHTML='<div class="aviso rojo">'+r2.error.message+'</div>';return}
-       auditar('COBRA','orden',ot.ot,'Comprobante '+fact+' · '+caj.n+
-         (tot!==ot.total?' · ajuste '+S(tot-ot.total):''),tot);
-       $('cajaDetalle').style.display='none';
-       $('cajaTabla').parentNode.style.display='block';
-       msg.innerHTML='<div class="aviso ok" style="margin-top:14px"><b>Pago registrado · '+ot.ot+'</b><br>'+
-         'Comprobante <b>'+fact+'</b> por <b>'+caj.n+'</b> a las '+hora+'.<br>'+
-         'Cobrado: <b>'+S(tot)+'</b>'+(tot!==ot.total?' · diferencia '+S(tot-ot.total):' · sin variación')+'<br>'+
-         'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>';
-       $('cajaFact').value='';$('cajaClave').value='';
-       pintarCaja();
-     },function(){});
+  function cerrar(cajeroId,forma,voucherUrl){
+    var patch={estado_ot:'PAGADA',total_cobrado:tot,comprobante:fact,forma_pago:forma,
+      cajero_id:cajeroId,pago_validado_por:caj.n,est_caja:new Date().toISOString(),ot_pagada:new Date().toISOString()};
+    if(voucherUrl)patch.voucher_url=voucherUrl;
+    sb.from('ordenes').update(patch).eq('id',o.id).then(function(r2){
+      if(r2.error){msg.innerHTML='<div class="aviso rojo">'+r2.error.message+'</div>';return}
+      auditar('COBRA','orden',o.ot,'Comprobante '+fact+' · '+forma+(modo==='tarjeta_validada'?' (validado voucher del asesor)':'')+' · '+caj.n,tot);
+      guardarSnapshot(o.id,'PAGADA',CAJA_LIN,tot,forma+' · comprobante '+fact+' · '+caj.n);
+      $('cajaZona').innerHTML='<div class="aviso ok"><b>Pago registrado · '+otCorto(o.ot)+'</b><br>'+
+        'Comprobante <b>'+fact+'</b> · '+forma+' · '+caj.n+' · '+S(tot)+'<br>'+
+        'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>'+
+        '<button class="btn chico sec" style="margin-top:12px" onclick="pintarCaja()">← Volver a la lista</button>';
+    },function(){});
   }
 }
 
