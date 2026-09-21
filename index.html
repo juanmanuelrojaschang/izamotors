@@ -465,7 +465,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v75</span>
+  <span class="demo-tag">v76</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -482,9 +482,8 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="hint" style="margin:0 0 12px">Queda registrado quién autorizó y por qué.</div>
     <label>Motivo</label>
     <select id="vbMotivo" onchange="document.getElementById('vbOtroZona').classList.toggle('oculto',this.value!=='Otro')">
-      <option value="">— elegir —</option>
+      <option>Cliente acepta presencialmente</option>
       <option>Cliente sin celular</option>
-      <option>Cliente acepta verbalmente</option>
       <option>Cliente de flota</option>
       <option>Otro</option>
     </select>
@@ -3606,7 +3605,7 @@ function editarOT(){
 var VB_CB=null;
 function pedirMotivoVB(cb){
   VB_CB=cb;
-  var s=document.getElementById('vbMotivo');s.value='';
+  var s=document.getElementById('vbMotivo');s.value='Cliente acepta presencialmente';
   document.getElementById('vbOtro').value='';
   document.getElementById('vbOtroZona').classList.add('oculto');
   document.getElementById('modalVB').classList.add('on');
@@ -4414,30 +4413,10 @@ function ventRender(){
     (VENT_LIN.length?'':'<div class="aviso rojo"><b>Esta orden no tiene detalle guardado en la base.</b> '+
       'Probablemente se creó con una versión anterior de la app. Puedes agregar las líneas acá abajo, '+
       'o anularla y registrarla de nuevo desde el taller.</div>')+
-    '<div style="overflow-x:auto"><table><tr><th>Tipo</th><th>Concepto</th><th>Código stock</th>'+
+    '<div style="overflow-x:auto"><table><tr><th>Concepto</th><th>Código stock</th>'+
     '<th class="der">Cant</th><th class="der">Precio</th><th class="der">Subtotal</th><th></th></tr>'+
-    VENT_LIN.map(function(l,i){
-      var esRep=(l.tipo==='REP');
-      var marca=l.cambio==='A'?' <span class="eti e4">nuevo</span>'
-               :l.cambio==='R'?' <span class="eti e3">reemplazo</span>'
-               :l.cambio==='X'?' <span class="eti e1">retirado</span>':'';
-      var fila='<tr'+(l.incluir?'':' style="opacity:.45;text-decoration:line-through"')+'>'+
-        '<td><span class="eti '+(esRep?'e3':'e2')+'">'+(esRep?'Repuesto':'Servicio')+'</span></td>'+
-        '<td>'+l.desc+marca+(l.orig&&l.cambio==='R'?'<div class="hint" style="margin:2px 0 0">antes: '+l.orig+'</div>':'')+'</td>'+
-        '<td>'+(esRep?'<input value="'+(l.cod_alm||'')+'" placeholder="cód." style="width:110px;padding:7px" '+
-          (l.incluir?'':'disabled ')+'oninput="ventCod('+i+',this.value)">':'<span class="hint">—</span>')+'</td>'+
-        '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:60px;text-align:right;padding:7px" '+
-          (l.incluir?'':'disabled ')+'oninput="ventCant('+i+',this.value)"></td>'+
-        '<td class="der"><input type="number" min="0" value="'+l.final+'" style="width:96px;text-align:right;padding:7px" '+
-          (l.incluir?'':'disabled ')+'oninput="ventPrecio('+i+',this.value)"></td>'+
-        '<td class="num der"><b>'+S(l.incluir?l.final*l.cant:0)+'</b></td>'+
-        '<td style="white-space:nowrap">'+
-          (l.incluir
-            ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
-            : '<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="ventRestaurar('+i+')">↺</button>')+
-        '</td></tr>';
-      return fila;
-    }).join('')+'</table></div>'+
+    ventFilasAgrupadas()+'</table></div>'+
+
 
     '<div style="margin-top:12px">'+
       '<button class="btn chico sec" onclick="ventToggleAgregar()">'+(VENT_ADD_ABIERTO?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
@@ -4457,9 +4436,9 @@ function ventRender(){
         '</div></div>'
       : '')+
 
-    '<div class="fila" style="margin-top:12px">'+
+    '<div class="fila" style="margin-top:12px;align-items:center">'+
       '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
-      '<span class="hint" style="align-self:center;margin:0">Códigos, precios y líneas, sin enviar ni aprobar.</span>'+
+      '<span id="ventGuardadoMsg" class="hint" style="margin:0">Códigos, precios y líneas, sin enviar ni aprobar.</span>'+
     '</div>'+
     '<div class="bloque-pres" style="margin-top:16px">'+
       '<label style="margin:0 0 10px">OT definitiva</label>'+
@@ -4483,7 +4462,7 @@ function ventRender(){
       (o.total?'<div class="hint" style="margin-top:8px">Preliminar aprobada: '+S(o.total)+' · diferencia '+
         (t.tot-o.total>=0?'+':'')+S(t.tot-o.total)+'</div>':'')+
     '</div>'+
-    (sinCod?'<div class="aviso rojo" style="margin-top:12px">'+sinCod+' repuesto(s) sin código de stock.</div>':'')+
+    '<div id="ventSinCod">'+(sinCod?'<div class="aviso rojo" style="margin-top:12px">'+sinCod+' repuesto(s) sin código de stock.</div>':'')+'</div>'+
 
     ventBloqueDespacho()+
 
@@ -4573,7 +4552,35 @@ function ventDespachar(todo){
     }
   });
 }
-function ventCod(i,v){VENT_LIN[i].cod_alm=v}
+function ventFila(l,i){
+  var esRep=(l.tipo==='REP');
+  return '<tr'+(l.incluir?'':' style="opacity:.45;text-decoration:line-through"')+'>'+
+    '<td>'+l.desc+(l.cambio==='A'?' <span class="eti e4">nuevo</span>':'')+'</td>'+
+    '<td>'+(esRep?'<input value="'+(l.cod_alm||'')+'" placeholder="cód." style="width:100px;padding:7px" '+
+      (l.incluir?'':'disabled ')+'oninput="ventCod('+i+',this.value)">':'<span class="hint">—</span>')+'</td>'+
+    '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:56px;text-align:right;padding:7px" '+
+      (l.incluir?'':'disabled ')+'oninput="ventCant('+i+',this.value)"></td>'+
+    '<td class="der"><input type="number" min="0" value="'+l.final+'" style="width:90px;text-align:right;padding:7px" '+
+      (l.incluir?'':'disabled ')+'oninput="ventPrecio('+i+',this.value)"></td>'+
+    '<td class="num der"><b class="vsub">'+S(l.incluir?l.final*l.cant:0)+'</b></td>'+
+    '<td style="white-space:nowrap">'+(l.incluir
+      ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
+      : '<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="ventRestaurar('+i+')">↺</button>')+
+    '</td></tr>';
+}
+function ventFilasAgrupadas(){
+  var s='',r='';
+  VENT_LIN.forEach(function(l,i){ if(l.tipo==='MO')s+=ventFila(l,i); else r+=ventFila(l,i); });
+  return (s?'<tr><td colspan="6" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>'+s:'')+
+         (r?'<tr><td colspan="6" style="padding-top:12px"><b class="cond" style="font-size:14px">Repuestos</b></td></tr>'+r:'');
+}
+function ventCod(i,v){
+  VENT_LIN[i].cod_alm=v;
+  /* el aviso de códigos faltantes se recalcula sin repintar */
+  var z=document.getElementById('ventSinCod');
+  if(z){var n=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
+    z.innerHTML=n?'<div class="aviso rojo" style="margin-top:12px">'+n+' repuesto(s) sin código de stock.</div>':''}
+}
 function ventCant(i,v){VENT_LIN[i].cant=Math.max(1,Number(v)||1);ventRefrescarTotales()}
 function ventPrecio(i,v){VENT_LIN[i].final=Number(v)||0;ventRefrescarTotales()}
 function ventRefrescarTotales(){
@@ -4581,8 +4588,9 @@ function ventRefrescarTotales(){
   var t=ventTotales(),o=VENT_OT;
   var k=document.querySelectorAll('#ventDetalle .kpi-osc .v');
   if(k.length>=3){k[0].textContent=S(t.sub);k[1].textContent=S(t.igv);k[2].textContent=S(t.tot)}
-  var subs=document.querySelectorAll('#ventDetalle table tr td:nth-child(6) b');
-  VENT_LIN.forEach(function(l,i){if(subs[i])subs[i].textContent=S(l.incluir?l.final*l.cant:0)});
+  var subs=document.querySelectorAll('#ventDetalle .vsub');
+  var orden=[];VENT_LIN.forEach(function(l,i){if(l.tipo==='MO')orden.push(i)});VENT_LIN.forEach(function(l,i){if(l.tipo!=='MO')orden.push(i)});
+  orden.forEach(function(i,pos){var l=VENT_LIN[i];if(subs[pos])subs[pos].textContent=S(l.incluir?l.final*l.cant:0)});
 }
 function ventRetirar(i){
   var l=VENT_LIN[i];
@@ -4675,12 +4683,14 @@ function ventEnviarFinal(){
 }
 function ventGuardar(){
   var msg=$('ventMsg'),t=ventTotales(),o=VENT_OT;
-  msg.innerHTML='<div class="hint">Guardando…</div>';
+  var g0=document.getElementById('ventGuardadoMsg');if(g0)g0.textContent='Guardando…';
   ventGuardarLineas(function(err){
     sb.from('ordenes').update({total_taller:t.tot}).eq('id',o.id).then(function(){},function(){});
     auditar('GUARDA_VENTANILLA','orden',o.ot,'Avance guardado · '+S(t.tot),t.tot);
-    msg.innerHTML=err?'<div class="aviso rojo" style="margin:0">Algunas líneas no se guardaron.</div>'
-                     :'<div class="aviso ok" style="margin:0">Avance guardado. Puedes volver después.</div>';
+    msg.innerHTML='';
+    var g=document.getElementById('ventGuardadoMsg');
+    if(g)g.innerHTML=err?'<b style="color:var(--rojo)">Algunas líneas no se guardaron.</b>'
+                        :'<b style="color:var(--verde)">✓ Guardado '+selloHora()+'</b>';
   });
 }
 function ventSinVB(){ pedirMotivoVB(function(m){ ventSinVBCon(m) }) }
@@ -4776,6 +4786,9 @@ function aseRender(){
           '</div></div>'
         : ''))+
     facturaNegra(snap,'OT final aprobada')+
+    (bloqueado?'':'<div class="fila" style="margin-top:12px;align-items:center">'+
+      '<button class="btn chico sec" onclick="aseGuardar()">💾 Guardar</button>'+
+      '<span id="aseGuardadoMsg" class="hint" style="margin:0">Guarda los ítems tal como están.</span></div>')+
     (bloqueado
       ? '<div class="aviso ok" style="margin-top:12px"><b>Cobro con tarjeta registrado</b> por '+(o.tarjeta_por||'')+
         (o.tarjeta_el?' · '+selloHora(o.tarjeta_el):'')+'. Pendiente de validación en caja.<br>'+
@@ -4812,6 +4825,14 @@ function aseRestaurar(i){
 function aseActualizarTotal(){
   var t=aseTotales();
   sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
+}
+function aseGuardar(){
+  var g=document.getElementById('aseGuardadoMsg');if(g)g.textContent='Guardando…';
+  var t=aseTotales(),o=ASE_OT;
+  sb.from('ordenes').update({total_taller:t.tot}).eq('id',o.id).then(function(r){
+    if(g)g.innerHTML=r.error?'<b style="color:var(--rojo)">No se pudo guardar.</b>':'<b style="color:var(--verde)">✓ Guardado '+selloHora()+'</b>';
+    auditar('GUARDA_ASESOR','orden',o.ot,'Ítems guardados · '+S(t.tot),t.tot);
+  },function(){if(g)g.innerHTML='<b style="color:var(--rojo)">Sin conexión.</b>'});
 }
 function aseToggleAdd(){ASE_ADD=!ASE_ADD;aseRender()}
 function aseItems(){
@@ -4887,7 +4908,19 @@ function aseCobrarTarjeta(){
    CAJA · efectivo (declarativo), tarjeta (con voucher) o
    validación del cobro con tarjeta hecho por el asesor
    ============================================================ */
-var CAJEROS=[{u:'mrivera',n:'Mónica Rivera'},{u:'jcastro',n:'Julio Castro'},{u:'pvargas',n:'Paola Vargas'}];
+/* Los cajeros son los usuarios con rol "caja" de la base; su clave es su PIN de ingreso.
+   Se crean desde Usuarios (admin general). */
+var CAJEROS=[];
+function cargarCajeros(cb){
+  if(!sb){cb();return}
+  sb.rpc('listar_usuarios').then(function(r){
+    var lista=(r.data||[]).filter(function(u){return u.rol==='caja'&&u.activo!==false});
+    if(lista.length)CAJEROS=lista.map(function(u){return {u:u.usuario,n:u.nombre}});
+    else if(SESION&&SESION.rol==='caja')CAJEROS=[{u:SESION.usuario,n:SESION.nombre}];
+    else CAJEROS=[{u:'mrivera',n:'Mónica Rivera'}];
+    cb();
+  },function(){ CAJEROS=SESION&&SESION.rol==='caja'?[{u:SESION.usuario,n:SESION.nombre}]:[{u:'mrivera',n:'Mónica Rivera'}]; cb(); });
+}
 var CAJA_OT=null,CAJA_LIN=[],CAJA_VOUCHER=null,CAJA_MODO='';
 
 function linkCaja(){
@@ -4904,6 +4937,7 @@ function copiarLinkCaja(){
 function pintarCaja(){
   CAJA_OT=null;CAJA_VOUCHER=null;CAJA_MODO='';
   var z=$('cajaZona');z.innerHTML='<div class="hint">Cargando…</div>';
+  if(!CAJEROS.length){cargarCajeros(pintarCaja);return}
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     z.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
@@ -4921,7 +4955,7 @@ function abrirCobro(id){
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarCaja();return}
-    CAJA_OT=o;CAJA_VOUCHER=null;CAJA_MODO=o.voucher?'validar':'';
+    CAJA_OT=o;CAJA_VOUCHER=null;CAJA_MODO='';
     cargarLineasBD(id,function(lin){ CAJA_LIN=lin.filter(function(l){return l.incluir}); renderCobro(); window.scrollTo({top:0,behavior:'smooth'}); });
   });
 }
@@ -4935,7 +4969,8 @@ function renderCobro(){
   var bloqueCajero=
     '<div class="fila" style="margin-top:12px;align-items:flex-end">'+
       '<div style="min-width:170px"><label>Cajero que autoriza</label><select id="cajaUser">'+
-        '<option value="">— seleccionar —</option>'+CAJEROS.map(function(c){return '<option value="'+c.u+'">'+c.n+'</option>'}).join('')+'</select></div>'+
+        '<option value="">— seleccionar —</option>'+CAJEROS.map(function(c){
+          return '<option value="'+c.u+'"'+(SESION&&SESION.usuario===c.u?' selected':'')+'>'+c.n+'</option>'}).join('')+'</select></div>'+
       '<div style="min-width:120px"><label>Clave del cajero</label><input id="cajaClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>'+
       '<div style="min-width:170px"><label>N° de comprobante</label><input id="cajaFact" placeholder="'+(o.comp==='factura'?'F001-004512':'B001-004512')+'"></div>'+
     '</div>';
@@ -4950,6 +4985,7 @@ function renderCobro(){
       '<div class="fila" style="margin-top:12px">'+
         '<button class="btn chico ok" onclick="confirmarCobro(&quot;tarjeta_validada&quot;)">Validar cobro · '+S(tot)+'</button>'+
         '<button class="btn chico sec" onclick="cajaRechazarVoucher()">Voucher no coincide</button>'+
+        '<button class="btn chico sec" onclick="cajaModo(&quot;&quot;)">Cancelar</button>'+
       '</div></div>';
   } else if(CAJA_MODO==='efectivo'){
     cuerpo='<div class="card" style="margin:14px 0 0;border-color:var(--verde)">'+
@@ -4972,9 +5008,11 @@ function renderCobro(){
         '<button class="btn chico sec" onclick="cajaModo(&quot;&quot;)">Cancelar</button>'+
       '</div></div>';
   } else {
-    cuerpo='<div class="grid g2" style="margin-top:14px;gap:12px">'+
-      '<button class="btn" onclick="cajaModo(&quot;efectivo&quot;)">💵 Cobrar en efectivo</button>'+
-      '<button class="btn sec" onclick="cajaModo(&quot;tarjeta&quot;)">💳 Cobrar con tarjeta</button>'+
+    cuerpo='<div class="grid g3" style="margin-top:14px;gap:10px">'+
+      '<button class="btn'+(o.voucher?' ok':' sec')+'" '+(o.voucher?'':'disabled style="opacity:.45"')+
+        ' onclick="cajaModo(&quot;validar&quot;)">🧾 Validar voucher'+(o.voucher?'':'<br><span style="font-size:11px;font-weight:400">sin cobro del asesor</span>')+'</button>'+
+      '<button class="btn sec" onclick="cajaModo(&quot;tarjeta&quot;)">💳 Cobro con tarjeta</button>'+
+      '<button class="btn" onclick="cajaModo(&quot;efectivo&quot;)">💵 Cobro en efectivo</button>'+
     '</div>';
   }
   $('cajaZona').innerHTML=
