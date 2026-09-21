@@ -371,6 +371,7 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 /* ===== kanban ===== */
 .kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;align-items:start}
 .kb{background:var(--blanco);border:1.5px solid var(--borde);border-radius:12px;padding:13px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s}
+.kb .disc{font-size:10px;color:var(--mudo);line-height:1.25;min-height:26px;margin:2px 0 4px}
 .kb:hover{border-color:#B9C1CB}
 .kb.on{border-color:var(--rojo);box-shadow:0 0 0 3px var(--rojo-cl)}
 .kb .et{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mudo);font-weight:700}
@@ -465,7 +466,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v78</span>
+  <span class="demo-tag">v79</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
@@ -935,7 +936,7 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-tienda">
   <div class="card">
     <h3>Tienda · órdenes por estación</h3>
-    <div class="hint" style="margin:-4px 0 10px">Ventanilla: el tiempo corre desde la aprobación de la preliminar. Asesor y caja: desde la aprobación de la final.</div>
+
     <div class="kanban" id="kanbanTienda"></div>
   </div>
   <div class="card">
@@ -947,6 +948,20 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-taller">
   <div class="card">
     <h3>Taller Las Américas · ocupación</h3>
+    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+      <div style="min-width:170px"><label>Rango</label>
+        <select id="tallerRango" onchange="cambioRangoTaller()">
+          <option value="1" selected>Hoy (1 día)</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="0">Todo</option>
+          <option value="custom">Fechas…</option>
+        </select></div>
+      <div id="tallerFechas" class="oculto" style="display:flex;gap:8px">
+        <div><label>Desde</label><input type="date" id="tallerDesde" onchange="pintarTaller()"></div>
+        <div><label>Hasta</label><input type="date" id="tallerHasta" onchange="pintarTaller()"></div>
+      </div>
+    </div>
     <div id="capacidad"></div>
   </div>
   <div class="card">
@@ -3758,17 +3773,39 @@ var ETAPAS_T=[
  {k:'EN_DIAGNOSTICO',t:'En diagnóstico', ic:'🔍'},
  {k:'EN_PROCESO',    t:'En proceso',     ic:'🔧'},
  {k:'LISTO',         t:'Listo',          ic:'✨'},
- {k:'ENTREGADO',     t:'Entregado hoy',  ic:'🚗'}
+ {k:'ENTREGADO',     t:'Entregado',      ic:'🚗'}
 ];
 var KAN_T=[],KAN_TIENDA=[],ETAPA_SEL='RECIBIDO',OT_SEL=null,TIENDA_SEL='despacho';
 function minsDesde(iso){ return iso?Math.round((Date.now()-new Date(iso))/60000):null }
 
+function cambioRangoTaller(){
+  var v=document.getElementById('tallerRango').value;
+  var z=document.getElementById('tallerFechas');
+  z.classList.toggle('oculto',v!=='custom');
+  if(v!=='custom')pintarTaller();
+}
+function rangoTaller(){
+  var v=(document.getElementById('tallerRango')||{}).value||'1';
+  var d=new Date(),h=null;d.setHours(0,0,0,0);
+  if(v==='0')return {desde:null,hasta:null};
+  if(v==='custom'){
+    var a=document.getElementById('tallerDesde').value,b=document.getElementById('tallerHasta').value;
+    if(!a)return {desde:null,hasta:null};
+    var hh=b?new Date(b+'T23:59:59'):null;
+    return {desde:new Date(a+'T00:00:00'),hasta:hh};
+  }
+  d.setDate(d.getDate()-(Number(v)-1));
+  return {desde:d,hasta:null};
+}
 function pintarTaller(){
   if(!sb)return;
-  sb.from('ordenes')
+  var rg=rangoTaller();
+  var q=sb.from('ordenes')
     .select('id,numero,estado_taller,estado_ot,total_taller,ingreso,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,nivel)')
-    .eq('sede_id',SEDE_ACTIVA).not('estado_taller','eq','ANULADO')
-    .order('ingreso',{ascending:true}).limit(300)
+    .eq('sede_id',SEDE_ACTIVA).not('estado_taller','eq','ANULADO');
+  if(rg.desde)q=q.gte('ingreso',rg.desde.toISOString());
+  if(rg.hasta)q=q.lte('ingreso',rg.hasta.toISOString());
+  q.order('ingreso',{ascending:true}).limit(500)
     .then(function(r){
       var hoy=new Date();hoy.setHours(0,0,0,0);
       KAN_T=(r.data||[]).map(function(o){
@@ -3777,7 +3814,7 @@ function pintarTaller(){
           cliente:c.nombre||'—',nivel:c.nivel||'Plata',estado:o.estado_taller||'RECIBIDO',estado_ot:o.estado_ot||'',
           importe:Number(o.total_taller||0),tec:o.mecanico_nombre||'—',ingreso:o.ingreso,
           mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
-      }).filter(function(o){ return o.estado!=='ENTREGADO'||new Date(o.ingreso)>=hoy; });
+      });
       pintarKanbanTaller();
     },function(){});
 }
@@ -3802,7 +3839,9 @@ function pintarKanbanTaller(){
   if(cb){
     cb.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
       '<b class="cond" style="font-size:20px">'+enPiso+' vehículos ocupando el taller</b>'+
-      '<span class="hint" style="margin:0">Capacidad instalada: 60 · los entregados ya no ocupan espacio</span>'+
+      '<span class="hint" style="margin:0">Capacidad instalada: 60 · los entregados no ocupan espacio · '+
+        (function(){var v=document.getElementById('tallerRango').value;
+          return v==='1'?'ingresos de hoy':v==='0'?'todo el histórico':v==='custom'?'rango elegido':'últimos '+v+' días'})()+'</span>'+
       '<span class="num" style="margin-left:auto;font-weight:700;color:'+(cap>85?'var(--rojo)':'var(--verde)')+'">'+cap+'%</span></div>'+
       '<div class="barra" style="height:12px"><i class="'+(cap>85?'bajo':'')+'" style="width:'+Math.min(100,cap)+'%"></i></div>';
   }
@@ -3817,10 +3856,10 @@ function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarKanbanTaller();
 
 /* ---- Tienda: ventanilla despacho, ventanilla ppto aprobado, asesor, caja ---- */
 var ETAPAS_TIENDA=[
- {k:'despacho',  t:'Ventanilla · despacho', ic:'📦'},
- {k:'ppto',      t:'Ventanilla · ppto aprobado', ic:'🏷️'},
- {k:'asesor',    t:'Asesor', ic:'🤝'},
- {k:'caja',      t:'Caja · cobro', ic:'💳'}
+ {k:'despacho',  t:'Ventanilla · despacho',      ic:'📦', d:'Tiempo desde prelim. aprobada hasta el despacho'},
+ {k:'ppto',      t:'Ventanilla · ppto aprobado', ic:'🏷️', d:'Tiempo desde prelim. aprobada hasta la final aprobada'},
+ {k:'asesor',    t:'Asesor',                     ic:'🤝', d:'Tiempo desde final aprobada hasta el cierre'},
+ {k:'caja',      t:'Caja · cobro',               ic:'💳', d:'Tiempo desde final aprobada hasta el pago'}
 ];
 function pintarTienda(){
   if(!sb)return;
@@ -3859,6 +3898,7 @@ function pintarKanbanTienda(){
     var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
     return '<div class="kb'+(TIENDA_SEL===e.k?' on':'')+'" onclick="verTienda(&quot;'+e.k+'&quot;)">'+
       '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
+      '<div class="disc">'+e.d+'</div>'+
       '<div class="n">'+ots.length+'</div><div class="sub">'+S(imp)+'</div>'+
       (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
       '<div class="lista abierta">'+lista+pie+'</div></div>';
