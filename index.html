@@ -32,7 +32,7 @@ header{display:flex;align-items:center;gap:14px;padding:11px 16px;background:var
 .wordmark .barra-r{width:6px;height:30px;background:var(--rojo);transform:skewX(-12deg);border-radius:1px}
 .wordmark .txt{font-family:'Barlow Condensed',Impact,sans-serif;font-style:italic;font-weight:700;font-size:25px;line-height:1;letter-spacing:.01em}
 .wordmark .txt b{color:var(--rojo)}
-.demo-tag{font-size:9px;letter-spacing:.14em;color:var(--blanco);background:var(--tinta);padding:3px 7px;border-radius:4px;font-weight:700}
+.demo-tag{font-size:9px;letter-spacing:.08em;color:var(--blanco);background:var(--tinta);padding:3px 7px;border-radius:4px;font-weight:700;white-space:nowrap;flex:0 0 auto}
 nav{display:flex;gap:3px;margin-left:auto;overflow-x:auto}
 nav button{background:transparent;color:var(--mudo);padding:9px 13px;border-radius:8px;font-weight:600;font-size:13px;white-space:nowrap}
 nav button.on{background:var(--rojo);color:#fff}
@@ -466,7 +466,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">v79</span>
+  <span class="demo-tag">versión 79</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
