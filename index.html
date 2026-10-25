@@ -1,4 +1,4 @@
-<!--IZAV:96-->
+<!--IZAV:98-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -162,6 +162,47 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .flecha{font-size:26px;color:var(--rojo)}
 
 
+
+.v-ico{display:none}
+@media(max-width:620px){
+  .v-txt{display:none}
+  .v-ico{display:inline}
+  .btn-salir{padding:0 10px}
+  .cab-acc{gap:6px}
+}
+/* ===== filtros compactos ===== */
+.filtros{display:grid;gap:9px 10px;margin-bottom:12px;align-items:end;
+  grid-template-columns:2fr 1fr;}
+.filtros .f-busca{grid-column:1}
+.filtros .f-estado{grid-column:2}
+.filtros .f-desde{grid-column:1}
+.filtros .f-hasta{grid-column:2}
+.filtros .f-limpia{grid-column:1/-1}
+.filtros label{display:block;margin-bottom:3px}
+.filtros input,.filtros select{width:100%}
+@media(min-width:780px){
+  .filtros{grid-template-columns:2.2fr 1.2fr 1fr 1fr auto}
+  .filtros .f-busca{grid-column:1}.filtros .f-estado{grid-column:2}
+  .filtros .f-desde{grid-column:3}.filtros .f-hasta{grid-column:4}
+  .filtros .f-limpia{grid-column:5}
+}
+
+/* ===== listados: tabla en pantalla grande, tarjetas en el celular ===== */
+@media(max-width:700px){
+  table.lista, table.lista tbody, table.lista tr, table.lista td{display:block;width:100%}
+  table.lista thead, table.lista tr>th{display:none}
+  table.lista tr{border:1px solid var(--borde);border-radius:11px;padding:9px 11px;
+    margin-bottom:9px;background:#fff}
+  table.lista td{border:0;padding:3px 0;text-align:left !important;
+    display:flex;align-items:baseline;gap:9px;min-height:0}
+  table.lista td:before{content:attr(data-l);flex:0 0 76px;font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.3px;color:var(--mudo);line-height:1.5}
+  table.lista td:empty{display:none}
+  table.lista td.der,table.lista td.num.der{text-align:left !important}
+  table.lista td .btn{width:100%}
+  table.lista td.vacio{display:block;text-align:center !important}
+  table.lista td.vacio:before{content:none}
+}
 /* ===== buscador de inventario ===== */
 .invBox input{width:100%}
 .invRes{margin-top:8px;max-height:340px;overflow-y:auto}
@@ -521,10 +562,10 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 96</span>
+  <span class="demo-tag">versión 98</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
-            aria-label="Volver">← Volver</button>
+            aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
     <button class="btn-salir" id="btnSalir" onclick="salir()">Salir</button>
     <button class="hamb" id="btnMenu" onclick="toggleDrawer()" aria-label="Menú">☰</button>
   </div>
@@ -982,21 +1023,21 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card" id="ventHome">
     <h3>🏷️ Ventanilla de almacén</h3>
     <p style="color:var(--mudo);font-size:14px;margin:0 0 14px">Codifica los repuestos, ajusta precios y arma la OT definitiva.</p>
-    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
-      <div style="flex:2;min-width:190px"><label>Buscar por placa, cliente u OT</label>
-        <input id="ventTxt" placeholder="Ej. CTS-009, Rojas, OT-2026-00207" oninput="ventLista()"></div>
-      <div style="min-width:170px"><label>Estado de la OT</label>
+    <div class="filtros">
+      <div class="f-busca"><label>Buscar por placa, cliente u OT</label>
+        <input id="ventTxt" placeholder="Placa, cliente u OT" oninput="ventLista()"></div>
+      <div class="f-estado"><label>Estado de la OT</label>
         <select id="ventEstado" onchange="ventLista()">
           <option value="">Todos</option>
           <option value="PRELIM_APROBADA">Prelim. aprobada</option>
           <option value="PRELIM2_APROBADA">Prelim. 2 aprobada</option>
           <option value="DEF_ENVIADA">Final enviada</option>
         </select></div>
-      <div style="min-width:150px"><label>Desde</label>
+      <div class="f-desde"><label>Desde</label>
         <input type="date" id="ventDesde" onchange="ventLista()"></div>
-      <div style="min-width:150px"><label>Hasta</label>
+      <div class="f-hasta"><label>Hasta</label>
         <input type="date" id="ventHasta" onchange="ventLista()"></div>
-      <div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventFechasLimpiar()">Limpiar fechas</button></div>
+      <div class="f-limpia"><button class="btn chico sec full" onclick="ventFechasLimpiar()">Limpiar</button></div>
     </div>
     <div class="modo" style="max-width:360px;margin-bottom:12px">
       <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes en curso</button>
@@ -1719,7 +1760,8 @@ function entrar(){
     LOGIN_DATOS=r.data[0];
     var rol=ROLES[LOGIN_DATOS.rol]||{t:LOGIN_DATOS.rol,d:''};
     var sel=document.getElementById('loginSede');
-    var localNom=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
+    var localNom=(sel.value&&sel.options[sel.selectedIndex])
+      ? sel.options[sel.selectedIndex].text : 'todos los locales';
     msg.innerHTML='';
     document.getElementById('loginPaso2').style.display='none';
     document.getElementById('loginPaso3').style.display='block';
@@ -1736,7 +1778,8 @@ function confirmarEntrada(){
   SESION=LOGIN_DATOS;
   var sel=document.getElementById('loginSede');
   SEDE_ACTIVA=Number(sel.value)||1;
-  SEDE_NOMBRE=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
+  SEDE_NOMBRE=(sel.value&&sel.options[sel.selectedIndex])
+    ? sel.options[sel.selectedIndex].text : 'Todos los locales';
   try{localStorage.setItem('iza_sede',String(SEDE_ACTIVA))}catch(e){}
   guardarSesion();
   document.getElementById('login').style.display='none';
@@ -5480,14 +5523,15 @@ function ventLista(){
       if(!txt)return true;
       return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
     });
-    res.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>OT</th><th class="der">En taller</th><th></th></tr>'+
+    res.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Estado</th><th class="der">En taller</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
         var chip=o.estado_ot==='DEF_ENVIADA'?'<span class="eti e3">Final enviada</span>'
                :'<span class="eti e4">'+(o.estado_ot==='PRELIM2_APROBADA'?'Prelim. 2 aprobada':'Prelim. aprobada')+'</span>';
-        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td><td>'+chip+'</td>'+
-        '<td class="num der'+(o.mins>1440?' alto':'')+'" style="white-space:nowrap">'+tiempo(o.mins)+'</td>'+
+        return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+        '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
+        '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Estado">'+chip+'</td>'+
+        '<td class="num der'+(o.mins>1440?' alto':'')+'" data-l="En taller" style="white-space:nowrap">'+tiempo(o.mins)+'</td>'+
         '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado.</td></tr>')+
@@ -5519,17 +5563,17 @@ function ventListaClientes(txt){
         return ((o.ot||'')+(o.placa||'')+(o.cliente||'')+(o.doc||''))
           .toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
       }).slice(0,40);
-      res.innerHTML='<div style="overflow-x:auto"><table>'+
+      res.innerHTML='<div style="overflow-x:auto"><table class="lista">'+
         '<tr><th>Atención</th><th>OT</th><th>Cliente</th><th>Vehículo</th>'+
         '<th>Estado</th><th class="der">Total</th><th></th></tr>'+
         (lista.length?lista.map(function(o){
-          return '<tr><td class="num" style="white-space:nowrap">'+fechaCorta(o.ingreso)+'</td>'+
-            '<td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
-            '<td><b>'+o.cliente+'</b>'+(o.tel?'<div style="font-size:11px;color:var(--mudo)">'+o.tel+'</div>':'')+'</td>'+
-            '<td class="num"><b>'+o.placa+'</b>'+(o.veh?'<div style="font-size:11px;color:var(--mudo)">'+o.veh+'</div>':'')+'</td>'+
-            '<td><span class="eti '+(CHIP[o.estado_taller]||'e1')+'">'+
+          return '<tr><td class="num" data-l="Atención" style="white-space:nowrap">'+fechaCorta(o.ingreso)+'</td>'+
+            '<td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+            '<td data-l="Cliente"><b>'+o.cliente+'</b>'+(o.tel?'<div style="font-size:11px;color:var(--mudo)">'+o.tel+'</div>':'')+'</td>'+
+            '<td class="num" data-l="Vehículo"><b>'+o.placa+'</b>'+(o.veh?'<div style="font-size:11px;color:var(--mudo)">'+o.veh+'</div>':'')+'</td>'+
+            '<td data-l="Estado"><span class="eti '+(CHIP[o.estado_taller]||'e1')+'">'+
               (NOMBRE_EST[o.estado_taller]||o.estado_taller||'—')+'</span></td>'+
-            '<td class="num der">'+S(o.total)+'</td>'+
+            '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
             '<td><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
               'onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
         }).join('')
@@ -5908,13 +5952,14 @@ function pintarAsesor(){
   $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     $('asesorLista').innerHTML=
-      '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
         var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
-        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td><td>'+pago+'</td>'+
-        '<td class="num der">'+S(o.total)+'</td>'+
+        return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+        '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
+        '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Pago">'+pago+'</td>'+
+        '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="aseAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
@@ -6172,12 +6217,14 @@ function pintarCaja(){
   var z=$('cajaZona');z.innerHTML='<div class="hint">Cargando…</div>';
   if(!CAJEROS.length){cargarCajeros(pintarCaja);return}
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
-    z.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+    z.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
         var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
-        return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td><td>'+pago+'</td><td class="num der">'+S(o.total)+'</td>'+
+        return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+        '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
+        '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Pago">'+pago+'</td>'+
+        '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico oscuro" style="min-height:36px;padding:0 10px" onclick="abrirCobro('+o.id+')">Abrir</button></td></tr>';
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
@@ -6365,7 +6412,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=96;
+var APP_VER=98;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
