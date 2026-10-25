@@ -1,4 +1,4 @@
-<!--IZAV:103-->
+<!--IZAV:104-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -588,7 +588,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 103</span>
+  <span class="demo-tag">versión 104</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -5714,6 +5714,7 @@ function ventRender(){
     '<div class="fila" style="margin-top:12px;align-items:center">'+
       '<button class="btn chico sec" onclick="ventToggleAgregar()">'+(VENT_ADD_ABIERTO?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
       '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
+      (sinCod?'<button class="btn chico sec" onclick="ventCompletar()">🔎 Completar códigos</button>':'')+
       '<span id="ventGuardadoMsg" class="hint" style="margin:0"></span>'+
     '</div>'+
     (VENT_ADD_ABIERTO
@@ -5851,6 +5852,67 @@ function ventDespachar(todo){
     }
   });
 }
+/* ---------- completar códigos de líneas viejas ----------
+   Las órdenes creadas antes de que el taller empezara a guardar
+   los códigos llegan sin ellos. Como la descripción viene del
+   catálogo, se puede recuperar el resto buscándola.
+   -------------------------------------------------------- */
+function completarCodigos(lineas, cb){
+  var faltan=lineas.filter(function(l){
+    return l.incluir&&l.tipo==='REP'&&!l.cod_alm&&l.desc;
+  });
+  if(!faltan.length){cb(0,0);return}
+  if(!sb){cb(0,faltan.length);return}
+  var descs=faltan.map(function(l){return l.desc});
+  sb.from('catalogo')
+    .select('codigo,codigo2,descripcion,marca,modelo,prec1,precio,catalogo_stock(sede_id,ubicacion)')
+    .eq('tipo','REP').in('descripcion',descs)
+    .then(function(r){
+      if(r.error){cb(0,faltan.length);return}
+      var porDesc={};
+      (r.data||[]).forEach(function(c){ if(!porDesc[c.descripcion])porDesc[c.descripcion]=c });
+      var n=0;
+      faltan.forEach(function(l){
+        var c=porDesc[l.desc];if(!c)return;
+        l.cod_alm=c.codigo||'';
+        l.cod2=c.codigo2||'';
+        if(!l.marca)l.marca=c.marca||'';
+        if(!l.modelo)l.modelo=c.modelo||'';
+        if(!l.ubic){
+          var s=(c.catalogo_stock||[]).filter(function(x){return x.sede_id===SEDE_ACTIVA})[0]
+               ||(c.catalogo_stock||[])[0];
+          l.ubic=(s&&s.ubicacion)||'';
+        }
+        n++;
+      });
+      cb(n,faltan.length-n);
+    },function(){cb(0,faltan.length)});
+}
+function ventCompletar(){
+  var z=document.getElementById('ventGuardadoMsg');
+  if(z)z.textContent='Buscando en el catálogo…';
+  completarCodigos(VENT_LIN,function(ok,no){
+    ventRender();
+    var m=document.getElementById('ventGuardadoMsg');
+    if(!m)return;
+    m.innerHTML=ok
+      ? '<b style="color:var(--verde)">✓ '+ok+' completado(s)</b>'+(no?' · '+no+' sin coincidencia':'')
+      : (no?'Ninguno coincide con el catálogo: complétalos a mano.':'Todos ya tenían código.');
+  });
+}
+function aseCompletar(){
+  var z=document.getElementById('aseGuardadoMsg');
+  if(z)z.textContent='Buscando en el catálogo…';
+  completarCodigos(ASE_LIN,function(ok,no){
+    aseRender();
+    var m=document.getElementById('aseGuardadoMsg');
+    if(!m)return;
+    m.innerHTML=ok
+      ? '<b style="color:var(--verde)">✓ '+ok+' completado(s)</b>'+(no?' · '+no+' sin coincidencia':'')
+      : (no?'Ninguno coincide con el catálogo: complétalos a mano.':'Todos ya tenían código.');
+  });
+}
+
 /* ---------- líneas de la OT en ventanilla ----------
    Cada línea arranca cerrada y muestra lo justo para reconocerla.
    Al tocarla se abre hacia abajo con sus campos, de modo que todo
@@ -6098,6 +6160,8 @@ function aseRender(){
       '<div class="fila" style="margin-top:12px;align-items:center">'+
         '<button class="btn chico sec" onclick="aseToggleAdd()">'+(ASE_ADD?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
         '<button class="btn chico sec" onclick="aseGuardar()">💾 Guardar avance</button>'+
+        (ASE_LIN.filter(function(l){return l.incluir&&l.tipo==="REP"&&!l.cod_alm}).length
+          ? '<button class="btn chico sec" onclick="aseCompletar()">🔎 Completar códigos</button>' : '')+
         '<span id="aseGuardadoMsg" class="hint" style="margin:0"></span>'+
       '</div>'+
       (ASE_ADD
@@ -6566,7 +6630,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=103;
+var APP_VER=104;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
