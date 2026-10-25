@@ -1,4 +1,4 @@
-<!--IZAV:95-->
+<!--IZAV:96-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -521,7 +521,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 95</span>
+  <span class="demo-tag">versión 96</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver">← Volver</button>
@@ -992,6 +992,11 @@ tr.sel td{background:var(--rojo-cl)}
           <option value="PRELIM2_APROBADA">Prelim. 2 aprobada</option>
           <option value="DEF_ENVIADA">Final enviada</option>
         </select></div>
+      <div style="min-width:150px"><label>Desde</label>
+        <input type="date" id="ventDesde" onchange="ventLista()"></div>
+      <div style="min-width:150px"><label>Hasta</label>
+        <input type="date" id="ventHasta" onchange="ventLista()"></div>
+      <div style="flex:0 0 auto"><button class="btn chico sec" onclick="ventFechasLimpiar()">Limpiar fechas</button></div>
     </div>
     <div class="modo" style="max-width:360px;margin-bottom:12px">
       <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes en curso</button>
@@ -4734,7 +4739,7 @@ function pintarTaller(){
         return {id:o.id,ot:o.numero,placa:v.placa||'—',veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
           cliente:c.nombre||'—',nivel:c.nivel||'Plata',estado:o.estado_taller||'RECIBIDO',estado_ot:o.estado_ot||'',
           importe:Number(o.total_taller||0),tec:o.mecanico_nombre||'—',ingreso:o.ingreso,
-          mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
+          ingreso:o.ingreso,mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
       });
       pintarKanbanTaller();
     },function(){});
@@ -5403,7 +5408,7 @@ function cargarOrdenesBD(estadosOT,cb){
           tarjeta_el:o.pago_tarjeta_el||null,comp:o.comprobante_tipo||'boleta',ruc:o.comprobante_ruc||'',
           aprob:o.ot_prelim2_aprobada||o.ot_prelim_aprobada||null,def_aprob:o.ot_def_aprobada||null,
           mec:o.mecanico_nombre||'',
-          mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
+          ingreso:o.ingreso,mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
       }));
     },function(){cb([])});
 }
@@ -5448,31 +5453,30 @@ function pintarVentanilla(){
   $('ventHome').classList.remove('oculto');
   ventLista();
 }
+function ventFechasLimpiar(){
+  if($('ventDesde'))$('ventDesde').value='';
+  if($('ventHasta'))$('ventHasta').value='';
+  ventLista();
+}
+/* Devuelve si una fecha cae dentro del rango elegido. */
+function ventEnRango(iso){
+  var d=($('ventDesde')&&$('ventDesde').value)||'',
+      hh=($('ventHasta')&&$('ventHasta').value)||'';
+  if(!d&&!hh)return true;
+  if(!iso)return false;
+  var f=String(iso).slice(0,10);
+  if(d&&f<d)return false;
+  if(hh&&f>hh)return false;
+  return true;
+}
 function ventLista(){
   var res=$('ventLista'),txt=($('ventTxt').value||'').trim().toLowerCase().replace(/-/g,'');
   res.innerHTML='<div class="hint">Cargando…</div>';
-  if(VENT_TAB==='clientes'){
-    if(!sb){res.innerHTML='<div class="hint">Sin conexión.</div>';return}
-    sb.from('clientes').select('id,nombre,num_doc,telefono,vehiculos(placa,marca,modelo)')
-      .order('creado',{ascending:false}).limit(60).then(function(r){
-        var lista=(r.data||[]).filter(function(c){
-          if(!txt)return true;
-          var pj=((c.nombre||'')+(c.num_doc||'')+(c.vehiculos||[]).map(function(v){return v.placa}).join('')).toLowerCase().replace(/-/g,'');
-          return pj.indexOf(txt)>-1;
-        }).slice(0,20);
-        res.innerHTML='<div style="overflow-x:auto"><table><tr><th>Cliente</th><th>Vehículos</th></tr>'+
-          (lista.length?lista.map(function(c){
-            return '<tr><td><b>'+c.nombre+'</b><div style="font-size:11px;color:var(--mudo)">'+(c.telefono||'')+'</div></td>'+
-            '<td>'+(c.vehiculos||[]).map(function(v){
-              return '<button class="btn chico sec" style="min-height:34px;padding:0 11px;margin:2px" '+
-                'onclick="ventPorPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>'}).join('')+'</td></tr>';
-          }).join(''):'<tr><td colspan="2" class="vacio"><b>Sin resultados</b></td></tr>')+'</table></div>';
-      },function(){res.innerHTML='<div class="hint">Error al consultar.</div>'});
-    return;
-  }
+  if(VENT_TAB==='clientes'){ ventListaClientes(txt); return }
   var fe=($('ventEstado')&&$('ventEstado').value)||'';
   cargarOrdenesBD(fe?[fe]:VENT_ESTADOS,function(lista){
     lista=lista.filter(function(o){
+      if(!ventEnRango(o.ingreso))return false;
       if(!txt)return true;
       return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
     });
@@ -5490,6 +5494,57 @@ function ventLista(){
       '</table></div>';
   });
 }
+/* Clientes recientes: una fila por atención, no por cliente.
+   El mismo cliente puede haber venido cinco veces y cada visita
+   tiene su fecha y su OT. */
+function ventListaClientes(txt){
+  var res=$('ventLista');
+  if(!sb){res.innerHTML='<div class="hint">Sin conexión.</div>';return}
+  sb.from('ordenes')
+    .select('id,numero,ingreso,estado_ot,estado_taller,total_taller,'+
+            'vehiculos(placa,marca,modelo),clientes(nombre,telefono,num_doc)')
+    .eq('sede_id',SEDE_ACTIVA)
+    .order('ingreso',{ascending:false}).limit(200)
+    .then(function(r){
+      if(r.error){res.innerHTML='<div class="hint">Error: '+r.error.message+'</div>';return}
+      var lista=(r.data||[]).map(function(o){
+        var v=o.vehiculos||{},c=o.clientes||{};
+        return {id:o.id,ot:o.numero,ingreso:o.ingreso,estado_ot:o.estado_ot,
+                estado_taller:o.estado_taller,total:Number(o.total_taller||0),
+                placa:v.placa||'—',veh:[v.marca,v.modelo].filter(Boolean).join(' '),
+                cliente:c.nombre||'—',tel:c.telefono||'',doc:c.num_doc||''};
+      }).filter(function(o){
+        if(!ventEnRango(o.ingreso))return false;
+        if(!txt)return true;
+        return ((o.ot||'')+(o.placa||'')+(o.cliente||'')+(o.doc||''))
+          .toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
+      }).slice(0,40);
+      res.innerHTML='<div style="overflow-x:auto"><table>'+
+        '<tr><th>Atención</th><th>OT</th><th>Cliente</th><th>Vehículo</th>'+
+        '<th>Estado</th><th class="der">Total</th><th></th></tr>'+
+        (lista.length?lista.map(function(o){
+          return '<tr><td class="num" style="white-space:nowrap">'+fechaCorta(o.ingreso)+'</td>'+
+            '<td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+            '<td><b>'+o.cliente+'</b>'+(o.tel?'<div style="font-size:11px;color:var(--mudo)">'+o.tel+'</div>':'')+'</td>'+
+            '<td class="num"><b>'+o.placa+'</b>'+(o.veh?'<div style="font-size:11px;color:var(--mudo)">'+o.veh+'</div>':'')+'</td>'+
+            '<td><span class="eti '+(CHIP[o.estado_taller]||'e1')+'">'+
+              (NOMBRE_EST[o.estado_taller]||o.estado_taller||'—')+'</span></td>'+
+            '<td class="num der">'+S(o.total)+'</td>'+
+            '<td><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
+              'onclick="ventAbrir('+o.id+')">Abrir</button></td></tr>';
+        }).join('')
+        :'<tr><td colspan="7" class="vacio"><b>Sin atenciones</b>'+
+          'Prueba con otro texto o amplía el rango de fechas.</td></tr>')+'</table></div>';
+    },function(){res.innerHTML='<div class="hint">Error al consultar.</div>'});
+}
+function fechaCorta(iso){
+  if(!iso)return '—';
+  var d=new Date(iso);
+  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'2-digit'})+
+    '<div style="font-size:10px;color:var(--mudo)">'+
+    d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+'</div>';
+}
+
 function ventPorPlaca(placa){
   cargarOrdenesBD(VENT_ESTADOS,function(lista){
     var o=lista.filter(function(x){return x.placa===placa})[0];
@@ -5856,7 +5911,7 @@ function pintarAsesor(){
       '<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">pendiente</span>';
+        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
         return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
         '<td>'+o.cliente+'</td><td>'+pago+'</td>'+
         '<td class="num der">'+S(o.total)+'</td>'+
@@ -6120,7 +6175,7 @@ function pintarCaja(){
     z.innerHTML='<div style="overflow-x:auto"><table><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=o.voucher?'<span class="eti e3">tarjeta · validar</span>':'<span class="eti e2">por cobrar</span>';
+        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
         return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
         '<td>'+o.cliente+'</td><td>'+pago+'</td><td class="num der">'+S(o.total)+'</td>'+
         '<td><button class="btn chico oscuro" style="min-height:36px;padding:0 10px" onclick="abrirCobro('+o.id+')">Abrir</button></td></tr>';
@@ -6310,7 +6365,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=95;
+var APP_VER=96;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
