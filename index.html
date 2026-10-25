@@ -1,4 +1,4 @@
-<!--IZAV:99-->
+<!--IZAV:101-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -170,6 +170,33 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
   .btn-salir{padding:0 10px}
   .cab-acc{gap:6px}
 }
+
+/* ===== líneas desplegables de ventanilla ===== */
+.vlista{border:1px solid var(--borde);border-radius:12px;overflow:hidden;background:#fff}
+.vl-tit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--mudo);padding:9px 12px 5px;background:var(--gris)}
+.vl{border-top:1px solid var(--gris2)}
+.vl:first-child{border-top:0}
+.vl.fuera .vl-des{opacity:.5;text-decoration:line-through}
+.vl-cab{display:flex;width:100%;align-items:center;gap:9px;background:none;border:0;
+  padding:11px 12px;font:inherit;text-align:left;cursor:pointer;color:var(--tinta)}
+.vl-cab:hover{background:var(--gris)}
+.vl.abierta>.vl-cab{background:var(--gris);font-weight:600}
+.vl-fle{flex:0 0 12px;color:var(--mudo);font-size:11px}
+.vl-des{flex:1;font-size:13.5px;line-height:1.35;min-width:0}
+.vl-sub{display:block;font-size:11px;color:var(--mudo);font-family:ui-monospace,monospace;
+  font-weight:400;margin-top:2px}
+.vl-cant{flex:0 0 auto;font-size:12px;color:var(--mudo);font-variant-numeric:tabular-nums}
+.vl-sub2{flex:0 0 auto;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  min-width:62px;text-align:right}
+.vl-campos{display:grid;grid-template-columns:1fr 1fr;gap:9px 10px;padding:4px 12px 13px;
+  background:var(--gris);border-top:1px solid var(--gris2)}
+.vl-campos label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;
+  color:var(--mudo);display:block}
+.vl-campos label.ancho,.vl-campos .ancho{grid-column:1/-1}
+.vl-campos input{margin-top:3px}
+.vl-pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px}
+@media(min-width:700px){.vl-campos{grid-template-columns:repeat(4,1fr)}}
 /* ===== filtros compactos ===== */
 .filtros{display:grid;gap:9px 10px;margin-bottom:12px;align-items:end;
   grid-template-columns:2fr 1fr;}
@@ -179,7 +206,10 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .filtros .f-hasta{grid-column:2}
 .filtros .f-limpia{grid-column:1/-1}
 .filtros label{display:block;margin-bottom:3px}
-.filtros input,.filtros select{width:100%}
+.filtros input,.filtros select{width:100%;min-width:0}
+.filtros input[type=date]{font-size:12.5px;padding-left:8px;padding-right:4px;
+  text-align:left;-webkit-appearance:none;appearance:none}
+@media(max-width:420px){.filtros input[type=date]{font-size:11.5px;letter-spacing:-.2px}}
 @media(min-width:780px){
   .filtros{grid-template-columns:2.2fr 1.2fr 1fr 1fr auto}
   .filtros .f-busca{grid-column:1}.filtros .f-estado{grid-column:2}
@@ -562,7 +592,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 99</span>
+  <span class="demo-tag">versión 101</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -901,7 +931,7 @@ tr.sel td{background:var(--rojo-cl)}
             <label>B · Iniciar sin visto bueno</label>
             <div class="hint" style="margin:0">Cuando el cliente no aprueba por el link.
               Pide comentario obligatorio y registra quién autorizó.</div>
-            <button class="btn chico sec" onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
+            <button class="btn chico ok" onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
           </div>
         </div>
 
@@ -3233,8 +3263,15 @@ function cargarLineasOrden(ordenId){
     if(!lin.length)return;
     LINEAS_SERV=[];LINEAS_REP=[];
     lin.forEach(function(l){
-      if(l.tipo==='MO')LINEAS_SERV.push({codigo:'',desc:l.desc,precio:l.final||l.precio,cant:l.cant||1});
-      else if(l.incluir)LINEAS_REP.push({codigo:'',desc:l.desc,precio:l.final||l.precio,cant:l.cant||1});
+      /* Al recuperar no se pierden los códigos: si se borraran aquí,
+         el siguiente guardado los mandaría vacíos a la base. */
+      if(l.tipo==='MO')
+        LINEAS_SERV.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
+          desc:l.desc,precio:l.final||l.precio,cant:l.cant||1});
+      else if(l.incluir)
+        LINEAS_REP.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
+          desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
+          marca:l.marca||'',modelo:l.modelo||'',ubicacion:l.ubic||''});
     });
     try{pintarPresupuestoLista()}catch(e){}
     try{var t=totalesV2();$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
@@ -5411,13 +5448,18 @@ function guardarDetalleBD(){
     var oid=r.data.id,t=totalesV2();
     sb.from('orden_detalle').delete().eq('orden_id',oid).then(function(){
       var filas=[];
+      /* Los códigos, la marca y la ubicación viajan con la línea:
+         ventanilla los necesita y antes llegaban vacíos. */
       LINEAS_SERV.forEach(function(l){
         filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
-                    precio_taller:l.precio,stock_ok:true,agregado_por:'taller'});
+                    precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
+                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
       });
       LINEAS_REP.forEach(function(l){
         filas.push({orden_id:oid,tipo:'REP',descripcion:l.desc,cantidad:l.cant,
-                    precio_taller:l.precio,stock_ok:null,agregado_por:'taller'});
+                    precio_taller:l.precio,stock_ok:null,agregado_por:'taller',
+                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
+                    ubicacion:l.ubicacion||null,marca:l.marca||null,modelo:l.modelo||null});
       });
       if(filas.length)sb.from('orden_detalle').insert(filas).then(function(){},function(){});
       sb.from('ordenes').update({total_taller:t.tot,
@@ -5670,9 +5712,7 @@ function ventRender(){
     (VENT_LIN.length?'':'<div class="aviso rojo"><b>Esta orden no tiene detalle guardado en la base.</b> '+
       'Probablemente se creó con una versión anterior de la app. Puedes agregar las líneas acá abajo, '+
       'o anularla y registrarla de nuevo desde el taller.</div>')+
-    '<div style="overflow-x:auto"><table><tr><th>Concepto</th><th>Código stock</th>'+
-    '<th class="der">Cant</th><th class="der">Precio</th><th class="der">Subtotal</th><th></th></tr>'+
-    ventFilasAgrupadas()+'</table></div>'+
+    ventFilasAgrupadas()+
 
 
     '<div style="margin-top:12px">'+
@@ -5816,41 +5856,66 @@ function ventDespachar(todo){
     }
   });
 }
+/* ---------- líneas de la OT en ventanilla ----------
+   Cada línea arranca cerrada y muestra lo justo para reconocerla.
+   Al tocarla se abre hacia abajo con sus campos, de modo que todo
+   entra en el ancho del celular y no hay que moverse de lado.
+   --------------------------------------------------- */
+var VENT_ABIERTA=-1;
+function ventToggleLinea(i){
+  VENT_ABIERTA=(VENT_ABIERTA===i)?-1:i;
+  ventRender();
+}
 function ventFila(l,i){
-  var esRep=(l.tipo==='REP'),off=l.incluir?'':'disabled ';
-  var mini='width:100%;padding:6px 7px;font-size:12px';
-  return '<tr'+(l.incluir?'':' style="opacity:.45;text-decoration:line-through"')+'>'+
-    '<td style="min-width:230px">'+
-      '<input value="'+String(l.desc||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:7px;font-size:13px" '+
-        off+'oninput="ventDesc('+i+',this.value)">'+
-      (l.cambio==='A'?'<span class="eti e4" style="margin-top:3px">nuevo</span>':'')+
+  var esRep=(l.tipo==='REP'),off=l.incluir?'':'disabled ',abierta=(VENT_ABIERTA===i);
+  var faltaCod=esRep&&l.incluir&&!l.cod_alm;
+  var cab=
+    '<button class="vl-cab" onclick="ventToggleLinea('+i+')">'+
+      '<span class="vl-fle">'+(abierta?'▾':'▸')+'</span>'+
+      '<span class="vl-des">'+l.desc+
+        (l.cambio==='A'?' <span class="eti e4">nuevo</span>':'')+
+        (faltaCod?' <span class="eti e2">sin código</span>':'')+
+        ((l.marca||l.cod_alm)?'<span class="vl-sub">'+
+          [l.cod_alm,l.marca].filter(Boolean).join(' · ')+'</span>':'')+
+      '</span>'+
+      '<span class="vl-cant">'+l.cant+'×</span>'+
+      '<span class="vl-sub2 vsub">'+S(l.incluir?l.final*l.cant:0)+'</span>'+
+    '</button>';
+  if(!abierta)return '<div class="vl'+(l.incluir?'':' fuera')+'">'+cab+'</div>';
+  var mini='width:100%;padding:8px;font-size:13px';
+  return '<div class="vl abierta'+(l.incluir?'':' fuera')+'">'+cab+
+    '<div class="vl-campos">'+
+      '<label class="ancho">Descripción<input value="'+String(l.desc||'').replace(/"/g,'&quot;')+
+        '" style="'+mini+'" '+off+'oninput="ventDesc('+i+',this.value)"></label>'+
       (esRep
-        ? '<div class="venCods">'+
-            '<label>Código<input value="'+(l.cod_alm||'')+'" placeholder="cód." style="'+mini+'" '+off+
-              'oninput="ventCod('+i+',this.value)"></label>'+
-            '<label>Código 2<input value="'+(l.cod2||'')+'" placeholder="cód. 2" style="'+mini+'" '+off+
-              'oninput="ventCod2('+i+',this.value)"></label>'+
-            '<label>Ubicación<input value="'+(l.ubic||'')+'" placeholder="estante" style="'+mini+'" '+off+
-              'oninput="ventUbic('+i+',this.value)"></label>'+
-            '<label>Marca<input value="'+String(l.marca||'').replace(/"/g,'&quot;')+'" placeholder="marca" style="'+mini+'" '+off+
-              'oninput="ventMarca('+i+',this.value)"></label>'+
-          '</div>'
-        : '')+'</td>'+
-    '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:56px;text-align:right;padding:7px" '+
-      off+'oninput="ventCant('+i+',this.value)"></td>'+
-    '<td class="der"><input type="number" min="0" value="'+l.final+'" style="width:90px;text-align:right;padding:7px" '+
-      off+'oninput="ventPrecio('+i+',this.value)"></td>'+
-    '<td class="num der"><b class="vsub">'+S(l.incluir?l.final*l.cant:0)+'</b></td>'+
-    '<td style="white-space:nowrap">'+(l.incluir
-      ? '<button class="btn chico sec" style="min-height:32px;padding:0 8px;color:var(--rojo)" title="Retirar" onclick="ventRetirar('+i+')">✕</button>'
-      : '<button class="btn chico sec" style="min-height:32px;padding:0 8px" onclick="ventRestaurar('+i+')">↺</button>')+
-    '</td></tr>';
+        ? '<label>Código<input value="'+(l.cod_alm||'')+'" placeholder="cód." style="'+mini+'" '+off+
+            'oninput="ventCod('+i+',this.value)"></label>'+
+          '<label>Código 2<input value="'+(l.cod2||'')+'" placeholder="cód. 2" style="'+mini+'" '+off+
+            'oninput="ventCod2('+i+',this.value)"></label>'+
+          '<label>Ubicación<input value="'+(l.ubic||'')+'" placeholder="estante" style="'+mini+'" '+off+
+            'oninput="ventUbic('+i+',this.value)"></label>'+
+          '<label>Marca<input value="'+String(l.marca||'').replace(/"/g,'&quot;')+
+            '" placeholder="marca" style="'+mini+'" '+off+'oninput="ventMarca('+i+',this.value)"></label>'
+        : '')+
+      '<label>Cantidad<input type="number" min="1" value="'+l.cant+'" style="'+mini+'" '+off+
+        'oninput="ventCant('+i+',this.value)"></label>'+
+      '<label>Precio<input type="number" min="0" value="'+l.final+'" style="'+mini+'" '+off+
+        'oninput="ventPrecio('+i+',this.value)"></label>'+
+      '<div class="ancho vl-pie">'+
+        '<span class="hint" style="margin:0">El subtotal se actualiza arriba</span>'+
+        (l.incluir
+          ? '<button class="btn chico sec" style="color:var(--rojo)" onclick="ventRetirar('+i+')">✕ Retirar</button>'
+          : '<button class="btn chico sec" onclick="ventRestaurar('+i+')">↺ Restaurar</button>')+
+      '</div>'+
+    '</div></div>';
 }
 function ventFilasAgrupadas(){
   var s='',r='';
   VENT_LIN.forEach(function(l,i){ if(l.tipo==='MO')s+=ventFila(l,i); else r+=ventFila(l,i); });
-  return (s?'<tr><td colspan="6" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>'+s:'')+
-         (r?'<tr><td colspan="6" style="padding-top:12px"><b class="cond" style="font-size:14px">Repuestos</b></td></tr>'+r:'');
+  return '<div class="vlista">'+
+    (s?'<div class="vl-tit">Servicios</div>'+s:'')+
+    (r?'<div class="vl-tit">Repuestos</div>'+r:'')+
+    '</div>';
 }
 function ventCod(i,v){
   VENT_LIN[i].cod_alm=v;
@@ -6453,7 +6518,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=99;
+var APP_VER=101;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
