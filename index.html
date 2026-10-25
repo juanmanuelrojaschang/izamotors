@@ -1,4 +1,4 @@
-<!--IZAV:101-->
+<!--IZAV:102-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -592,7 +592,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 101</span>
+  <span class="demo-tag">versión 102</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -5715,8 +5715,10 @@ function ventRender(){
     ventFilasAgrupadas()+
 
 
-    '<div style="margin-top:12px">'+
+    '<div class="fila" style="margin-top:12px;align-items:center">'+
       '<button class="btn chico sec" onclick="ventToggleAgregar()">'+(VENT_ADD_ABIERTO?'▲ Ocultar':'+ Agregar repuesto')+'</button>'+
+      '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
+      '<span id="ventGuardadoMsg" class="hint" style="margin:0"></span>'+
     '</div>'+
     (VENT_ADD_ABIERTO
       ? '<div class="invBox" style="margin:10px 0 0">'+
@@ -5731,10 +5733,7 @@ function ventRender(){
         '</div></div>'
       : '')+
 
-    '<div class="fila" style="margin-top:12px;align-items:center">'+
-      '<button class="btn chico sec" onclick="ventGuardar()">💾 Guardar avance</button>'+
-      '<span id="ventGuardadoMsg" class="hint" style="margin:0">Códigos, precios y líneas, sin enviar ni aprobar.</span>'+
-    '</div>'+
+
     '<div class="bloque-pres" style="margin-top:16px">'+
       '<label style="margin:0 0 10px">OT definitiva</label>'+
       '<button class="btn chico sec" style="margin-bottom:10px;background:#232A34;color:#E8ECF1;border-color:#39424F" '+
@@ -5762,17 +5761,17 @@ function ventRender(){
     ventBloqueDespacho()+
 
     '<div class="dos-vias">'+
-      '<div class="via" style="background:#F0FBF3;border-color:#BFE6CE">'+
+      '<div class="via">'+
         '<label>A · Enviar OT final al cliente</label>'+
         '<div class="cel"><span class="num">+51</span>'+
           '<input id="ventWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'"></div>'+
         '<div class="hint" id="ventHint">El cliente aprueba la versión final desde su celular.</div>'+
-        '<button class="btn chico" style="background:#25D366;color:#0A2E19" onclick="ventEnviarFinal()">📤 Enviar OT FINAL</button>'+
+        '<button class="btn chico" onclick="ventEnviarFinal()">📤 Enviar OT FINAL</button>'+
       '</div>'+
       '<div class="via">'+
         '<label>B · Continuar sin visto bueno</label>'+
         '<div class="hint" style="margin:0">Cuando el cliente no aprueba por el link. Comentario obligatorio.</div>'+
-        '<button class="btn chico sec" onclick="ventSinVB()">Aprobar sin VB del cliente</button>'+
+        '<button class="btn chico" onclick="ventSinVB()">Aprobar sin VB del cliente</button>'+
       '</div>'+
     '</div>'+
     '<div id="ventMsg" style="margin-top:10px"></div>';
@@ -5874,9 +5873,13 @@ function ventFila(l,i){
       '<span class="vl-fle">'+(abierta?'▾':'▸')+'</span>'+
       '<span class="vl-des">'+l.desc+
         (l.cambio==='A'?' <span class="eti e4">nuevo</span>':'')+
-        (faltaCod?' <span class="eti e2">sin código</span>':'')+
-        ((l.marca||l.cod_alm)?'<span class="vl-sub">'+
-          [l.cod_alm,l.marca].filter(Boolean).join(' · ')+'</span>':'')+
+        ((faltaCod||l.marca||l.cod_alm)
+          ? '<span class="vl-sub">'+
+              (faltaCod?'<b style="color:var(--rojo)">sin código</b>':'')+
+              ((faltaCod&&l.marca)?' · ':'')+
+              [l.cod_alm,l.marca].filter(Boolean).join(' · ')+
+            '</span>'
+          : '')+
       '</span>'+
       '<span class="vl-cant">'+l.cant+'×</span>'+
       '<span class="vl-sub2 vsub">'+S(l.incluir?l.final*l.cant:0)+'</span>'+
@@ -6518,7 +6521,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=101;
+var APP_VER=102;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
