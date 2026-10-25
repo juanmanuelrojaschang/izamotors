@@ -1,4 +1,4 @@
-<!--IZAV:98-->
+<!--IZAV:99-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -562,7 +562,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 98</span>
+  <span class="demo-tag">versión 99</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2665,8 +2665,45 @@ function optNiveles(sel){
   return NIVELES_CLI.map(function(n){
     return '<option value="'+n.v+'"'+(sel===n.v?' selected':'')+'>'+n.t+'</option>'}).join('');
 }
+/* ---------- marcas: se escribe y la app completa ----------
+   Con <datalist> el campo sugiere mientras se teclea y, si la
+   marca no está en la lista, se escribe igual y se guarda tal cual.
+   --------------------------------------------------------- */
+function datalistMarcas(){
+  return '<datalist id="listaMarcas">'+
+    MARCAS.filter(function(m){return m!=='Otra'})
+      .map(function(m){return '<option value="'+m+'"></option>'}).join('')+
+    '</datalist>';
+}
+/* Acepta "toyo", "TOYOTA" o "toyota" y deja escrito Toyota. */
+function marcaNormal(t){
+  var q=String(t||'').trim();
+  if(!q)return '';
+  var lista=MARCAS.filter(function(m){return m!=='Otra'});
+  var ex=lista.filter(function(m){return m.toLowerCase()===q.toLowerCase()})[0];
+  if(ex)return ex;
+  var pre=lista.filter(function(m){return m.toLowerCase().indexOf(q.toLowerCase())===0});
+  if(pre.length===1)return pre[0];
+  return q;
+}
+function marcaEscrita(){
+  var inp=document.getElementById('nvMarca');if(!inp)return;
+  var nota=document.getElementById('nvMarcaNota');
+  var bruto=inp.value,limpio=marcaNormal(bruto);
+  /* solo completa cuando ya hay tres letras, para no estorbar al teclear */
+  if(limpio!==bruto&&bruto.trim().length>2)inp.value=limpio;
+  var conocida=MARCAS.indexOf(inp.value)>-1;
+  if(nota){
+    nota.innerHTML=inp.value
+      ? (conocida?'':'<b>Marca nueva</b> · se guardará tal como la escribiste')
+      : '';
+  }
+  llenarModelos();
+}
+
 function llenarModelos(){
-  var m=document.getElementById('nvMarca').value;
+  var mi=document.getElementById('nvMarca');if(!mi)return;
+  var m=mi.value;
   var sel=document.getElementById('nvModeloSel');
   var inp=document.getElementById('nvModelo');
   if(!sel)return;
@@ -3034,7 +3071,11 @@ function formVehiculo(pref){
   pref=pref||{};
   return '<div class="grid g3">'+
     '<div><label>Placa</label><input id="nvPlaca" value="'+(pref.placa||'')+'" oninput="this.value=this.value.toUpperCase()"></div>'+
-    '<div><label>Marca</label><select id="nvMarca" onchange="llenarModelos()">'+optMarcas()+'</select></div>'+
+    '<div><label>Marca</label>'+
+      '<input id="nvMarca" list="listaMarcas" autocomplete="off" placeholder="Escribe la marca" '+
+        'value="'+(pref.marca||'')+'" oninput="marcaEscrita()" onchange="marcaEscrita()">'+
+      datalistMarcas()+
+      '<div class="hint" id="nvMarcaNota" style="margin:3px 0 0"></div></div>'+
     '<div><label>Modelo</label>'+
       '<select id="nvModeloSel" onchange="modeloDesdeLista()"><option value="">— elige la marca primero —</option></select>'+
       '<input id="nvModelo" style="margin-top:6px;display:none" placeholder="Escribe el modelo">'+
@@ -6412,7 +6453,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=98;
+var APP_VER=99;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
