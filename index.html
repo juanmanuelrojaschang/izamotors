@@ -1,4 +1,4 @@
-<!--IZAV:105-->
+<!--IZAV:106-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -197,6 +197,7 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .vl-campos input{margin-top:3px}
 .vl-pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px}
 @media(min-width:700px){.vl-campos{grid-template-columns:repeat(4,1fr)}}
+input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 /* ===== filtros compactos ===== */
 .filtros{display:grid;gap:9px 10px;margin-bottom:12px;align-items:end;
   grid-template-columns:2fr 1fr;}
@@ -588,7 +589,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 105</span>
+  <span class="demo-tag">versión 106</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -693,23 +694,22 @@ tr.sel td{background:var(--rojo-cl)}
         <button class="atras" onclick="cerrarListado()">← Volver</button>
         <span class="donde">Clientes y órdenes</span>
       </div>
-      <div class="fila" style="align-items:flex-end;margin-bottom:12px">
-        <div style="flex:2;min-width:190px"><label>Buscar por placa, cliente, documento u OT</label>
-          <input id="segTxt" placeholder="Ej. CTS-009, Rojas, 42594207" oninput="segLista()"></div>
-        <div style="min-width:150px"><label>Etapa</label>
+      <div class="filtros">
+        <div class="f-busca"><label>Buscar por placa, cliente, documento u OT</label>
+          <input id="segTxt" placeholder="Placa, cliente, documento u OT" oninput="segLista()"></div>
+        <div class="f-estado"><label>Etapa</label>
           <select id="segEtapa" onchange="segLista()"></select></div>
-        <div style="min-width:150px"><label>Ingreso</label>
-          <select id="segDia" onchange="segLista()">
-            <option value="todos">Todos</option>
-            <option value="hoy">Ingresó hoy</option>
-            <option value="viejo">Más de 1 día</option>
-          </select></div>
+        <div class="f-desde"><label>Desde</label>
+          <input type="date" id="segDesde" onchange="segLista()"></div>
+        <div class="f-hasta"><label>Hasta</label>
+          <input type="date" id="segHasta" onchange="segLista()"></div>
+        <div class="f-limpia"><button class="btn chico sec full" onclick="segFechasLimpiar()">Limpiar</button></div>
       </div>
       <div class="modo" style="max-width:340px;margin-bottom:12px">
         <button id="tabOrdenes" class="on" onclick="setTabListado('ordenes')">Órdenes en curso</button>
         <button id="tabClientes" onclick="setTabListado('clientes')">Clientes recientes</button>
       </div>
-      <div style="overflow-x:auto"><table id="segRes"></table></div>
+      <div style="overflow-x:auto"><table id="segRes" class="lista"></table></div>
       <div class="fila" style="margin-top:14px">
         <button class="btn chico sec" onclick="limpiarHistorial()">Limpiar pruebas</button>
       </div>
@@ -1484,6 +1484,23 @@ function continuarSesion(){
   $('flujo').style.display='block';
   paso(OT_EST?5:PASO_ACTUAL);
 }
+function segFechasLimpiar(){
+  if($('segDesde'))$('segDesde').value='';
+  if($('segHasta'))$('segHasta').value='';
+  segLista();
+}
+/* El rango se compara contra la fecha de ingreso de la orden. */
+function segEnRango(ms){
+  var d=($('segDesde')&&$('segDesde').value)||'',
+      hh=($('segHasta')&&$('segHasta').value)||'';
+  if(!d&&!hh)return true;
+  if(!ms)return false;
+  var f=new Date(ms),
+      s=f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')+'-'+String(f.getDate()).padStart(2,'0');
+  if(d&&s<d)return false;
+  if(hh&&s>hh)return false;
+  return true;
+}
 function segLista(){
   if(TAB_LISTADO==='clientes'){ listaClientes(); return; }
   var selE=$('segEtapa');
@@ -1492,7 +1509,7 @@ function segLista(){
       return '<option value="'+e.k+'">'+e.t+'</option>'}).join('');
   }
   var txt=($('segTxt').value||'').toLowerCase().replace(/-/g,''),
-      fE=selE?selE.value:'', fD=$('segDia')?$('segDia').value:'todos';
+      fE=selE?selE.value:'';
   var filas='';
   /* recepción a medias, todavía sin guardar */
   if(SESION_ACT&&!OT_EST){
@@ -1500,9 +1517,11 @@ function segLista(){
     var pj=(pl+cl).toLowerCase().replace(/-/g,'');
     if(!txt||pj.indexOf(txt)>-1){
       filas+='<tr class="click" onclick="continuarSesion()" style="background:var(--rojo-cl)">'+
-        '<td class="num"><b>—</b></td><td class="num"><b>'+pl+'</b></td><td>'+cl+'</td>'+
-        '<td><span class="eti e1">Recepción en curso · paso '+PASO_ACTUAL+'</span></td>'+
-        '<td class="num der">ahora</td><td class="der"><b style="color:var(--rojo)">Continuar →</b></td></tr>';
+        '<td class="num" data-l="OT"><b>—</b></td><td class="num" data-l="Placa"><b>'+pl+'</b></td>'+
+        '<td data-l="Cliente">'+cl+'</td>'+
+        '<td data-l="Estado"><span class="eti e1">Recepción en curso · paso '+PASO_ACTUAL+'</span></td>'+
+        '<td class="num der" data-l="En taller">ahora</td>'+
+        '<td class="der"><b style="color:var(--rojo)">Continuar →</b></td></tr>';
     }
   }
   /* órdenes registradas en este dispositivo */
@@ -1510,17 +1529,16 @@ function segLista(){
     var pj=(d.placa+d.cliente+d.ot).toLowerCase().replace(/-/g,'');
     if(txt&&pj.indexOf(txt)===-1)return;
     if(fE&&d.estado!==fE)return;
+    if(!segEnRango(d.creada))return;
     var mins=Math.round((Date.now()-(d.creada||Date.now()))/60000);
-    if(fD==='hoy'&&mins>600)return;
-    if(fD==='viejo'&&mins<=1440)return;
     var esAdmin=SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general');
     filas+='<tr style="background:#FFF7F7">'+
-      '<td class="num click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+d.ot+'</b></td>'+
-      '<td class="num click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+d.placa+'</b></td>'+
-      '<td class="click" onclick="abrirOrden(&quot;'+d.ot+'&quot;)">'+d.cliente+'</td>'+
-      '<td><span class="eti '+CHIP[d.estado_taller||d.estado]+'">'+
+      '<td class="num click" data-l="OT" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+otCorto(d.ot)+'</b></td>'+
+      '<td class="num click" data-l="Placa" onclick="abrirOrden(&quot;'+d.ot+'&quot;)"><b>'+d.placa+'</b></td>'+
+      '<td class="click" data-l="Cliente" onclick="abrirOrden(&quot;'+d.ot+'&quot;)">'+d.cliente+'</td>'+
+      '<td data-l="Estado"><span class="eti '+CHIP[d.estado_taller||d.estado]+'">'+
         (NOMBRE_EST[d.estado_taller||d.estado]||'—')+'</span></td>'+
-      '<td class="num der">'+tiempo(mins)+'</td>'+
+      '<td class="num der" data-l="En taller">'+tiempo(mins)+'</td>'+
       '<td class="der"><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
         'onclick="abrirOrden(&quot;'+d.ot+'&quot;)">Continuar</button>'+
         (esAdmin?' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
@@ -1529,15 +1547,16 @@ function segLista(){
   });
   OTS.filter(function(o){
     if(fE&&o.estado!==fE)return false;
-    if(fD==='hoy'&&o.mins>600)return false;
-    if(fD==='viejo'&&o.mins<=1440)return false;
+    if(!segEnRango(Date.now()-(o.mins||0)*60000))return false;
     if(!txt)return true;
     return (o.placa+o.cliente+o.ot).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
   }).slice(0,12).forEach(function(o){
     filas+='<tr class="click" onclick="reanudar(&quot;'+o.ot+'&quot;)">'+
-      '<td class="num">'+o.ot+'</td><td class="num"><b>'+o.placa+'</b></td><td>'+o.cliente+'</td>'+
-      '<td><span class="eti '+CLASE[o.estado]+'">'+o.estadoT+'</span></td>'+
-      '<td class="num der">'+tiempo(o.mins)+'</td><td class="der" style="color:var(--mudo)">Abrir →</td></tr>';
+      '<td class="num" data-l="OT">'+otCorto(o.ot)+'</td><td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
+      '<td data-l="Cliente">'+o.cliente+'</td>'+
+      '<td data-l="Estado"><span class="eti '+CLASE[o.estado]+'">'+o.estadoT+'</span></td>'+
+      '<td class="num der" data-l="En taller">'+tiempo(o.mins)+'</td>'+
+      '<td class="der" style="color:var(--mudo)">Abrir →</td></tr>';
   });
   $('segRes').innerHTML='<tr><th>OT</th><th>Placa</th><th>Cliente</th><th>Estado</th>'+
     '<th class="der">En taller</th><th></th></tr>'+
@@ -1560,11 +1579,11 @@ function listaClientes(){
       res.innerHTML='<tr><th>Cliente</th><th>Documento</th><th>Nivel</th><th>Vehículos</th></tr>'+
         (lista.length?lista.map(function(c){
           var vs=(c.vehiculos||[]);
-          return '<tr><td><b>'+c.nombre+'</b>'+
+          return '<tr><td data-l="Cliente"><b>'+c.nombre+'</b>'+
             '<div style="font-size:11px;color:var(--mudo)">'+(c.telefono||'sin teléfono')+'</div></td>'+
-            '<td class="num">'+(c.tipo_doc||'')+' '+(c.num_doc||'—')+'</td>'+
-            '<td><span class="niv '+claseNivel(c.nivel)+'">'+(c.nivel||'Plata')+'</span></td>'+
-            '<td>'+(vs.length?vs.map(function(v){
+            '<td class="num" data-l="Documento">'+(c.tipo_doc||'')+' '+(c.num_doc||'—')+'</td>'+
+            '<td data-l="Nivel"><span class="niv '+claseNivel(c.nivel)+'">'+(c.nivel||'Plata')+'</span></td>'+
+            '<td data-l="Vehículos">'+(vs.length?vs.map(function(v){
               return '<button class="btn chico sec" style="min-height:34px;padding:0 11px;margin:2px" '+
                 'onclick="elegirPlaca(&quot;'+v.placa+'&quot;)">'+v.placa+'</button>';
             }).join(''):'<span class="hint">sin vehículos</span>')+'</td></tr>';
@@ -2396,7 +2415,10 @@ function editarEnProceso(){
       'registrados en la bitácora. Para cambiar de vehículo hay que reiniciar el check-in.</div>'+
     '<h3 style="font-size:14px;margin-top:14px">Vehículo · '+v.placa+'</h3>'+
     '<div class="grid g3">'+
-      '<div><label>Marca</label><select id="epMarca" onchange="epModelos()">'+optMarcas(v.marca)+'</select></div>'+
+      '<div><label>Marca</label>'+
+        '<input id="epMarca" list="listaMarcasEp" autocomplete="off" placeholder="Escribe la marca" '+
+          'value="'+esc(v.marca||'')+'" oninput="epMarcaEscrita()" onchange="epMarcaEscrita()">'+
+        datalistMarcas('listaMarcasEp')+'</div>'+
       '<div><label>Modelo</label><select id="epModeloSel" onchange="epModeloSelCambio()"></select>'+
         '<input id="epModelo" style="margin-top:6px;display:none" value="'+esc(v.modelo||'')+'"></div>'+
       '<div><label>Año</label><select id="epAnio">'+optAnios(v.anio)+'</select></div>'+
@@ -2419,8 +2441,19 @@ function editarEnProceso(){
   epModelos(v.modelo);
   window.scrollTo({top:0,behavior:'smooth'});
 }
+var EP_MARCA_PREV='';
+function epMarcaEscrita(){
+  var inp=document.getElementById('epMarca');if(!inp)return;
+  var bruto=inp.value,limpio=marcaNormal(bruto);
+  var borrando=bruto.length<EP_MARCA_PREV.length;
+  EP_MARCA_PREV=bruto;
+  if(!borrando&&limpio!==bruto&&bruto.trim().length>2){inp.value=limpio;EP_MARCA_PREV=limpio}
+  epModelos();
+}
 function epModelos(sel){
-  var m=$('epMarca').value,lista=MODELOS[m]||[],s=$('epModeloSel'),inp=$('epModelo');
+  var mi=$('epMarca');if(!mi)return;
+  var m=mi.value,lista=MODELOS[m]||[],s=$('epModeloSel'),inp=$('epModelo');
+  if(!s||!inp)return;
   s.innerHTML='<option value="">— modelo —</option>'+
     lista.map(function(x){return '<option'+(sel===x?' selected':'')+'>'+x+'</option>'}).join('')+
     '<option value="__otro">Otro · escribir modelo</option>';
@@ -2678,10 +2711,6 @@ function optAnios(sel){
   for(var a=y;a>=1990;a--)o+='<option'+(String(sel)===String(a)?' selected':'')+'>'+a+'</option>';
   return o;
 }
-function optMarcas(sel){
-  return '<option value="">— marca —</option>'+MARCAS.map(function(m){
-    return '<option'+(sel===m?' selected':'')+'>'+m+'</option>'}).join('');
-}
 function optColores(sel){
   return '<option value="">— color —</option>'+COLORES.map(function(c){
     return '<option'+(sel===c?' selected':'')+'>'+c+'</option>'}).join('');
@@ -2695,8 +2724,8 @@ function optNiveles(sel){
    Con <datalist> el campo sugiere mientras se teclea y, si la
    marca no está en la lista, se escribe igual y se guarda tal cual.
    --------------------------------------------------------- */
-function datalistMarcas(){
-  return '<datalist id="listaMarcas">'+
+function datalistMarcas(id){
+  return '<datalist id="'+(id||'listaMarcas')+'">'+
     MARCAS.filter(function(m){return m!=='Otra'})
       .map(function(m){return '<option value="'+m+'"></option>'}).join('')+
     '</datalist>';
@@ -2712,12 +2741,16 @@ function marcaNormal(t){
   if(pre.length===1)return pre[0];
   return q;
 }
+var MARCA_PREV='';
 function marcaEscrita(){
   var inp=document.getElementById('nvMarca');if(!inp)return;
   var nota=document.getElementById('nvMarcaNota');
   var bruto=inp.value,limpio=marcaNormal(bruto);
-  /* solo completa cuando ya hay tres letras, para no estorbar al teclear */
-  if(limpio!==bruto&&bruto.trim().length>2)inp.value=limpio;
+  /* Si está borrando, no se completa: si no, al quitar una letra
+     la marca anterior volvía sola y no había forma de cambiarla. */
+  var borrando=bruto.length<MARCA_PREV.length;
+  MARCA_PREV=bruto;
+  if(!borrando&&limpio!==bruto&&bruto.trim().length>2){inp.value=limpio;MARCA_PREV=limpio}
   var conocida=MARCAS.indexOf(inp.value)>-1;
   if(nota){
     nota.innerHTML=inp.value
@@ -3064,7 +3097,8 @@ function formCliente(pref){
   return '<div class="grid g3">'+
     '<div><label>Tipo de documento</label><select id="nvTipo" onchange="toggleTipoDoc(&quot;nv&quot;)">'+
       '<option>DNI</option><option>RUC</option><option>CE</option></select></div>'+
-    '<div><label>Número de documento</label><input id="nvDoc" inputmode="numeric" value="'+(pref.doc||'')+'"></div>'+
+    '<div><label>Número de documento</label><input id="nvDoc" inputmode="numeric" '+
+      'placeholder="obligatorio" value="'+(pref.doc||'')+'"></div>'+
     '<div><label>Nivel del cliente</label><select id="nvNivel">'+optNiveles('Plata')+'</select></div>'+
   '</div>'+
   '<div class="grid g2" style="margin-top:10px">'+
@@ -3079,16 +3113,15 @@ function formCliente(pref){
     '<button class="btn chico" onclick="flotaAbrirCam()">📷 Tomar foto de validación</button>'+
   '</div>'+
   '<div class="grid g2" id="nvPersona" style="margin-top:10px">'+
-    '<div><label>Nombres</label><input id="nvNombres" oninput="capitalizar(this)" placeholder="Juan Manuel"></div>'+
-    '<div><label>Apellidos</label><input id="nvApellidos" oninput="capitalizar(this)" placeholder="Rojas Chang"></div>'+
+    '<div><label>Nombres</label><input id="nvNombres" oninput="capitalizar(this)" placeholder="obligatorio"></div>'+
+    '<div><label>Apellidos</label><input id="nvApellidos" oninput="capitalizar(this)" placeholder="obligatorio"></div>'+
   '</div>'+
   '<div id="nvEmpresa" style="display:none;margin-top:10px">'+
-    '<label>Razón social</label><input id="nvRazon" oninput="capitalizar(this)" placeholder="Transportes Andina S.A.C.">'+
+    '<label>Razón social</label><input id="nvRazon" oninput="capitalizar(this)" placeholder="obligatorio">'+
   '</div>'+
   '<div class="grid g2" style="margin-top:10px">'+
-    '<div><label>Teléfono</label><input id="nvTel" inputmode="numeric" placeholder="9XX XXX XXX"></div>'+
-    '<div><label>Correo <span style="text-transform:none;letter-spacing:0;color:var(--mudo)">(opcional)</span></label>'+
-      '<input id="nvMail" type="email" placeholder="opcional"></div>'+
+    '<div><label>Teléfono</label><input id="nvTel" inputmode="numeric" placeholder="obligatorio · 9XX XXX XXX"></div>'+
+    '<div><label>Correo</label><input id="nvMail" type="email" placeholder="opcional"></div>'+
   '</div>'+
   '<h3 style="margin-top:18px;font-size:15px">Primer vehículo</h3>'+
   formVehiculo(pref);
@@ -3096,19 +3129,20 @@ function formCliente(pref){
 function formVehiculo(pref){
   pref=pref||{};
   return '<div class="grid g3">'+
-    '<div><label>Placa</label><input id="nvPlaca" value="'+(pref.placa||'')+'" oninput="this.value=this.value.toUpperCase()"></div>'+
+    '<div><label>Placa</label><input id="nvPlaca" placeholder="obligatorio" value="'+(pref.placa||'')+
+      '" oninput="this.value=this.value.toUpperCase()"></div>'+
     '<div><label>Marca</label>'+
-      '<input id="nvMarca" list="listaMarcas" autocomplete="off" placeholder="Escribe la marca" '+
+      '<input id="nvMarca" list="listaMarcas" autocomplete="off" placeholder="obligatorio" '+
         'value="'+(pref.marca||'')+'" oninput="marcaEscrita()" onchange="marcaEscrita()">'+
       datalistMarcas()+
       '<div class="hint" id="nvMarcaNota" style="margin:3px 0 0"></div></div>'+
     '<div><label>Modelo</label>'+
       '<select id="nvModeloSel" onchange="modeloDesdeLista()"><option value="">— elige la marca primero —</option></select>'+
-      '<input id="nvModelo" style="margin-top:6px;display:none" placeholder="Escribe el modelo">'+
+      '<input id="nvModelo" style="margin-top:6px;display:none" placeholder="obligatorio">'+
     '</div>'+
     '<div><label>Año</label><select id="nvAnio">'+optAnios()+'</select></div>'+
     '<div><label>Color</label><select id="nvColor">'+optColores()+'</select></div>'+
-    '<div><label>Kilometraje</label><input id="nvKm" inputmode="numeric" placeholder="24,000" oninput="fmtKm(this)"></div>'+
+    '<div><label>Kilometraje</label><input id="nvKm" inputmode="numeric" placeholder="opcional · 24,000" oninput="fmtKm(this)"></div>'+
   '</div>';
 }
 function guardarClienteNuevo(volverA){
@@ -6630,7 +6664,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=105;
+var APP_VER=106;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
