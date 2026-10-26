@@ -1,4 +1,4 @@
-<!--IZAV:111-->
+<!--IZAV:112-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -589,7 +589,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 111</span>
+  <span class="demo-tag">versión 112</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -792,8 +792,7 @@ tr.sel td{background:var(--rojo-cl)}
       <button class="btn full" onclick="fotoCam()">📷 Abrir cámara</button>
       <div id="galeria" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px"></div>
       <button class="btn full" id="btnFotosSig" style="margin-top:16px" onclick="paso(4)">Continuar a firma</button>
-      <button class="btn full" id="btnExpress" style="margin-top:16px;display:none" onclick="recibirExpress()">
-        Registrar recepción y asignar mecánico</button>
+
     </div>
 
     <!-- 4 firma y recepcion -->
@@ -3508,9 +3507,7 @@ function paso(n){
   if(d){
     d.innerHTML = n>=5
       ? 'Orden <b>'+(OT_NUM||'')+'</b> · volver al listado de clientes'
-      : (esExpress()
-          ? '<span class="eti e2">Express</span> Paso '+(n===3?1:2)+' de 2 · <b>'+(PASOS_NOMBRE[n]||'')+'</b>'
-          : 'Paso '+n+' de 4 · <b>'+(PASOS_NOMBRE[n]||'')+'</b>');
+      : 'Paso '+n+' de 4 · <b>'+(PASOS_NOMBRE[n]||'')+'</b>';
   }
   window.scrollTo({top:0,behavior:'smooth'});
   if(n===2){
@@ -3518,10 +3515,6 @@ function paso(n){
     if(ki&&!ki.value&&ACTUAL)ki.value=(Number(ACTUAL.km)||0).toLocaleString('es-PE');
   }
   if(n===4)pintarResumenIngreso();
-  var bExp=document.getElementById('btnExpress');
-  if(bExp)bExp.style.display=(n===3&&esExpress())?'':'none';
-  var bNor=document.getElementById('btnFotosSig');
-  if(bNor)bNor.style.display=(n===3&&!esExpress())?'':'none';
 }
 
 /* ============ MODO DE INGRESO DE PLACA ============ */
@@ -3676,18 +3669,18 @@ function pintarFicha(v){
    '</table></div>'+
    '<div class="card" style="margin:14px 0 0;border-color:var(--rojo)">'+
      '<label style="margin:0 0 4px">¿El cliente se queda o deja el auto?</label>'+
-     '<div class="hint" style="margin:0 0 10px">De esto depende el check-in: si espera, se va directo '+
-       'a las fotos y se saltan el inventario de daños y la constancia.</div>'+
+     '<div class="hint" style="margin:0 0 10px">De esto depende el check-in: si espera, se registra '+
+       'la orden de una vez y se pasa a asignar mecánico, sin daños, fotos ni constancia.</div>'+
      '<div class="grid g2" style="gap:10px">'+
        '<button class="btn full" onclick="elegirModoRecepcion(&quot;deja&quot;)" '+
          'style="min-height:86px;flex-direction:column;display:flex;align-items:center;justify-content:center;gap:4px">'+
          '<span style="font-size:24px">🔑</span><span>Deja el auto</span>'+
          '<span style="font-family:Inter;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">Check-in completo</span>'+
        '</button>'+
-       '<button class="btn full sec" onclick="elegirModoRecepcion(&quot;espera&quot;)" '+
+       '<button class="btn full" onclick="elegirModoRecepcion(&quot;espera&quot;)" '+
          'style="min-height:86px;flex-direction:column;display:flex;align-items:center;justify-content:center;gap:4px">'+
          '<span style="font-size:24px">⏱️</span><span>Espera en el taller</span>'+
-         '<span style="font-family:Inter;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--mudo)">Express · solo fotos</span>'+
+         '<span style="font-family:Inter;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">Express · va directo a la OT</span>'+
        '</button>'+
      '</div></div>';
 }
@@ -3696,17 +3689,14 @@ function pintarFicha(v){
    inventario de daños: se va con el auto el mismo día.
    ---------------------------------------------------- */
 var MODO_REC='deja';
-/* En express el registro va directo desde las fotos: no hay
-   inventario de daños ni constancia que firmar. */
-function recibirExpress(){
-  if(!FOTOS.length&&!confirm('No tomaste ninguna foto. ¿Registrar igual?'))return;
-  recibir();
-}
 function elegirModoRecepcion(m){
   MODO_REC=m;
-  try{localStorage.setItem('iza_modo_rec',m)}catch(e){}
-  auditar('MODO_RECEPCION','orden',(ACTUAL&&ACTUAL.placa)||'','Cliente '+(m==='espera'?'espera en taller':'deja el auto'));
-  paso(m==='espera'?3:2);
+  auditar('MODO_RECEPCION','orden',(ACTUAL&&ACTUAL.placa)||'',
+    'Cliente '+(m==='espera'?'espera en taller':'deja el auto'));
+  if(m!=='espera'){paso(2);return}
+  /* El cliente está esperando: se registra la recepción de una vez
+     y se va a la orden. Sin daños, sin fotos, sin constancia. */
+  recibir();
 }
 function esExpress(){return MODO_REC==='espera'}
 
@@ -4465,8 +4455,10 @@ function recibir(){
        km:kmIng,creada:Date.now()};
   if(sb&&kmIng)sb.from('vehiculos').update({km_ultimo:kmIng}).eq('placa',v.placa).then(function(){},function(){});
   $('gInfo').innerHTML=v.marca+' '+v.modelo+' · <b class="num">'+v.placa+'</b> · '+v.cliente+' · '+v.tel+
-    '<br>Daños: <b>'+(danosLista().length?danosLista().join(', '):'ninguno')+'</b> · Fotos: <b>'+FOTOS.length+
-    '</b> · Combustible: <b>'+$('cmb').textContent+'</b>';
+    (esExpress()
+      ? '<br><span class="eti e2">Express</span> El cliente espera en el taller.'
+      : '<br>Daños: <b>'+(danosLista().length?danosLista().join(', '):'ninguno')+'</b> · Fotos: <b>'+FOTOS.length+
+        '</b> · Combustible: <b>'+$('cmb').textContent+'</b>');
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
   pintarMecanicos('');
   /* el número lo entrega la base: en el navegador se repetía entre equipos */
@@ -6954,7 +6946,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=111;
+var APP_VER=112;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
