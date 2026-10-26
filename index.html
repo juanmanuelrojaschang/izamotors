@@ -1,4 +1,4 @@
-<!--IZAV:113-->
+<!--IZAV:114-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -595,7 +595,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 113</span>
+  <span class="demo-tag">versión 114</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -848,7 +848,8 @@ tr.sel td{background:var(--rojo-cl)}
       <div class="card" id="gAsig">
         <h3 id="tituloMec">Asignar mecánico e iniciar diagnóstico</h3>
         <div class="grid g2" style="gap:10px">
-          <div><label>Mecánico</label><select id="gMec"></select></div>
+          <div><label>Mecánico</label><select id="gMec"></select>
+            <div id="gMecAviso"></div></div>
           <div><label>Kilometraje de ingreso</label>
             <input id="gKm" inputmode="numeric" placeholder="obligatorio · 24,000" oninput="fmtKm(this)"></div>
         </div>
@@ -5023,30 +5024,67 @@ function continuarSinConfirmarCon(m){
    agrupe por persona y no por un texto escrito a mano.
    Solo se ofrecen los del local donde se está trabajando.
    ============================================================ */
-var MECS=[],MECS_SEDE=null;
+var MECS=[],MECS_SEDE=null,MECS_ERR='',MECS_TOTAL=-1,MECS_OTROS=false;
 function cargarMecanicos(cb){
   if(!sb){cb&&cb();return}
-  if(MECS.length&&MECS_SEDE===SEDE_ACTIVA){cb&&cb();return}
-  sb.from('mecanicos').select('codigo,nombre,tipo,sede_id')
-    .eq('activo',true).eq('sede_id',SEDE_ACTIVA).order('nombre')
-    .then(function(r){
-      MECS=r.data||[];MECS_SEDE=SEDE_ACTIVA;cb&&cb();
-    },function(){MECS=[];cb&&cb()});
+  if(MECS.length&&MECS_SEDE===SEDE_ACTIVA&&!MECS_OTROS){cb&&cb();return}
+  MECS_ERR='';
+  var q=sb.from('mecanicos').select('codigo,nombre,tipo,sede_id,sedes(nombre)').eq('activo',true);
+  if(!MECS_OTROS)q=q.eq('sede_id',SEDE_ACTIVA);
+  q.order('nombre').limit(400).then(function(r){
+    if(r.error){
+      MECS=[];MECS_ERR=r.error.message;MECS_SEDE=SEDE_ACTIVA;cb&&cb();return;
+    }
+    MECS=r.data||[];MECS_SEDE=SEDE_ACTIVA;
+    /* Si este local no tiene gente, ¿hay alguna cargada? La respuesta
+       distingue "falta el paso 26" de "falta gente en este local". */
+    if(!MECS.length&&MECS_TOTAL<0){
+      sb.from('mecanicos').select('codigo',{count:'exact',head:true}).eq('activo',true)
+        .then(function(c){MECS_TOTAL=c.count||0;cb&&cb()},function(){MECS_TOTAL=0;cb&&cb()});
+      return;
+    }
+    cb&&cb();
+  },function(){MECS=[];MECS_ERR='sin conexión';MECS_SEDE=SEDE_ACTIVA;cb&&cb()});
 }
+function mecVerOtros(){ MECS_OTROS=true;MECS=[];pintarMecanicos(MECANICO_OT||''); }
 function mecOpciones(tipo,sel){
   var l=MECS.filter(function(m){return m.tipo===tipo});
   return '<option value="">— elige '+(tipo==='LAVADOR'?'un lavador':'un mecánico')+' —</option>'+
     l.map(function(m){
       var v=m.codigo+' · '+m.nombre;
-      return '<option value="'+v+'"'+(sel===v||sel===m.nombre?' selected':'')+'>'+v+'</option>';
-    }).join('')+
-    (l.length?'':'<option value="" disabled>Este local no tiene '+
-      (tipo==='LAVADOR'?'lavadores':'mecánicos')+' cargados</option>');
+      var loc=(MECS_OTROS&&m.sedes&&m.sedes.nombre&&m.sede_id!==SEDE_ACTIVA)?' ('+m.sedes.nombre+')':'';
+      return '<option value="'+v+'"'+(sel===v||sel===m.nombre?' selected':'')+'>'+v+loc+'</option>';
+    }).join('');
+}
+/* Dice qué falta de verdad, en vez de culpar al local. */
+function mecAviso(){
+  var z=document.getElementById('gMecAviso');if(!z)return;
+  var hay=MECS.filter(function(m){return m.tipo==='MECANICO'}).length;
+  if(hay){z.innerHTML='';return}
+  if(MECS_ERR){
+    z.innerHTML='<div class="aviso rojo" style="margin:6px 0 0;font-size:12.5px">'+
+      'No pude leer los mecánicos: '+MECS_ERR+
+      (/does not exist|relation|permission|schema/i.test(MECS_ERR)
+        ? '<br><b>Falta correr el paso 26 en Supabase.</b>' : '')+'</div>';
+    return;
+  }
+  if(MECS_TOTAL===0){
+    z.innerHTML='<div class="aviso rojo" style="margin:6px 0 0;font-size:12.5px">'+
+      'No hay ningún mecánico cargado todavía. '+
+      '<b>Corre el paso 26</b> o súbelos desde Configuración → Datos maestros.</div>';
+    return;
+  }
+  z.innerHTML='<div class="aviso info" style="margin:6px 0 0;font-size:12.5px">'+
+    '<b>'+SEDE_NOMBRE+'</b> no tiene mecánicos asignados'+
+    (MECS_TOTAL>0?' (hay '+MECS_TOTAL+' en otros locales)':'')+'. '+
+    '<button class="btn chico sec" style="margin-top:6px" onclick="mecVerOtros()">'+
+    'Ver los de todos los locales</button></div>';
 }
 function pintarMecanicos(sel){
   cargarMecanicos(function(){
     var s=document.getElementById('gMec');
     if(s)s.innerHTML=mecOpciones('MECANICO',sel||MECANICO_OT||'');
+    mecAviso();
     pintarLavador();
   });
 }
@@ -6954,7 +6992,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=113;
+var APP_VER=114;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
