@@ -1,4 +1,4 @@
-<!--IZAV:106-->
+<!--IZAV:107-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -589,7 +589,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </div>
-  <span class="demo-tag">versión 106</span>
+  <span class="demo-tag">versión 107</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -683,7 +683,7 @@ tr.sel td{background:var(--rojo-cl)}
         <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()"></div>
       <button class="btn chico" style="flex:0 0 auto" onclick="bdNuevoCliente()">+ Nuevo cliente</button>
     </div>
-    <div style="overflow-x:auto"><table id="bdTabla"></table></div>
+    <div style="overflow-x:auto"><table id="bdTabla" class="lista"></table></div>
   </div>
   <div class="card" id="bdDetalle" style="display:none"></div>
 
@@ -2454,7 +2454,7 @@ function epModelos(sel){
   var mi=$('epMarca');if(!mi)return;
   var m=mi.value,lista=MODELOS[m]||[],s=$('epModeloSel'),inp=$('epModelo');
   if(!s||!inp)return;
-  s.innerHTML='<option value="">— modelo —</option>'+
+  s.innerHTML='<option value="">— modelo · obligatorio —</option>'+
     lista.map(function(x){return '<option'+(sel===x?' selected':'')+'>'+x+'</option>'}).join('')+
     '<option value="__otro">Otro · escribir modelo</option>';
   var enLista=sel&&lista.indexOf(sel)>-1;
@@ -2707,12 +2707,12 @@ var NIVELES_CLI=[
 ];
 
 function optAnios(sel){
-  var y=new Date().getFullYear()+1,o='<option value="">— año —</option>';
+  var y=new Date().getFullYear()+1,o='<option value="">— año · opcional —</option>';
   for(var a=y;a>=1990;a--)o+='<option'+(String(sel)===String(a)?' selected':'')+'>'+a+'</option>';
   return o;
 }
 function optColores(sel){
-  return '<option value="">— color —</option>'+COLORES.map(function(c){
+  return '<option value="">— color · opcional —</option>'+COLORES.map(function(c){
     return '<option'+(sel===c?' selected':'')+'>'+c+'</option>'}).join('');
 }
 function claseNivel(n){return n==='Oro'?'n-Oro':(n==='Iza Top'?'n-Iza':'n-Plata')}
@@ -2767,7 +2767,7 @@ function llenarModelos(){
   var inp=document.getElementById('nvModelo');
   if(!sel)return;
   var lista=MODELOS[m]||[];
-  sel.innerHTML='<option value="">— modelo —</option>'+
+  sel.innerHTML='<option value="">— modelo · obligatorio —</option>'+
     lista.map(function(x){return '<option>'+x+'</option>'}).join('')+
     '<option value="__otro">Otro · escribir modelo</option>';
   if(inp){inp.style.display=lista.length?'none':'block';inp.value=''}
@@ -3026,11 +3026,17 @@ function bdBuscar(){
     $('bdTabla').innerHTML='<tr><th>Documento</th><th>Cliente</th><th>Teléfono</th>'+
       '<th>Vehículos</th><th>Nivel</th><th>Flota</th><th></th></tr>'+
       (BD_CLI.length?BD_CLI.map(function(c){
-        var pl=(c.vehiculos||[]).map(function(v){return v.placa}).join(' · ')||'sin vehículos';
-        return '<tr><td class="num">'+(c.tipo_doc||'')+' '+(c.num_doc||'—')+'</td><td><b>'+c.nombre+'</b></td>'+
-        '<td class="num">'+(c.telefono||'—')+'</td><td class="num">'+pl+'</td>'+
-        '<td><span class="niv '+claseNivel(c.nivel)+'">'+(c.nivel||'Plata')+'</span></td>'+
-        '<td>'+(c.flota_id?'<span class="niv" style="background:'+colorFlota(c.flota_id)+'22;color:'+
+        /* una sola placa se muestra; varias se resumen */
+        var vs=(c.vehiculos||[]);
+        var pl=vs.length===0?'sin vehículos'
+             :vs.length===1?vs[0].placa
+             :vs.length+' vehículos';
+        return '<tr><td class="num" data-l="Documento">'+(c.tipo_doc||'')+' '+(c.num_doc||'—')+'</td>'+
+        '<td data-l="Cliente"><b>'+c.nombre+'</b></td>'+
+        '<td class="num" data-l="Teléfono">'+(c.telefono||'—')+'</td>'+
+        '<td class="num" data-l="Vehículos">'+pl+'</td>'+
+        '<td data-l="Nivel"><span class="niv '+claseNivel(c.nivel)+'">'+(c.nivel||'Plata')+'</span></td>'+
+        '<td data-l="Flota">'+(c.flota_id?'<span class="niv" style="background:'+colorFlota(c.flota_id)+'22;color:'+
           colorFlota(c.flota_id)+'">'+nombreFlota(c.flota_id)+'</span>':'<span class="hint">—</span>')+'</td>'+
         '<td><button class="btn chico sec" onclick="bdAbrir('+c.id+')">Editar</button></td></tr>';
       }).join('')
@@ -3103,7 +3109,8 @@ function formCliente(pref){
   '</div>'+
   '<div class="grid g2" style="margin-top:10px">'+
     '<div><label>Flota a la que pertenece</label>'+
-      '<select id="nvFlota" onchange="flotaNuevaCambio()">'+optFlotas('')+'</select></div>'+
+      '<select id="nvFlota" onchange="flotaNuevaCambio()">'+optFlotas('')+'</select>'+
+      '<div class="hint" style="margin:3px 0 0">Opcional</div></div>'+
   '</div>'+
   '<div id="nvFlotaVal" style="display:none;margin-top:10px">'+
     '<div class="aviso rojo" style="font-size:12.5px">Para registrar la flota hay que validarla: '+
@@ -3177,9 +3184,22 @@ function guardarClienteNuevo(volverA){
 function guardarVehiculo(clienteId,volverA,msg){
   msg=msg||document.getElementById('altaMsg')||document.getElementById('bdMsg');
   var placa=$('nvPlaca').value.trim().toUpperCase();
+  var marca=$('nvMarca').value.trim(),modelo=$('nvModelo').value.trim();
+  /* Sin placa no hay vehículo: antes se guardaba igual y avisaba
+     "Registrado:" con el campo en blanco. */
+  var falta=[];
+  if(placa.length<5)falta.push('la placa');
+  if(!marca)falta.push('la marca');
+  if(!modelo)falta.push('el modelo');
+  if(falta.length){
+    msg.innerHTML='<div class="aviso rojo">Falta '+falta.join(', ').replace(/,([^,]*)$/,' y$1')+'.</div>';
+    var foco=placa.length<5?'nvPlaca':(!marca?'nvMarca':'nvModelo');
+    if($(foco))$(foco).focus();
+    return;
+  }
   if(placa.length>=6&&placa.indexOf('-')===-1)placa=placa.slice(0,3)+'-'+placa.slice(3);
   sb.from('vehiculos').insert({
-    placa:placa,cliente_id:clienteId,marca:$('nvMarca').value.trim(),modelo:$('nvModelo').value.trim(),
+    placa:placa,cliente_id:clienteId,marca:marca,modelo:modelo,
     anio:Number($('nvAnio').value)||null,color:$('nvColor').value,km_ultimo:kmNum('nvKm')
   }).then(function(r2){
     if(r2.error){msg.innerHTML='<div class="aviso rojo">'+r2.error.message+'</div>';return}
@@ -6664,7 +6684,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=106;
+var APP_VER=107;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
