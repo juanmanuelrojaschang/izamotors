@@ -1,4 +1,4 @@
-<!--IZAV:115-->
+<!--IZAV:116-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -596,7 +596,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 115</span>
+  <span class="demo-tag">versión 116</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2078,18 +2078,30 @@ function pintarPresupuesto(){
    escribes la descripción primero, la familia se completa sola.
    ===================================================== */
 var SRV_SEL=null;
+/* "Frecuentes" no es una categoría del catálogo: es una marca.
+   Un servicio vive en su familia real y además puede ser frecuente,
+   que es como se agrupa en la estadística. */
 function srvFamilias(){
   var f={};
   SERVICIOS.forEach(function(s){if(s.categoria)f[s.categoria]=1});
-  return Object.keys(f).sort();
+  var l=Object.keys(f).sort();
+  if(SERVICIOS.some(function(s){return s.frecuente}))l.unshift(FAM_RECURRENTE);
+  return l;
+}
+function srvDeFamilia(fam){
+  if(!fam)return SERVICIOS.slice();
+  if(fam===FAM_RECURRENTE)return SERVICIOS.filter(function(s){return s.frecuente});
+  return SERVICIOS.filter(function(s){return s.categoria===fam});
+}
+/* La familia que manda para este servicio. */
+function srvFamiliaDe(s){
+  return (s&&s.frecuente)?FAM_RECURRENTE:((s&&s.categoria)||'');
 }
 /* La familia de los servicios que más se repiten viene elegida:
    es de donde sale la mayoría de los presupuestos. */
 var FAM_RECURRENTE='Frecuentes';
 function famRecurrente(){
-  var f=srvFamilias();
-  var m=f.filter(function(x){return x.toLowerCase().indexOf('frecuente')>-1})[0];
-  return m||f.filter(function(x){return x.toLowerCase().indexOf('recurrente')>-1})[0]||'';
+  return SERVICIOS.some(function(s){return s.frecuente})?FAM_RECURRENTE:'';
 }
 function srvPintarFamilias(){
   var c=$('servFam');if(!c)return;
@@ -2105,14 +2117,13 @@ function srvPintarFamilias(){
 /* La lista de sugerencias se recorta a la familia elegida. */
 function srvPintarLista(fam){
   var dl=$('servLista');if(!dl)return;
-  dl.innerHTML=SERVICIOS
-    .filter(function(s){return !fam||s.categoria===fam})
+  dl.innerHTML=srvDeFamilia(fam)
     .map(function(s){return '<option value="'+String(s.descripcion).replace(/"/g,'&quot;')+'"></option>'})
     .join('');
 }
 function srvFamilia(fam){
   var d=$('servDesc');
-  if(d&&SRV_SEL&&SRV_SEL.categoria!==fam){d.value='';SRV_SEL=null;srvDato()}
+  if(d&&SRV_SEL&&srvFamiliaDe(SRV_SEL)!==fam&&SRV_SEL.categoria!==fam){d.value='';SRV_SEL=null;srvDato()}
   srvPintarLista(fam);
   if(d)d.focus();
 }
@@ -2126,10 +2137,10 @@ function srvEscribe(v){
     if(t.length>2&&cand.length===1)s=cand[0];
   }
   SRV_SEL=s||null;
-  if(s&&s.categoria){
-    var c=$('servFam');
-    if(c&&c.value!==s.categoria)c.value=s.categoria;
-    srvPintarLista(s.categoria);
+  if(s){
+    /* si el servicio es frecuente, la familia que se muestra es esa */
+    var fam=srvFamiliaDe(s),c=$('servFam');
+    if(c&&fam&&c.value!==fam){c.value=fam;srvPintarLista(fam)}
   }
   srvDato();
 }
@@ -2153,7 +2164,8 @@ function agregarServicio(){
     alert('Ese servicio ya está en el presupuesto.');return;
   }
   LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:s.descripcion,
-    precio:Number(s.prec1||s.precio||0),cant:1,categoria:s.categoria||''});
+    precio:Number(s.prec1||s.precio||0),cant:1,
+    categoria:srvFamiliaDe(s)||s.categoria||''});
   SEL_SERV[s.codigo]=true;
   SRV_SEL=null;
   if($('servDesc'))$('servDesc').value='';
@@ -7015,7 +7027,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=115;
+var APP_VER=116;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
