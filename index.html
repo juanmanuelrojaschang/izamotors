@@ -1,4 +1,4 @@
-<!--IZAV:120-->
+<!--IZAV:121-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -616,7 +616,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 120</span>
+  <span class="demo-tag">versión 121</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -691,14 +691,14 @@ tr.sel td{background:var(--rojo-cl)}
       <div class="grid g3" style="max-width:720px;margin:0 auto;gap:12px">
         <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
         <button class="btn sec" onclick="abrirListado()">👥 Listado de clientes</button>
-        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
+        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar / crear cliente</button>
       </div>
     </div>
 
     <div class="card oculto" id="panelCrear">
       <div class="navproc">
         <button class="atras" onclick="cerrarCrear()">← Volver</button>
-        <span class="donde">Editar cliente</span>
+        <span class="donde">Editar / crear cliente</span>
       </div>
       <div class="aviso info" style="font-size:12.5px">Busca por documento, nombre o placa.
         Los clientes nuevos se crean desde la placa en <b>Nueva recepción</b>.</div>
@@ -872,7 +872,8 @@ tr.sel td{background:var(--rojo-cl)}
           <div><label>Mecánico</label><select id="gMec"></select>
             <div id="gMecAviso"></div></div>
           <div><label>Kilometraje de ingreso</label>
-            <input id="gKm" inputmode="numeric" placeholder="obligatorio · 24,000" oninput="fmtKm(this)"></div>
+            <input id="gKm" inputmode="numeric" placeholder="obligatorio · 24,000" oninput="fmtKm(this)">
+            <div class="hint" id="gKmRef" style="margin:3px 0 0"></div></div>
         </div>
         <div id="gLavadorBox" style="display:none;margin-top:10px">
           <label>Lavador</label>
@@ -1923,8 +1924,19 @@ function pintarCabecera(rol){
   var m=document.getElementById('btnMenu');if(m)m.style.display='';
 }
 function salir(){
+  /* la pantalla de entrada vuelve en el acto; la recarga limpia
+     el resto por detrás, sin que nadie espere mirando el botón */
   try{localStorage.removeItem('iza_sesion')}catch(e){}
-  SESION=null; location.reload();
+  SESION=null;SESION_ACT=false;
+  cerrarCapas();
+  var l=document.getElementById('login');
+  if(l){
+    l.style.display='';
+    try{volverUsuarios()}catch(e){}
+  }
+  var b=document.getElementById('btnSalir');
+  if(b){b.disabled=true;b.textContent='Saliendo…'}
+  setTimeout(function(){location.reload()},60);
 }
 /* La sesión dura 12 horas: cubre un turno completo sin volver a pedir PIN,
    y caduca sola para que un equipo compartido no quede abierto de un día al otro. */
@@ -5252,7 +5264,19 @@ function mecAviso(){
     '<button class="btn chico sec" style="margin-top:6px" onclick="mecVerOtros()">'+
     'Ver los de todos los locales</button></div>';
 }
+/* El último kilometraje del vehículo entra como referencia:
+   se corrige si hace falta, pero nadie parte de cero. */
+function pintarKmIngreso(){
+  var e=document.getElementById('gKm');if(!e)return;
+  var ref=Number((ACTUAL&&ACTUAL.km)||(ORD&&ORD.km)||0);
+  var n=document.getElementById('gKmRef');
+  if(!e.value&&ref)e.value=ref.toLocaleString('es-PE');
+  if(n)n.innerHTML=ref
+    ? 'Último registrado: <b class="num">'+ref.toLocaleString('es-PE')+' km</b> · corrígelo si cambió'
+    : 'Primera visita de esta placa.';
+}
 function pintarMecanicos(sel){
+  pintarKmIngreso();
   cargarMecanicos(function(){
     var s=document.getElementById('gMec');
     if(s)s.innerHTML=mecOpciones('MECANICO',sel||MECANICO_OT||'');
@@ -7161,7 +7185,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=120;
+var APP_VER=121;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
