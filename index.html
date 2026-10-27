@@ -1,4 +1,4 @@
-<!--IZAV:118-->
+<!--IZAV:120-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -255,8 +255,14 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
   table.lista td.vacio:before{content:none}
 }
 /* ===== buscador de inventario ===== */
+.invBox{position:relative}
 .invBox input{width:100%}
-.invRes{margin-top:8px;max-height:340px;overflow-y:auto}
+.invRes{display:none;position:absolute;left:0;right:0;top:100%;z-index:26;margin-top:4px;
+  max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:#fff;border:1px solid var(--borde);border-radius:11px;
+  box-shadow:0 12px 30px rgba(0,0,0,.14)}
+.invRes.on{display:block}
+.invRes .invLista{border:0;border-radius:0}
 .invCab{font-size:12px;color:var(--mudo);padding:4px 2px 8px}
 .invLista{border:1px solid var(--borde);border-radius:10px;overflow:hidden}
 .invHd{display:flex;padding:7px 12px;background:var(--gris);border-bottom:1px solid var(--borde);
@@ -610,7 +616,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 118</span>
+  <span class="demo-tag">versión 120</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -895,6 +901,8 @@ tr.sel td{background:var(--rojo-cl)}
                      oninput="srvEscribe(this.value)" onfocus="srvAbrir()" onblur="srvCerrar()">
               <div class="srvLista" id="servLista" onmousedown="event.preventDefault()"></div>
             </div>
+            <div style="min-width:110px"><label>Precio</label>
+              <input id="servPrecio" type="number" min="0" step="0.01" placeholder="0"></div>
             <div style="flex:0 0 auto"><button class="btn chico" onclick="agregarServicio()">Agregar</button></div>
           </div>
           <div id="servDato"></div>
@@ -902,8 +910,9 @@ tr.sel td{background:var(--rojo-cl)}
 
         <label>2 · Repuestos y accesorios</label>
         <div class="invBox" style="margin-bottom:10px">
-          <input id="repBusq" placeholder="Escribe una palabra: descripción, marca, modelo o código"
-                 oninput="invTeclea('repRes',this.value)">
+          <input id="repBusq" placeholder="Escribe una o más letras: descripción, marca, modelo o código"
+                 oninput="invTeclea('repRes',this.value)" onfocus="invFoco('repRes')"
+                 onblur="invCerrar('repRes')">
           <div class="invRes" id="repRes"></div>
         </div>
         <div class="aviso info" style="font-size:12.5px">Los repuestos van con <b>precio referencial</b>.
@@ -2080,10 +2089,9 @@ function pintarPresupuesto(){
       marca:it.marca,modelo:it.modelo,ubicacion:it.ubicacion});
     pintarPresupuestoLista();
     conex(it.desc+' agregado');
-  });
+  },'repBusq');
   var rb=$('repBusq');
-  if(rb&&!rb.value)document.getElementById('repRes').innerHTML=
-    '<div class="invVacio">Escribe al menos dos letras: parte de la descripción, la marca, el modelo o el código.</div>';
+  if(rb)rb.value='';
   pintarPresupuestoLista();
 }
 /* ========= SERVICIOS · familia y descripción =========
@@ -2201,6 +2209,8 @@ function srvEscribe(v){
 }
 function srvDato(){
   var z=$('servDato');if(!z)return;
+  var p=$('servPrecio');
+  if(p)p.value=SRV_SEL?Number(SRV_SEL.prec1||SRV_SEL.precio||0):'';
   if(!SRV_SEL){z.innerHTML='';return}
   var s=SRV_SEL;
   z.innerHTML='<div class="srvDato"><b>'+S(Number(s.prec1||s.precio||0))+'</b>'+
@@ -2218,14 +2228,41 @@ function agregarServicio(){
   if(LINEAS_SERV.filter(function(l){return l.codigo===s.codigo}).length){
     alert('Ese servicio ya está en el presupuesto.');return;
   }
+  var pe=$('servPrecio'),pr=pe&&pe.value!==''?Number(pe.value):Number(s.prec1||s.precio||0);
   LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:s.descripcion,
-    precio:Number(s.prec1||s.precio||0),cant:1,
-    categoria:srvFamiliaDe(s)||s.categoria||''});
+    precio:pr,cant:1,categoria:srvFamiliaDe(s)||s.categoria||''});
   SEL_SERV[s.codigo]=true;
   SRV_SEL=null;
   if($('servDesc'))$('servDesc').value='';
+  if($('servPrecio'))$('servPrecio').value='';
   srvDato();
   pintarPresupuestoLista();
+}
+/* El jefe de taller ajusta precio y cantidad sin salir de la lista. */
+function precioServicio(i,v){
+  LINEAS_SERV[i].precio=Number(v)||0;
+  refrescarTotalesPres();
+}
+function cantServicio(i,v){
+  LINEAS_SERV[i].cant=Math.max(1,Number(v)||1);
+  refrescarTotalesPres();
+}
+function precioRepuesto(i,v){
+  LINEAS_REP[i].precio=Number(v)||0;
+  refrescarTotalesPres();
+}
+/* solo los números, para no perder el foco mientras se escribe */
+function refrescarTotalesPres(){
+  var t=totalesV2();
+  var subs=document.querySelectorAll('#presLista .psub');
+  var todas=LINEAS_SERV.concat(LINEAS_REP);
+  todas.forEach(function(l,k){
+    if(subs[k])subs[k].textContent=S(Number(l.precio||0)*Number(l.cant||1));
+  });
+  var tt=document.getElementById('presTotal');
+  if(tt)tt.textContent=S(t.tot);
+  try{$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
+  guardarOrden();
 }
 function quitarServicio(i){
   var l=LINEAS_SERV[i];if(l)SEL_SERV[l.codigo]=false;
@@ -2237,9 +2274,12 @@ function pintarPresupuestoLista(){
   if(LINEAS_SERV.length){
     filas+='<tr><td colspan="5" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>';
     filas+=LINEAS_SERV.map(function(l,i){
-      return '<tr><td>'+l.desc+'</td><td class="der num">'+l.cant+'</td>'+
-      '<td class="num der" style="color:var(--mudo)">'+S(l.precio)+'</td>'+
-      '<td class="num der"><b>'+S(l.precio*l.cant)+'</b></td>'+
+      return '<tr><td>'+l.desc+'</td>'+
+      '<td class="der"><input type="number" min="1" value="'+(l.cant||1)+'" style="width:60px;text-align:right;padding:6px" '+
+        'oninput="cantServicio('+i+',this.value)"></td>'+
+      '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
+        'oninput="precioServicio('+i+',this.value)"></td>'+
+      '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
       '<td><button class="btn chico peligro" onclick="quitarServicio('+i+')">✕</button></td></tr>';
     }).join('');
   }
@@ -2251,8 +2291,9 @@ function pintarPresupuestoLista(){
       ((l.marca||l.modelo)?'<div class="hint" style="margin:2px 0 0">'+[l.marca,l.modelo].filter(Boolean).join(' · ')+'</div>':'')+'</td>'+
       '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:64px;text-align:right;padding:6px" '+
         'oninput="cantRepuesto('+i+',this.value)"></td>'+
-      '<td class="num der" style="color:var(--mudo)">'+S(l.precio)+'</td>'+
-      '<td class="num der"><b>'+S(l.precio*l.cant)+'</b></td>'+
+      '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
+        'oninput="precioRepuesto('+i+',this.value)"></td>'+
+      '<td class="num der"><b class="psub">'+S(l.precio*l.cant)+'</b></td>'+
       '<td><button class="btn chico peligro" onclick="quitarRepuesto('+i+')">✕</button></td></tr>';
     }).join('');
   }
@@ -2260,7 +2301,7 @@ function pintarPresupuestoLista(){
     ? '<table style="margin-top:8px"><tr><th>Concepto</th><th class="der">Cant</th>'+
       '<th class="der">P. unit</th><th class="der">Subtotal</th><th></th></tr>'+filas+
       '<tr style="background:var(--gris)"><td colspan="3"><b>Total con IGV</b></td>'+
-      '<td class="num der"><b style="color:var(--rojo)">'+S(t.tot)+'</b></td><td></td></tr></table>'
+      '<td class="num der"><b id="presTotal" style="color:var(--rojo)">'+S(t.tot)+'</b></td><td></td></tr></table>'
     : '<div class="hint" style="margin-top:8px">Aún no hay nada en el presupuesto.</div>';
 }
 /* ============================================================
@@ -2301,20 +2342,28 @@ function invSede(sid){
   var s=INV_SEDES.filter(function(x){return x.id===sid})[0];
   return s?s.nombre:('Local '+sid);
 }
-function invBuscar(ctx,texto,familia){
+function invBuscar(ctx,texto,familia,dentroDe){
   var cont=document.getElementById(ctx.cont);if(!cont)return;
   var pal=invPalabras(texto);
   if(!familia&&(!pal.length||limpiarBusq(texto).length<2)){
-    cont.innerHTML='<div class="invVacio">Escribe al menos dos letras: parte de la descripción, la marca, el modelo o el código.</div>';
+    cont.innerHTML='<div class="invVacio">'+
+      (ctx.fam?'Elige una familia o escribe':'Escribe')+
+      ' al menos dos letras: parte de la descripción, la marca, el modelo o el código.</div>';
     return;
   }
   if(!sb){cont.innerHTML='<div class="invVacio">Sin conexión con la base.</div>';return}
+  cont.classList.add('on');
   cont.innerHTML='<div class="invVacio">Buscando…</div>';
   var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
              'catalogo_stock(sede_id,stock,ubicacion)';
   var sel=sb.from('catalogo').select(campos).eq('tipo','REP').eq('activo',true);
   if(familia){
     sel=sel.eq('categoria',familia);
+  }else if(dentroDe){
+    sel=sel.eq('categoria',dentroDe);
+    var p0=pal[0];
+    sel=sel.or('descripcion.ilike.%'+p0+'%,marca.ilike.%'+p0+'%,modelo.ilike.%'+p0+'%,'+
+               'codigo.ilike.%'+p0+'%,codigo2.ilike.%'+p0+'%');
   }else{
     /* La base filtra por la primera palabra; el resto se afina aquí,
        porque PostgREST no sabe buscar en varios campos a la vez. */
@@ -2322,7 +2371,7 @@ function invBuscar(ctx,texto,familia){
     sel=sel.or('descripcion.ilike.%'+p+'%,marca.ilike.%'+p+'%,modelo.ilike.%'+p+'%,'+
                'codigo.ilike.%'+p+'%,codigo2.ilike.%'+p+'%,categoria.ilike.%'+p+'%');
   }
-  sel.order('descripcion').limit(250).then(function(r){
+  sel.order('descripcion').limit(familia?400:250).then(function(r){
     if(r.error){
       cont.innerHTML='<div class="aviso rojo" style="margin:0">'+r.error.message+
         (/column|relation|permission|schema/i.test(r.error.message)
@@ -2354,6 +2403,7 @@ function invBuscar(ctx,texto,familia){
         });
       return;
     }
+    cont.classList.add('on');
     cont.innerHTML=
       '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>':'<b>'+lista.length+'</b> resultado'+(lista.length===1?'':'s'))+
         ' · toca un nombre para ver su ficha</div>'+
@@ -2406,6 +2456,9 @@ function invAbrir(cont,i){
           : '<option value="-1">sin stock registrado</option>')+'</select>'+
       '<span class="stk '+(Number(pri.stock)>0?'hay':'no')+'" id="'+cont+'-st'+i+'">'+
         (stocks.length?'stock '+Number(pri.stock):'sin stock')+'</span>'+
+      '<label style="flex:0 0 96px;font-size:10px;text-transform:uppercase;color:var(--mudo);font-weight:700">Precio'+
+        '<input type="number" min="0" step="0.01" id="'+cont+'-pr'+i+'" value="'+Number(it.prec1||it.precio||0)+
+        '" style="width:100%;padding:6px;font-size:12.5px;margin-top:2px"></label>'+
       '<button class="btn chico" onclick="invAgregar(&quot;'+cont+'&quot;,'+i+')">Agregar</button>'+
       (it.categoria?'<button class="fam" onclick="invFamilia(&quot;'+cont+'&quot;,&quot;'+it.categoria+'&quot;)">'+
         'ver toda la familia '+it.categoria+'</button>':'')+
@@ -2430,22 +2483,51 @@ function invAgregar(cont,i){
   var ctx=INV_CTX[cont];if(!ctx)return;
   var it=(INV_CACHE[cont]||[])[i];if(!it)return;
   var s=(it.catalogo_stock||[])[it._sel||0]||{};
-  /* se cierra apenas se agrega: la lista vuelve a verse entera */
+  /* se cierra apenas se agrega */
   var z=document.getElementById(cont+'-fi'+i);
   if(z)z.innerHTML='';
+  var caja=document.getElementById(cont);
+  if(caja)caja.classList.remove('on');
+  var inp=document.getElementById(ctx.input||'');
+  if(inp)inp.value='';
   ctx.onAdd({codigo:it.codigo,codigo2:it.codigo2||'',desc:it.descripcion,
     marca:it.marca||'',modelo:it.modelo||'',categoria:it.categoria||'',
-    precio:Number(it.prec1||it.precio||0),ubicacion:s.ubicacion||'',stock:Number(s.stock||0)});
+    precio:(function(){
+      var e=document.getElementById(cont+'-pr'+i);
+      return (e&&e.value!=='')?Number(e.value):Number(it.prec1||it.precio||0);
+    })(),
+    ubicacion:s.ubicacion||'',stock:Number(s.stock||0)});
 }
+/* Volver al campo con algo escrito reabre la lista. */
+function invFoco(cont){
+  var ctx=INV_CTX[cont];if(!ctx)return;
+  var inp=document.getElementById(ctx.input||'');
+  var z=document.getElementById(cont);
+  if(inp&&inp.value.trim().length&&z&&z.innerHTML)z.classList.add('on');
+}
+function invCerrar(cont){
+  /* margen para que el toque en un resultado alcance a contar */
+  setTimeout(function(){
+    var z=document.getElementById(cont);
+    if(z)z.classList.remove('on');
+  },260);
+}
+
 /* contextos registrados: cada módulo arma el suyo al pintar */
 var INV_CTX={};
-function invMontar(contId,onAdd){
-  INV_CTX[contId]={cont:contId,onAdd:onAdd};
+function invMontar(contId,onAdd,inputId){
+  INV_CTX[contId]={cont:contId,onAdd:onAdd,input:inputId||''};
   cargarSedesInv();
 }
 function invTeclea(contId,valor){
+  var z=document.getElementById(contId);
+  if(z&&!String(valor||'').trim().length)z.classList.remove('on');
   clearTimeout(INV_TIMER);
-  INV_TIMER=setTimeout(function(){ invBuscar(INV_CTX[contId],valor); },280);
+  /* 450 ms de pausa: deja escribir de corrido y la lista sale al soltar */
+  INV_TIMER=setTimeout(function(){
+    var ctx=INV_CTX[contId];if(!ctx)return;
+    invBuscar(ctx,String(valor||'').trim());
+  },450);
 }
 function toggleServicio(cod,el){
   SEL_SERV[cod]=!SEL_SERV[cod];
@@ -6230,9 +6312,7 @@ function ventRender(){
         stock:true,cod_alm:it.codigo||'',cod2:it.codigo2||'',ubic:it.ubicacion||'',
         marca:it.marca,modelo:it.modelo,incluir:true,cambio:'A',orig:'',nota:'agregado en ventanilla'});
       ventRender();
-    });
-    var vb=document.getElementById('ventRes');
-    if(vb)vb.innerHTML='<div class="invVacio">Escribe al menos dos letras para buscar.</div>';
+    },'ventBusq');
   }
 }
 /* ---- despacho de repuestos al taller ---- */
@@ -6619,8 +6699,9 @@ function aseRender(){
       (ASE_ADD
         ? '<div class="invBox" style="margin:10px 0 0">'+
           '<label>Buscar en el inventario</label>'+
-          '<input id="aseBusq" placeholder="Descripción, marca, modelo o código" '+
-            'oninput="invTeclea(&quot;aseRes&quot;,this.value)">'+
+          '<input id="aseBusq" placeholder="Escribe una o más letras" '+
+            'oninput="invTeclea(&quot;aseRes&quot;,this.value)" '+
+            'onfocus="invFoco(&quot;aseRes&quot;)" onblur="invCerrar(&quot;aseRes&quot;)">'+
           '<div class="invRes" id="aseRes"></div></div>'
         : ''))+
     facturaNegra(snap,'OT final aprobada')+
@@ -6652,9 +6733,7 @@ function aseRender(){
     invMontar('aseRes',function(it){
       if(!it.codigo){alert('Ese ítem no tiene código de stock.');return}
       aseInsertar(it.desc,it.precio,it.codigo,it.codigo2,it.ubicacion,it.marca,it.modelo);
-    });
-    var ab=document.getElementById('aseRes');
-    if(ab)ab.innerHTML='<div class="invVacio">Escribe al menos dos letras para buscar.</div>';
+    },'aseBusq');
   }
 }
 /* ---------- líneas de la OT en el asesor ----------
@@ -7082,7 +7161,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=118;
+var APP_VER=120;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
