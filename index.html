@@ -1,4 +1,4 @@
-<!--IZAV:121-->
+<!--IZAV:122-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -616,7 +616,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 121</span>
+  <span class="demo-tag">versión 122</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -684,7 +684,7 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= RECEPCIÓN ================= -->
 <section class="vista on" id="v-recepcion">
   <div id="segHome">
-    <div class="card" style="text-align:center;padding:30px 20px">
+    <div class="card" id="menuEntrada" style="text-align:center;padding:30px 20px">
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
       <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
         Registra un ingreso nuevo o busca un cliente ya registrado.</p>
@@ -700,12 +700,12 @@ tr.sel td{background:var(--rojo-cl)}
         <button class="atras" onclick="cerrarCrear()">← Volver</button>
         <span class="donde">Editar / crear cliente</span>
       </div>
-      <div class="aviso info" style="font-size:12.5px">Busca por documento, nombre o placa.
-        Los clientes nuevos se crean desde la placa en <b>Nueva recepción</b>.</div>
+      <div class="aviso info" id="bdAviso" style="font-size:12.5px">Busca por documento, nombre o placa,
+        o crea uno nuevo con el botón de la derecha.</div>
 
   <div class="card">
     <h3>🗂️ Clientes y vehículos</h3>
-    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+    <div class="fila" id="bdBuscador" style="align-items:flex-end;margin-bottom:12px">
       <div style="flex:2;min-width:200px"><label>Buscar por documento, nombre o placa</label>
         <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()"></div>
       <button class="btn chico" style="flex:0 0 auto" onclick="bdNuevoCliente()">+ Nuevo cliente</button>
@@ -1506,6 +1506,7 @@ function limpiarHistorial(){
 }
 var TAB_LISTADO='ordenes';
 function abrirListado(){
+  var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
   var pc=document.getElementById('panelCrear');if(pc)pc.classList.add('oculto');
   document.getElementById('panelListado').classList.remove('oculto');
   segLista();
@@ -1516,17 +1517,24 @@ function abrirCrearCliente(){
     alert('La edición de clientes es de administradores y jefe de taller.');return;
   }
   document.getElementById('panelListado').classList.add('oculto');
+  /* el menú estorba: para volver está el botón de arriba del panel */
+  var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
   var p=document.getElementById('panelCrear');
   p.classList.remove('oculto');
-  p.scrollIntoView({behavior:'smooth',block:'start'});
+  bdModoBuscar(true);
+  window.scrollTo(0,0);
   var t=document.getElementById('bdTxt');if(t)t.focus();
 }
 function cerrarCrear(){
   document.getElementById('panelCrear').classList.add('oculto');
+  var m=document.getElementById('menuEntrada');if(m)m.classList.remove('oculto');
+  var d=document.getElementById('bdDetalle');if(d)d.style.display='none';
+  bdModoBuscar(true);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function cerrarListado(){
   document.getElementById('panelListado').classList.add('oculto');
+  var m=document.getElementById('menuEntrada');if(m)m.classList.remove('oculto');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function setTabListado(t){
@@ -2783,10 +2791,55 @@ function panelFlota(c,contenedorId){
 }
 
 function flotaNuevaCambio(){
-  var z=document.getElementById('nvFlotaVal'),s=document.getElementById('nvFlota');
+  var z=document.getElementById('nvFlotaVal'),s=document.getElementById('nvFlota'),
+      n=document.getElementById('nvFlotaNueva');
   if(!z||!s)return;
+  /* "+ Nueva flota…" abre el campo para nombrarla */
+  if(s.value==='__nueva'){
+    if(n){n.style.display='block';var i=document.getElementById('nvFlotaNom');if(i)i.focus()}
+    z.style.display='none';
+    return;
+  }
+  if(n)n.style.display='none';
   z.style.display = s.value ? 'block' : 'none';
   if(!s.value){FLOTA_FOTO=null;var p=document.getElementById('flotaPrev');if(p)p.innerHTML=''}
+}
+function cancelarFlota(){
+  var s=document.getElementById('nvFlota'),n=document.getElementById('nvFlotaNueva');
+  if(s)s.value='';
+  if(n)n.style.display='none';
+  flotaNuevaCambio();
+}
+/* La flota nueva se crea aquí mismo y queda elegida, para seguir
+   con la validación por foto igual que las demás. */
+function crearFlota(){
+  var i=document.getElementById('nvFlotaNom'),m=document.getElementById('nvFlotaMsg');
+  var nom=(i&&i.value||'').trim();
+  if(!nom){if(m)m.innerHTML='<b style="color:var(--rojo)">Escribe el nombre.</b>';return}
+  if(!sb){if(m)m.innerHTML='<b style="color:var(--rojo)">Sin conexión.</b>';return}
+  var ya=FLOTAS.filter(function(f){
+    return String(f.nombre).toLowerCase()===nom.toLowerCase();
+  })[0];
+  if(ya){
+    if(m)m.innerHTML='Esa flota ya existe: queda elegida.';
+    FLOTAS_elegir(ya.id);return;
+  }
+  if(m)m.textContent='Creando…';
+  sb.from('flotas').insert({nombre:nom,activa:true}).select('id,nombre').single()
+    .then(function(r){
+      if(r.error){if(m)m.innerHTML='<b style="color:var(--rojo)">'+r.error.message+'</b>';return}
+      FLOTAS.push(r.data);
+      FLOTAS.sort(function(a,b){return String(a.nombre).localeCompare(String(b.nombre),'es')});
+      auditar('CREA_FLOTA','flota',r.data.nombre,'Creada desde la ficha del cliente');
+      if(m)m.innerHTML='<b style="color:var(--verde)">✓ Flota creada</b>';
+      FLOTAS_elegir(r.data.id);
+    },function(){if(m)m.innerHTML='<b style="color:var(--rojo)">No se pudo crear.</b>'});
+}
+function FLOTAS_elegir(id){
+  var s=document.getElementById('nvFlota'),n=document.getElementById('nvFlotaNueva');
+  if(s){s.innerHTML=optFlotas(id);s.value=String(id)}
+  if(n)n.style.display='none';
+  flotaNuevaCambio();
 }
 function flotaAbrirCam(){
   var box=document.getElementById('flotaCam');
@@ -2930,7 +2983,8 @@ function optFlotas(sel){
   return '<option value="">Particular · sin flota</option>'+
     FLOTAS.map(function(f){
       return '<option value="'+f.id+'"'+(String(sel)===String(f.id)?' selected':'')+'>'+f.nombre+'</option>';
-    }).join('');
+    }).join('')+
+    ((SESION&&SESION.rol==='admin_general')?'<option value="__nueva">+ Nueva flota…</option>':'');
 }
 function nombreFlota(id){
   var f=FLOTAS.filter(function(x){return String(x.id)===String(id)})[0];
@@ -3034,7 +3088,18 @@ function kmNum(id){
   return e?Number(String(e.value).replace(/\D/g,''))||0:0;
 }
 /* nombre completo según tipo de documento */
+/* DNI 8, RUC 11, carné de extranjería 12. */
+function limitarDoc(el){
+  var t=document.getElementById('nvTipo'),tipo=t?t.value:'DNI';
+  var max=(tipo==='RUC')?11:((tipo==='CE')?12:8);
+  el.setAttribute('maxlength',String(max));
+  var v=el.value.replace(/\D/g,'');
+  if(v.length>max)v=v.slice(0,max);
+  if(el.value!==v)el.value=v;
+}
 function toggleTipoDoc(prefijo){
+  var dd=document.getElementById(prefijo+'Doc');
+  if(dd&&prefijo==='nv')limitarDoc(dd);
   var t=document.getElementById(prefijo+'Tipo').value;
   var per=document.getElementById(prefijo+'Persona'),emp=document.getElementById(prefijo+'Empresa');
   if(per&&emp){
@@ -3253,6 +3318,11 @@ function pintarAuditoria(){
    BASE DE DATOS · clientes y vehículos
    ============================================================ */
 var BD_CLI=[];
+function bdCancelarNuevo(){
+  var d=document.getElementById('bdDetalle');if(d)d.style.display='none';
+  bdModoBuscar(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function bdBuscar(){
   if(!sb)return;
   var txt=($('bdTxt').value||'').trim();
@@ -3330,12 +3400,21 @@ function bdGuardar(id){
     bdBuscar();
   });
 }
+/* Buscar y crear son dos cosas distintas: no se muestran juntas. */
+function bdModoBuscar(si){
+  var b=document.getElementById('bdBuscador'),t=document.getElementById('bdTabla');
+  if(b)b.style.display=si?'':'none';
+  if(t&&t.parentElement)t.parentElement.style.display=si?'':'none';
+  var a=document.getElementById('bdAviso');
+  if(a)a.style.display=si?'':'none';
+}
 function bdNuevoCliente(){
+  bdModoBuscar(false);
   $('bdDetalle').style.display='block';
   $('bdDetalle').innerHTML='<h3>Nuevo cliente</h3>'+formCliente()+
     '<div class="fila" style="margin-top:14px">'+
       '<button class="btn chico" onclick="guardarClienteNuevo(null)">Crear cliente</button>'+
-      '<button class="btn chico sec" onclick="bdDetalle.style.display=\'none\'">Cancelar</button></div>'+
+      '<button class="btn chico sec" onclick="bdCancelarNuevo()">Cancelar</button></div>'+
     '<div id="bdMsg" style="margin-top:12px"></div>';
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 }
@@ -3344,8 +3423,8 @@ function formCliente(pref){
   return '<div class="grid g3">'+
     '<div><label>Tipo de documento</label><select id="nvTipo" onchange="toggleTipoDoc(&quot;nv&quot;)">'+
       '<option>DNI</option><option>RUC</option><option>CE</option></select></div>'+
-    '<div><label>Número de documento</label><input id="nvDoc" inputmode="numeric" '+
-      'placeholder="obligatorio" value="'+(pref.doc||'')+'"></div>'+
+    '<div><label>Número de documento</label><input id="nvDoc" inputmode="numeric" maxlength="11" '+
+      'placeholder="obligatorio" value="'+(pref.doc||'')+'" oninput="limitarDoc(this)"></div>'+
     '<div><label>Nivel del cliente</label>'+
       '<select id="nvNivel" disabled>'+optNiveles('Plata')+'</select>'+
       '<div class="hint" style="margin:3px 0 0">Todos entran como Plata. '+
@@ -3354,7 +3433,16 @@ function formCliente(pref){
   '<div class="grid g2" style="margin-top:10px">'+
     '<div><label>Flota a la que pertenece</label>'+
       '<select id="nvFlota" onchange="flotaNuevaCambio()">'+optFlotas('')+'</select>'+
-      '<div class="hint" style="margin:3px 0 0">Opcional</div></div>'+
+      '<div class="hint" style="margin:3px 0 0">Opcional</div>'+
+      '<div id="nvFlotaNueva" style="display:none;margin-top:8px">'+
+        '<label>Nombre de la flota</label>'+
+        '<div class="fila" style="gap:8px">'+
+          '<div style="flex:2;min-width:160px"><input id="nvFlotaNom" placeholder="Ej. Transportes Andina"></div>'+
+          '<div style="flex:0 0 auto"><button class="btn chico" onclick="crearFlota()">Crear</button></div>'+
+          '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="cancelarFlota()">Cancelar</button></div>'+
+        '</div>'+
+        '<div id="nvFlotaMsg" class="hint" style="margin:4px 0 0"></div>'+
+      '</div></div>'+
   '</div>'+
   '<div id="nvFlotaVal" style="display:none;margin-top:10px">'+
     '<div class="aviso rojo" style="font-size:12.5px">Para registrar la flota hay que validarla: '+
@@ -7185,7 +7273,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=121;
+var APP_VER=122;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
