@@ -1,4 +1,4 @@
-<!--IZAV:122-->
+<!--IZAV:123-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -616,7 +616,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 122</span>
+  <span class="demo-tag">versión 123</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -688,17 +688,18 @@ tr.sel td{background:var(--rojo-cl)}
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
       <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
         Registra un ingreso nuevo o busca un cliente ya registrado.</p>
-      <div class="grid g3" style="max-width:720px;margin:0 auto;gap:12px">
+      <div class="grid g2" style="max-width:720px;margin:0 auto;gap:12px">
         <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
-        <button class="btn sec" onclick="abrirListado()">👥 Listado de clientes</button>
-        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar / crear cliente</button>
+        <button class="btn sec" onclick="abrirListado()">🔍 Buscar cliente</button>
+        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
+        <button class="btn sec" onclick="abrirNuevoCliente()">👤 Crear cliente</button>
       </div>
     </div>
 
     <div class="card oculto" id="panelCrear">
       <div class="navproc">
         <button class="atras" onclick="cerrarCrear()">← Volver</button>
-        <span class="donde">Editar / crear cliente</span>
+        <span class="donde" id="bdDonde">Editar cliente</span>
       </div>
       <div class="aviso info" id="bdAviso" style="font-size:12.5px">Busca por documento, nombre o placa,
         o crea uno nuevo con el botón de la derecha.</div>
@@ -1521,9 +1522,21 @@ function abrirCrearCliente(){
   var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
   var p=document.getElementById('panelCrear');
   p.classList.remove('oculto');
+  var d=document.getElementById('bdDonde');if(d)d.textContent='Editar cliente';
   bdModoBuscar(true);
   window.scrollTo(0,0);
   var t=document.getElementById('bdTxt');if(t)t.focus();
+}
+/* Entra al panel directamente en modo creación. */
+function abrirNuevoCliente(){
+  if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'||SESION.rol==='jefe_taller'))){
+    alert('La creación de clientes es de administradores y jefe de taller.');return;
+  }
+  document.getElementById('panelListado').classList.add('oculto');
+  var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
+  document.getElementById('panelCrear').classList.remove('oculto');
+  var d=document.getElementById('bdDonde');if(d)d.textContent='Crear cliente';
+  bdNuevoCliente();
 }
 function cerrarCrear(){
   document.getElementById('panelCrear').classList.add('oculto');
@@ -3320,6 +3333,7 @@ function pintarAuditoria(){
 var BD_CLI=[];
 function bdCancelarNuevo(){
   var d=document.getElementById('bdDetalle');if(d)d.style.display='none';
+  var t=document.getElementById('bdDonde');if(t)t.textContent='Editar cliente';
   bdModoBuscar(true);
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -3383,7 +3397,11 @@ function bdAbrir(id){
       :'<tr><td colspan="3" class="hint">Sin vehículos registrados</td></tr>')+'</table>'+
     (c.flota_id?panelFlota(c):'')+
     '<div id="bdMsg" style="margin-top:12px"></div>';
-  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+  /* arriba, en el documento: es el primer dato que se pide */
+  window.scrollTo(0,0);
+  var p=document.getElementById('panelCrear');
+  if(p)p.scrollIntoView({block:'start'});
+  setTimeout(function(){var i=document.getElementById('nvDoc');if(i)i.focus()},120);
 }
 function bdGuardar(id){
   sb.from('clientes').update({
@@ -3410,13 +3428,18 @@ function bdModoBuscar(si){
 }
 function bdNuevoCliente(){
   bdModoBuscar(false);
+  var d=document.getElementById('bdDonde');if(d)d.textContent='Crear cliente';
   $('bdDetalle').style.display='block';
   $('bdDetalle').innerHTML='<h3>Nuevo cliente</h3>'+formCliente()+
     '<div class="fila" style="margin-top:14px">'+
       '<button class="btn chico" onclick="guardarClienteNuevo(null)">Crear cliente</button>'+
       '<button class="btn chico sec" onclick="bdCancelarNuevo()">Cancelar</button></div>'+
     '<div id="bdMsg" style="margin-top:12px"></div>';
-  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+  /* arriba, en el documento: es el primer dato que se pide */
+  window.scrollTo(0,0);
+  var p=document.getElementById('panelCrear');
+  if(p)p.scrollIntoView({block:'start'});
+  setTimeout(function(){var i=document.getElementById('nvDoc');if(i)i.focus()},120);
 }
 function formCliente(pref){
   pref=pref||{};
@@ -7273,7 +7296,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=122;
+var APP_VER=123;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
