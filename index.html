@@ -1,4 +1,4 @@
-<!--IZAV:116-->
+<!--IZAV:117-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -204,6 +204,18 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .modo-rec .tt{font-size:13.5px;line-height:1.2}
 .modo-rec .sb{font-family:Inter,sans-serif;font-size:11px;font-weight:400;
   text-transform:none;letter-spacing:0;opacity:.85;line-height:1.25}
+.srvLista{display:none;position:absolute;left:0;right:0;top:100%;z-index:25;margin-top:3px;
+  max-height:260px;overflow-y:auto;background:#fff;border:1px solid var(--borde);
+  border-radius:11px;box-shadow:0 12px 30px rgba(0,0,0,.14)}
+.srvLista.on{display:block}
+.srvOp{display:flex;width:100%;align-items:baseline;gap:10px;background:none;border:0;
+  border-bottom:1px solid var(--gris2);padding:10px 12px;font:inherit;text-align:left;
+  cursor:pointer;color:var(--tinta)}
+.srvOp:last-child{border-bottom:0}
+.srvOp:hover{background:var(--gris)}
+.srvOp .d{flex:1;font-size:13.5px;line-height:1.3}
+.srvOp .p{flex:0 0 auto;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.srvVacio{padding:12px;font-size:12.5px;color:var(--mudo);text-align:center}
 /* ===== filtros compactos ===== */
 .filtros{display:grid;gap:9px 10px;margin-bottom:12px;align-items:end;
   grid-template-columns:2fr 1fr;}
@@ -596,7 +608,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 116</span>
+  <span class="demo-tag">versión 117</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -876,10 +888,10 @@ tr.sel td{background:var(--rojo-cl)}
                 <option value="">— familia de servicio —</option>
               </select>
             </div>
-            <div style="flex:2;min-width:200px">
-              <input id="servDesc" list="servLista" autocomplete="off"
-                     placeholder="Escribe el servicio" oninput="srvEscribe(this.value)">
-              <datalist id="servLista"></datalist>
+            <div style="flex:2;min-width:200px;position:relative">
+              <input id="servDesc" autocomplete="off" placeholder="Toca para ver la lista o escribe"
+                     oninput="srvEscribe(this.value)" onfocus="srvAbrir()" onblur="srvCerrar()">
+              <div class="srvLista" id="servLista"></div>
             </div>
             <div style="flex:0 0 auto"><button class="btn chico" onclick="agregarServicio()">Agregar</button></div>
           </div>
@@ -2115,16 +2127,55 @@ function srvPintarFamilias(){
   }
 }
 /* La lista de sugerencias se recorta a la familia elegida. */
-function srvPintarLista(fam){
+/* Lista propia en vez de <datalist>: en el celular aquel no se
+   despliega al tocar el campo, y la idea es poder mirar antes de
+   escribir. */
+var SRV_ABIERTA=false;
+function srvPintarLista(fam,filtro){
   var dl=$('servLista');if(!dl)return;
-  dl.innerHTML=srvDeFamilia(fam)
-    .map(function(s){return '<option value="'+String(s.descripcion).replace(/"/g,'&quot;')+'"></option>'})
-    .join('');
+  var q=String(filtro||'').trim().toLowerCase();
+  var l=srvDeFamilia(fam).filter(function(s){
+    return !q||String(s.descripcion).toLowerCase().indexOf(q)>-1;
+  });
+  dl.innerHTML=l.length
+    ? l.map(function(s){
+        return '<button type="button" class="srvOp" onmousedown="srvElegir(&quot;'+
+          String(s.codigo).replace(/"/g,'')+'&quot;)" ontouchstart="srvElegir(&quot;'+
+          String(s.codigo).replace(/"/g,'')+'&quot;)">'+
+          '<span class="d">'+s.descripcion+'</span>'+
+          '<span class="p">'+S(Number(s.prec1||s.precio||0))+'</span></button>';
+      }).join('')
+    : '<div class="srvVacio">Sin servicios'+(q?' con "'+filtro+'"':'')+' en esta familia.</div>';
+  dl.classList.toggle('on',SRV_ABIERTA);
+}
+function srvAbrir(){
+  SRV_ABIERTA=true;
+  var c=$('servFam');
+  srvPintarLista(c?c.value:'', $('servDesc')?$('servDesc').value:'');
+}
+function srvCerrar(){
+  /* un respiro para que alcance a registrarse el toque en la opción */
+  setTimeout(function(){
+    SRV_ABIERTA=false;
+    var dl=$('servLista');if(dl)dl.classList.remove('on');
+  },180);
+}
+function srvElegir(cod){
+  var s=SERVICIOS.filter(function(x){return String(x.codigo)===String(cod)})[0];
+  if(!s)return;
+  SRV_SEL=s;
+  if($('servDesc'))$('servDesc').value=s.descripcion;
+  var fam=srvFamiliaDe(s),c=$('servFam');
+  if(c&&fam&&c.value!==fam)c.value=fam;
+  SRV_ABIERTA=false;
+  var dl=$('servLista');if(dl)dl.classList.remove('on');
+  srvDato();
 }
 function srvFamilia(fam){
   var d=$('servDesc');
   if(d&&SRV_SEL&&srvFamiliaDe(SRV_SEL)!==fam&&SRV_SEL.categoria!==fam){d.value='';SRV_SEL=null;srvDato()}
-  srvPintarLista(fam);
+  SRV_ABIERTA=true;
+  srvPintarLista(fam,d?d.value:'');
   if(d)d.focus();
 }
 /* Al escribir: si lo tecleado coincide con un servicio, se fija
@@ -2137,11 +2188,14 @@ function srvEscribe(v){
     if(t.length>2&&cand.length===1)s=cand[0];
   }
   SRV_SEL=s||null;
+  var c=$('servFam');
   if(s){
     /* si el servicio es frecuente, la familia que se muestra es esa */
-    var fam=srvFamiliaDe(s),c=$('servFam');
-    if(c&&fam&&c.value!==fam){c.value=fam;srvPintarLista(fam)}
+    var fam=srvFamiliaDe(s);
+    if(c&&fam&&c.value!==fam)c.value=fam;
   }
+  SRV_ABIERTA=true;
+  srvPintarLista(c?c.value:'',v);
   srvDato();
 }
 function srvDato(){
@@ -7027,7 +7081,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=116;
+var APP_VER=117;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
