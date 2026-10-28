@@ -1,4 +1,4 @@
-<!--IZAV:123-->
+<!--IZAV:124-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -616,7 +616,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 123</span>
+  <span class="demo-tag">versión 124</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -688,11 +688,11 @@ tr.sel td{background:var(--rojo-cl)}
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
       <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
         Registra un ingreso nuevo o busca un cliente ya registrado.</p>
-      <div class="grid g2" style="max-width:720px;margin:0 auto;gap:12px">
-        <button class="btn" onclick="iniciar()">+ Nueva recepción</button>
-        <button class="btn sec" onclick="abrirListado()">🔍 Buscar cliente</button>
-        <button class="btn sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
-        <button class="btn sec" onclick="abrirNuevoCliente()">👤 Crear cliente</button>
+      <div style="max-width:460px;margin:0 auto;display:grid;gap:10px">
+        <button class="btn full" onclick="iniciar()">+ Nueva recepción</button>
+        <button class="btn full sec" onclick="abrirListado()">🔍 Buscar cliente</button>
+        <button class="btn full sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
+        <button class="btn full sec" onclick="abrirNuevoCliente()">👤 Crear cliente</button>
       </div>
     </div>
 
@@ -701,15 +701,14 @@ tr.sel td{background:var(--rojo-cl)}
         <button class="atras" onclick="cerrarCrear()">← Volver</button>
         <span class="donde" id="bdDonde">Editar cliente</span>
       </div>
-      <div class="aviso info" id="bdAviso" style="font-size:12.5px">Busca por documento, nombre o placa,
-        o crea uno nuevo con el botón de la derecha.</div>
+      <div class="aviso info" id="bdAviso" style="font-size:12.5px">Busca por documento, nombre o placa
+        y toca <b>Editar</b> en el cliente que quieras corregir.</div>
 
   <div class="card">
     <h3>🗂️ Clientes y vehículos</h3>
-    <div class="fila" id="bdBuscador" style="align-items:flex-end;margin-bottom:12px">
-      <div style="flex:2;min-width:200px"><label>Buscar por documento, nombre o placa</label>
-        <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()"></div>
-      <button class="btn chico" style="flex:0 0 auto" onclick="bdNuevoCliente()">+ Nuevo cliente</button>
+    <div id="bdBuscador" style="margin-bottom:12px">
+      <label>Buscar por documento, nombre o placa</label>
+      <input id="bdTxt" placeholder="Ej. 42594207, Rojas, CTS-009" oninput="bdBuscar()">
     </div>
     <div style="overflow-x:auto"><table id="bdTabla" class="lista"></table></div>
   </div>
@@ -7296,7 +7295,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=123;
+var APP_VER=124;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
