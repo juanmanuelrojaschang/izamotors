@@ -1,4 +1,4 @@
-<!--IZAV:126-->
+<!--IZAV:128-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -424,6 +424,28 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .bloqF .paso2 .hh{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mudo);flex:0 0 auto}
 .bloqF .paso2 .tx{overflow:hidden;text-overflow:ellipsis}
 .dobleeti{display:flex;gap:5px;flex-wrap:wrap}
+.pfSede{display:inline-block;background:var(--tinta);color:#fff;border-radius:4px;
+  font:700 10.5px/1.6 ui-monospace,monospace;padding:0 5px;letter-spacing:.5px;vertical-align:middle;margin-right:5px}
+.leySede{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mudo);margin:0 0 12px}
+.leySede>span{display:inline-flex;align-items:center}
+
+.fichaL{border:1px solid var(--borde);border-radius:10px;margin-bottom:8px;background:#fff;cursor:pointer;
+  overflow:hidden;transition:border-color .12s}
+.fichaL.on{border-color:var(--rojo)}
+.fichaL .cab{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:11px 12px}
+.fichaL .cab .pz{font:700 15px/1.2 ui-monospace,monospace;grid-row:1}
+.fichaL .cab .ot{font:600 12px/1.2 ui-monospace,monospace;color:var(--mudo);text-align:right;grid-row:1;grid-column:3}
+.fichaL .cab .cl{grid-column:1/3;grid-row:2;font-size:13.5px;color:var(--tinta);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fichaL .cab .fl{grid-column:3;grid-row:2;text-align:right;color:var(--mudo);font-size:11px}
+.fichaL .cuerpo{border-top:1px solid var(--borde);background:var(--gris);padding:4px 12px 10px}
+.fichaL .cuerpo .dt{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+  border-bottom:1px solid rgba(0,0,0,.05);font-size:13px}
+.fichaL .cuerpo .dt:last-child{border-bottom:0}
+.fichaL .cuerpo .dt span{color:var(--mudo)}
+.fichaL .cuerpo .dt b{text-align:right}
+
+
 
 /* ===== móvil ===== */
 @media(max-width:640px){
@@ -616,7 +638,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 126</span>
+  <span class="demo-tag">versión 128</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1152,19 +1174,21 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= TALLER ================= -->
 <section class="vista" id="v-tienda">
   <div class="card">
-    <h3>Tienda · órdenes por estación</h3>
-
+    <h3 id="tiendaTitulo">Tienda · órdenes por estación</h3>
+    <div id="tiendaSedeSel"></div>
     <div class="kanban" id="kanbanTienda"></div>
   </div>
   <div class="card">
     <h3>Detalle de la estación</h3>
-    <div style="overflow-x:auto"><table id="tablaTienda"></table></div>
+    <div id="leyTienda"></div>
+    <div id="tablaTienda"></div>
   </div>
 </section>
 
 <section class="vista" id="v-taller">
   <div class="card">
-    <h3>Taller Las Américas · ocupación</h3>
+    <h3 id="tallerTitulo">Taller · ocupación</h3>
+    <div id="tallerSedeSel"></div>
     <div class="fila" style="align-items:flex-end;margin-bottom:12px">
       <div style="min-width:170px"><label>Rango</label>
         <select id="tallerRango" onchange="cambioRangoTaller()">
@@ -1179,7 +1203,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div><label>Hasta</label><input type="date" id="tallerHasta" onchange="pintarTaller()"></div>
       </div>
     </div>
-    <div id="capacidad"></div>
+    <div id="ocupacion"></div>
   </div>
   <div class="card">
     <h3>Vehículos por etapa</h3>
@@ -1200,7 +1224,8 @@ tr.sel td{background:var(--rojo-cl)}
           <option value="fidelidad">Nivel de fidelidad</option>
         </select></div>
     </div>
-    <div style="overflow-x:auto"><table id="tablaEtapa"></table></div>
+    <div id="leyTaller"></div>
+    <div id="tablaEtapa"></div>
   </div>
 </section>
 
@@ -1208,14 +1233,16 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-productividad">
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-      <h3 style="margin:0">Productividad · Taller Las Américas</h3>
+      <h3 style="margin:0" id="prodTitulo">Productividad</h3>
       <div class="modo" style="margin:0 0 0 auto;max-width:380px">
         <button id="mDia" onclick="setPeriodo('dia')">Hoy</button>
         <button id="mMes" onclick="setPeriodo('mes')">Mes</button>
         <button id="mAnio" class="on" onclick="setPeriodo('anio')">Año acumulado</button>
       </div>
     </div>
+    <div id="prodFiltroZona"></div>
     <div class="grid g4" id="kpisProd"></div>
+    <div id="prodAviso"></div>
   </div>
 
   <div class="card">
@@ -1234,8 +1261,13 @@ tr.sel td{background:var(--rojo-cl)}
     <div id="ranking" style="margin-top:18px"></div>
   </div>
 
+  <div class="card" id="cardLocales" style="display:none">
+    <h3>Comparativo por local</h3>
+    <div style="overflow-x:auto"><table id="tablaLocales"></table></div>
+  </div>
+
   <div class="card">
-    <h3>Detalle por técnico · día y mes</h3>
+    <h3>Detalle por mecánico · día, mes y año</h3>
     <div style="overflow-x:auto"><table id="tablaTec"></table></div>
   </div>
 </section>
@@ -1389,42 +1421,8 @@ function tiempo(m){
   return Math.floor(hh/24)+'d '+(hh%24)+'h';
 }
 
-var TECNICOS=[
- {n:'Luis Quispe',  dMO: 640, dAutos:5, mMO:11240, mAutos:96, aMO:87400, aAutos:742, dFac:1520, mFac:27300, aFac:214800, hd:8, hf:7.1},
- {n:'Ana Ticona',   dMO: 520, dAutos:4, mMO: 9680, mAutos:84, aMO:76100, aAutos:661, dFac:1240, mFac:23100, aFac:186400, hd:8, hf:6.6},
- {n:'Carlos Rivas', dMO: 410, dAutos:4, mMO: 7420, mAutos:71, aMO:59800, aAutos:548, dFac: 980, mFac:18400, aFac:147200, hd:8, hf:5.4},
- {n:'Diego Ramos',  dMO: 265, dAutos:2, mMO: 5310, mAutos:52, aMO:41200, aAutos:398, dFac: 610, mFac:12700, aFac: 99500, hd:8, hf:3.9},
- {n:'Sofía Peña',   dMO: 380, dAutos:3, mMO: 6890, mAutos:63, aMO:54600, aAutos:489, dFac: 890, mFac:16800, aFac:132600, hd:8, hf:5.1}
-];
-var SERIES={
-  hoy:{lab:['8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm'],
-       autos:[3,5,6,4,2,1,5,6,4,3,1],
-       monto:[820,1450,1780,1120,540,260,1380,1690,1010,760,320]},
-  mes:(function(){
-    var hoy=new Date(),dias=hoy.getDate(),D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    var lab=[],autos=[],monto=[];
-    for(var d=1;d<=dias;d++){
-      var f=new Date(hoy.getFullYear(),hoy.getMonth(),d),dw=f.getDay();
-      lab.push(D[dw]+' '+d);
-      if(dw===0){autos.push(0);monto.push(0);}
-      else{
-        var base=38+((d*7)%22);
-        if(dw===6)base=Math.round(base*0.75);
-        if(d===dias)base=Math.round(base*0.45);   // día en curso
-        autos.push(base);monto.push(base*(255+((d*13)%90)));
-      }
-    }
-    return {lab:lab,autos:autos,monto:monto};
-  })(),
-  anio:{lab:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'],
-        autos:[980,910,1040,1120,1190,1080,1150,1230,0,0,0,0],
-        monto:[286000,264000,301000,327000,349000,314000,336000,358000,0,0,0,0]}
-};
-var TEC_PERIODO={
-  dia:{k:'dMO',a:'dAutos',f:'dFac'},mes:{k:'mMO',a:'mAutos',f:'mFac'},anio:{k:'aMO',a:'aAutos',f:'aFac'}
-};
-var META_MES=9000;
-var META=META_MES;
+/* Los datos de demostración de productividad se eliminaron:
+   la reportería sale de la base. */
 
 /* logo compartido */
 (function(){var a=document.getElementById('logoReal'),b=document.getElementById('logoCli');if(a&&b)b.src=a.src})();
@@ -1774,7 +1772,7 @@ function ir(v,atras){
 
   window.scrollTo(0,0);
   try{pintarAtras()}catch(e){}
-  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')pintarTaller();if(v==='tienda')pintarTienda();if(v==='productividad')pintarProd();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
+  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -3432,7 +3430,8 @@ function bdAbrir(id){
       '<div><label>Apellidos o razón social</label><input id="edNom" oninput="capitalizar(this)" value="'+esc(c.apellidos||c.nombre)+'"></div>'+
       '<div><label>Teléfono</label><input id="edTel" value="'+(c.telefono||'')+'"></div>'+
       '<div><label>Correo</label><input id="edMail" value="'+(c.email||'')+'"></div>'+
-      '<div><label>Nivel</label><select id="edNivel">'+optNiveles(c.nivel)+'</select></div>'+
+      '<div><label>Nivel</label><select id="edNivel" disabled>'+optNiveles('Plata')+'</select>'+
+        '<div class="hint" style="margin:3px 0 0">Todos arrancan en Plata · los ascensos se definirán después</div></div>'+
       '<div><label>Flota declarada</label><select id="edFlota">'+optFlotas(c.flota_id)+'</select></div>'+
     '</div>'+
     '<div class="fila" style="margin-top:14px">'+
@@ -3459,7 +3458,7 @@ function bdGuardar(id){
     tipo_doc:$('edTipo').value,num_doc:$('edDoc').value.trim(),
     nombres:$('edNombres').value.trim(),apellidos:$('edNom').value.trim(),
     nombre:($('edNombres').value.trim()+' '+$('edNom').value.trim()).trim(),
-    telefono:$('edTel').value.trim(),email:($('edMail').value.trim()||null),nivel:$('edNivel').value,
+    telefono:$('edTel').value.trim(),email:($('edMail').value.trim()||null),nivel:'Plata',
     flota_id:($('edFlota').value?Number($('edFlota').value):null),
     flota_declarada_el:($('edFlota').value?new Date().toISOString():null)
   }).eq('id',id).then(function(r){
@@ -3566,7 +3565,7 @@ function guardarClienteNuevo(volverA){
   if(!doc){msg.innerHTML='<div class="aviso rojo">El documento es obligatorio.</div>';return}
   msg.innerHTML='<div class="hint">Guardando…</div>';
   var reg={tipo_doc:tipo,num_doc:doc,nombre:nom,
-    telefono:$('nvTel').value.trim(),email:($('nvMail').value.trim()||null),nivel:$('nvNivel').value};
+    telefono:$('nvTel').value.trim(),email:($('nvMail').value.trim()||null),nivel:'Plata'};
   if(tipo==='RUC'){reg.razon_social=nom}
   else{reg.nombres=$('nvNombres').value.trim();reg.apellidos=$('nvApellidos').value.trim()}
   var fl=$('nvFlota')?$('nvFlota').value:'';
@@ -4940,7 +4939,7 @@ function crearOrdenBD(v,kmIng){
     numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
     estado:'RECIBIDO',estado_taller:'RECIBIDO',estado_ot:null,km_ingreso:kmIng,
     combustible:$('cmb').textContent,danos:danosLista(),accesorios:accesoriosLista(),
-    recepcion_id:SESION?SESION.id:null
+    recepcion_id:SESION?SESION.id:null,es_prueba:esAdminGeneral()
   }).select('id').then(function(r){
     if(r.error){
       conex('No se pudo crear la orden: '+r.error.message,true);
@@ -4994,7 +4993,7 @@ function insertarOrden(vehId,cliId){
     numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:vehId,cliente_id:cliId||null,
     estado:'RECIBIDO',estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null,
     km_ingreso:Number(ORD.km)||null,mecanico_nombre:MECANICO_OT||null,
-    total_taller:totalesV2().tot,recepcion_id:SESION?SESION.id:null
+    total_taller:totalesV2().tot,recepcion_id:SESION?SESION.id:null,es_prueba:esAdminGeneral()
   }).select('id').then(function(r){
     if(r.error){conex('No se pudo crear la orden: '+r.error.message,true);return}
     conex('Orden '+OT_NUM+' creada en la base');
@@ -5548,7 +5547,6 @@ function reset(){
 }
 
 /* ============ TALLER · KANBAN ============ */
-var ETAPA_SEL='EN_PROCESO',OT_SEL=null;
 
 var TODAS_ETAPA={};
 var ETAPAS_T=[
@@ -5580,12 +5578,24 @@ function rangoTaller(){
   d.setDate(d.getDate()-(Number(v)-1));
   return {desde:d,hasta:null};
 }
+var TALLER_SEDE='ACTUAL';
+function tallerCambiaSede(v){ TALLER_SEDE=v; pintarTaller() }
+function tallerTodos(){ return TALLER_SEDE==='TODOS'&&esAdminGeneral() }
+function abrirTaller(){
+  cargarSedesTodas(function(){ pintarTaller() });
+}
 function pintarTaller(){
   if(!sb)return;
+  var zs=document.getElementById('tallerSedeSel');
+  if(zs)zs.innerHTML=selectorSedeHTML(TALLER_SEDE,'tallerCambiaSede');
+  var tt=document.getElementById('tallerTitulo');
+  if(tt)tt.textContent='Taller '+(tallerTodos()?'· todos los locales':sedeNombrePorId(sedeElegida(TALLER_SEDE)))+' · ocupación';
   var rg=rangoTaller();
   var q=sb.from('ordenes')
-    .select('id,numero,estado_taller,estado_ot,total_taller,ingreso,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,nivel)')
-    .eq('sede_id',SEDE_ACTIVA).not('estado_taller','eq','ANULADO');
+    .select('id,numero,sede_id,estado_taller,estado_ot,total_taller,ingreso,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,nivel)')
+    .not('estado_taller','eq','ANULADO');
+  var sid=tallerTodos()?null:sedeElegida(TALLER_SEDE);
+  if(sid!==null)q=q.eq('sede_id',sid);
   if(rg.desde)q=q.gte('ingreso',rg.desde.toISOString());
   if(rg.hasta)q=q.lte('ingreso',rg.hasta.toISOString());
   q.order('ingreso',{ascending:true}).limit(500)
@@ -5595,6 +5605,7 @@ function pintarTaller(){
         var v=o.vehiculos||{},c=o.clientes||{};
         return {id:o.id,ot:o.numero,placa:v.placa||'—',veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
           cliente:c.nombre||'—',nivel:c.nivel||'Plata',estado:o.estado_taller||'RECIBIDO',estado_ot:o.estado_ot||'',
+          sede:o.sede_id,
           importe:Number(o.total_taller||0),tec:o.mecanico_nombre||'—',ingreso:o.ingreso,
           ingreso:o.ingreso,mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
       });
@@ -5604,13 +5615,12 @@ function pintarTaller(){
 function deEtapa(k){return KAN_T.filter(function(o){return o.estado===k})}
 function pintarKanbanTaller(){
   var enPiso=KAN_T.filter(function(o){return o.estado!=='ENTREGADO'}).length;
-  var cap=Math.round(enPiso/60*100);
   document.getElementById('kanban').innerHTML=ETAPAS_T.map(function(e){
     var ots=deEtapa(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
         imp=ots.reduce(function(a,o){return a+o.importe},0),vis=ots.slice(0,5);
     var lista=vis.map(function(o){
       return '<div class="pl" onclick="event.stopPropagation();elegirOT(&quot;'+e.k+'&quot;,&quot;'+o.ot+'&quot;)">'+
-        '<b>'+o.placa+'</b><span>'+tiempo(o.mins)+'</span></div>'}).join('');
+        '<b>'+placaConSede(o.placa,o.sede,tallerTodos())+'</b><span>'+tiempo(o.mins)+'</span></div>'}).join('');
     var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
     return '<div class="kb'+(ETAPA_SEL===e.k?' on':'')+'" onclick="verEtapa(&quot;'+e.k+'&quot;)">'+
       '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
@@ -5618,16 +5628,18 @@ function pintarKanbanTaller(){
       (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
       '<div class="lista abierta">'+lista+pie+'</div></div>';
   }).join('');
-  var cb=document.getElementById('capacidad');
+  /* La capacidad instalada todavía no está definida, así que no se
+     muestra porcentaje ni barra: solo el conteo. */
+  var cb=document.getElementById('ocupacion');
   if(cb){
     cb.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
       '<b class="cond" style="font-size:20px">'+enPiso+' vehículos ocupando el taller</b>'+
-      '<span class="hint" style="margin:0">Capacidad instalada: 60 · los entregados no ocupan espacio · '+
+      '<span class="hint" style="margin:0">Los entregados no ocupan espacio · '+
         (function(){var v=document.getElementById('tallerRango').value;
-          return v==='1'?'ingresos de hoy':v==='0'?'todo el histórico':v==='custom'?'rango elegido':'últimos '+v+' días'})()+'</span>'+
-      '<span class="num" style="margin-left:auto;font-weight:700;color:'+(cap>85?'var(--rojo)':'var(--verde)')+'">'+cap+'%</span></div>'+
-      '<div class="barra" style="height:12px"><i class="'+(cap>85?'bajo':'')+'" style="width:'+Math.min(100,cap)+'%"></i></div>';
+          return v==='1'?'ingresos de hoy':v==='0'?'todo el histórico':v==='custom'?'rango elegido':'últimos '+v+' días'})()+'</span></div>';
   }
+  var ly=document.getElementById('leyTaller');
+  if(ly)ly.innerHTML=tallerTodos()?leyendaSedes(KAN_T.map(function(o){return o.sede})):'';
   var sel=document.getElementById('selEtapa');
   if(sel)sel.innerHTML=ETAPAS_T.map(function(e){
     return '<option value="'+e.k+'"'+(ETAPA_SEL===e.k?' selected':'')+'>'+e.ic+' '+e.t+' · '+deEtapa(e.k).length+'</option>'}).join('');
@@ -5644,8 +5656,17 @@ var ETAPAS_TIENDA=[
  {k:'asesor',    t:'Asesor',                     ic:'🤝', d:'Tiempo desde final aprobada hasta el cierre'},
  {k:'caja',      t:'Caja · cobro',               ic:'💳', d:'Tiempo desde final aprobada hasta el pago'}
 ];
+var TIENDA_SEDE='ACTUAL';
+function tiendaCambiaSede(v){ TIENDA_SEDE=v; pintarTienda() }
+function tiendaTodos(){ return TIENDA_SEDE==='TODOS'&&esAdminGeneral() }
+function abrirTienda(){ cargarSedesTodas(function(){ pintarTienda() }) }
 function pintarTienda(){
   if(!sb)return;
+  var zs=document.getElementById('tiendaSedeSel');
+  if(zs)zs.innerHTML=selectorSedeHTML(TIENDA_SEDE,'tiendaCambiaSede');
+  var tt=document.getElementById('tiendaTitulo');
+  if(tt)tt.textContent='Tienda '+(tiendaTodos()?'· todos los locales':'· '+sedeNombrePorId(sedeElegida(TIENDA_SEDE)))+
+    ' · órdenes por estación';
   cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA'],function(lista){
     var ids=lista.map(function(o){return o.id});
     if(!ids.length){KAN_TIENDA=[];pintarKanbanTienda();return}
@@ -5669,7 +5690,7 @@ function pintarTienda(){
       });
       pintarKanbanTienda();
     },function(){});
-  });
+  },tiendaTodos()?null:sedeElegida(TIENDA_SEDE));
 }
 function deTienda(k){return KAN_TIENDA.filter(function(o){return o.est===k})}
 function pintarKanbanTienda(){
@@ -5677,7 +5698,8 @@ function pintarKanbanTienda(){
     var ots=deTienda(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
         imp=ots.reduce(function(a,o){return a+o.total},0),vis=ots.slice(0,5);
     var lista=vis.map(function(o){
-      return '<div class="pl"><b>'+o.placa+'</b><span'+(o.mins>240?' style="color:var(--rojo);font-weight:700"':'')+'>'+tiempo(o.mins)+'</span></div>'}).join('');
+      return '<div class="pl"><b>'+placaConSede(o.placa,o.sede,tiendaTodos())+'</b><span'+
+        (o.mins>240?' style="color:var(--rojo);font-weight:700"':'')+'>'+tiempo(o.mins)+'</span></div>'}).join('');
     var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
     return '<div class="kb'+(TIENDA_SEL===e.k?' on':'')+'" onclick="verTienda(&quot;'+e.k+'&quot;)">'+
       '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
@@ -5688,16 +5710,21 @@ function pintarKanbanTienda(){
   }).join('');
   var e=ETAPAS_TIENDA.filter(function(x){return x.k===TIENDA_SEL})[0];
   var ots=deTienda(TIENDA_SEL).slice().sort(function(a,b){return b.mins-a.mins});
+  var ly=document.getElementById('leyTienda');
+  if(ly)ly.innerHTML=tiendaTodos()?leyendaSedes(ots.map(function(o){return o.sede})):'';
+  var todos=tiendaTodos();
   document.getElementById('tablaTienda').innerHTML=
-    '<tr><th colspan="7" style="font-size:13px;color:var(--tinta);text-transform:none;letter-spacing:0;padding-bottom:12px">'+
-      '<span style="font-size:19px">'+e.ic+'</span> <b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+' órdenes</th></tr>'+
-    '<tr><th>OT</th><th>Placa</th><th>Cliente</th><th>Situación</th><th class="der">Tiempo</th><th class="der">Importe</th></tr>'+
+    '<div style="margin-bottom:12px"><span style="font-size:19px">'+e.ic+'</span> '+
+      '<b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+(ots.length===1?' orden':' órdenes')+'</div>'+
     (ots.length?ots.map(function(o){
-      return '<tr><td class="num" style="white-space:nowrap">'+otCorto(o.ot)+'</td><td class="num"><b>'+o.placa+'</b></td>'+
-        '<td>'+o.cliente+'</td><td><span class="eti '+(o.mins>240?'e1':'e3')+'">'+o.extra+'</span></td>'+
-        '<td class="num der'+(o.mins>240?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
-        '<td class="num der">'+S(o.total)+'</td></tr>';
-    }).join(''):'<tr><td colspan="6" class="vacio"><b>Sin órdenes</b>Nada pendiente en esta estación.</td></tr>');
+      return fichaOrden('tienda',o,todos,[
+        ['Situación','<span class="eti '+(o.mins>240?'e1':'e3')+'">'+o.extra+'</span>'],
+        ['Vehículo',o.veh||'—'],
+        ['Tiempo en la estación',(o.mins>240?'<b style="color:var(--rojo)">':'<b>')+tiempo(o.mins)+'</b>'],
+        ['Importe',S(o.total)]
+      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]));
+    }).join('')
+    :'<div class="vacio"><b>Sin órdenes</b>Nada pendiente en esta estación.</div>');
 }
 function verTienda(k){TIENDA_SEL=k;pintarKanbanTienda();
   document.getElementById('tablaTienda').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -5709,23 +5736,132 @@ function pintarTabla(){
   else if(orden==='fidelidad')ots.sort(function(a,b){return RANK_NIV[b.nivel]-RANK_NIV[a.nivel]||b.mins-a.mins});
   else ots.sort(function(a,b){return b.mins-a.mins});
   var et=ETAPAS_T.filter(function(e){return e.k===ETAPA_SEL})[0]||ETAPAS_T[0];
-  var tot=ots.reduce(function(a,o){return a+o.importe},0);
+  var tot=ots.reduce(function(a,o){return a+o.importe},0),todos=tallerTodos();
   document.getElementById('tablaEtapa').innerHTML=
-   '<tr><th colspan="8" style="font-size:13px;color:var(--tinta);text-transform:none;letter-spacing:0;padding-bottom:12px">'+
-     '<span style="font-size:19px">'+et.ic+'</span> <b class="cond" style="font-size:19px">'+et.t+'</b> · '+ots.length+' vehículos · '+S(tot)+'</th></tr>'+
-   '<tr><th>OT</th><th>Placa</th><th>Vehículo</th><th>Cliente</th><th>Nivel</th>'+
-   '<th>OT</th><th>Mecánico</th><th class="der">En taller</th><th class="der">Importe</th></tr>'+
-   ots.map(function(o){
-     return '<tr class="'+(OT_SEL===o.ot?'sel':'')+'"><td class="num">'+o.ot+'</td>'+
-     '<td class="num"><b>'+o.placa+'</b></td><td>'+o.veh+'</td><td>'+o.cliente+'</td>'+
-     '<td><span class="niv n-'+o.nivel+'">'+o.nivel+'</span></td><td>'+(o.estado_ot||'—').replace(/_/g,' ')+'</td><td>'+o.tec+'</td>'+
-     '<td class="num der'+(o.mins>1440?' alto':'')+'">'+tiempo(o.mins)+'</td>'+
-     '<td class="num der">'+S(o.importe)+'</td></tr>';
-   }).join('');
+    '<div style="margin-bottom:12px"><span style="font-size:19px">'+et.ic+'</span> '+
+      '<b class="cond" style="font-size:19px">'+et.t+'</b> · '+ots.length+(ots.length===1?' vehículo':' vehículos')+' · '+S(tot)+'</div>'+
+    (ots.length?ots.map(function(o){
+      return fichaOrden('taller',o,todos,[
+        ['Vehículo',o.veh||'—'],
+        ['Nivel','<span class="niv '+claseNivel(o.nivel)+'">'+(o.nivel||'Plata')+'</span>'],
+        ['Estado de la OT',(o.estado_ot||'sin enviar').replace(/_/g,' ')],
+        ['Mecánico',o.tec||'—'],
+        ['En taller',(o.mins>1440?'<b style="color:var(--rojo)">':'<b>')+tiempo(o.mins)+'</b>'],
+        ['Importe',S(o.importe)]
+      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]));
+    }).join('')
+    :'<div class="vacio"><b>Sin vehículos en esta etapa</b>Elige otra etapa arriba.</div>');
 }
 
-/* ============ PRODUCTIVIDAD ============ */
-var PERIODO='anio',SERIE='autos';
+/* ============ FICHA DESPLEGABLE ============
+   En el celular la tabla no entraba. Cada orden muestra placa,
+   cliente y OT; el resto se abre al tocarla. */
+var FICHA_ABIERTA={};
+function toggleFicha(mod,ot){
+  FICHA_ABIERTA[mod]=(FICHA_ABIERTA[mod]===ot)?null:ot;
+  if(mod==='taller')pintarTabla();
+  else if(mod==='tienda')pintarKanbanTienda();
+}
+function fichaOrden(mod,o,todos,campos){
+  var ab=(FICHA_ABIERTA[mod]===o.ot);
+  return '<div class="fichaL'+(ab?' on':'')+'" onclick="toggleFicha(&quot;'+mod+'&quot;,&quot;'+o.ot+'&quot;)">'+
+    '<div class="cab">'+
+      '<div class="pz">'+placaConSede(o.placa,o.sede,todos)+'</div>'+
+      '<div class="ot">'+otCorto(o.ot)+'</div>'+
+      '<div class="cl">'+(o.cliente||'—')+'</div>'+
+      '<div class="fl">'+(ab?'▲ cerrar':'▼ ver más')+'</div>'+
+    '</div>'+
+    (ab?'<div class="cuerpo">'+campos.map(function(c){
+      return '<div class="dt"><span>'+c[0]+'</span><b>'+c[1]+'</b></div>' }).join('')+'</div>':'')+
+  '</div>';
+}
+
+/* ============ LOCALES · selector, prefijos y leyenda ============
+   Se usa igual en taller, tienda y reportería. El administrador
+   general puede mirar un local o todos; el resto ve el suyo. */
+var SEDES_TODAS=[];
+function cargarSedesTodas(cb){
+  if(SEDES_TODAS.length||!sb){cb&&cb();return}
+  sb.from('sedes').select('id,nombre').order('nombre').then(function(r){
+    SEDES_TODAS=r.data||[];cb&&cb();
+  },function(){cb&&cb()});
+}
+function esAdminGeneral(){ return !!(SESION&&SESION.rol==='admin_general') }
+function sedeNombrePorId(id){
+  var n='';
+  SEDES_TODAS.forEach(function(s){ if(Number(s.id)===Number(id))n=s.nombre });
+  return n||(Number(id)===Number(SEDE_ACTIVA)?SEDE_NOMBRE:'Local '+id);
+}
+/* Dos letras por local: Cono Norte → CN, Las Américas → AM.
+   Los artículos no cuentan; con una sola palabra se toman sus
+   dos primeras letras. */
+function sedePrefijo(id){
+  var n=sedeNombrePorId(id)||'';
+  var limpio=n.normalize?n.normalize('NFD').replace(/[\u0300-\u036f]/g,''):n;
+  var pal=limpio.split(/\s+/).filter(function(p){
+    return p&&['el','la','los','las','de','del'].indexOf(p.toLowerCase())===-1;
+  });
+  if(!pal.length)return '--';
+  if(pal.length>=2)return (pal[0].charAt(0)+pal[1].charAt(0)).toUpperCase();
+  return pal[0].slice(0,2).toUpperCase();
+}
+/* Placa con el prefijo del local, solo cuando se miran todos. */
+function placaConSede(placa,sedeId,todos){
+  if(!todos)return placa;
+  return '<span class="pfSede">'+sedePrefijo(sedeId)+'</span> '+placa;
+}
+function leyendaSedes(ids){
+  var vistos={},out=[];
+  (ids||[]).forEach(function(id){
+    if(id===null||id===undefined||vistos[id])return;
+    vistos[id]=true;
+    out.push('<span class="pfSede">'+sedePrefijo(id)+'</span> '+sedeNombrePorId(id));
+  });
+  if(!out.length)return '';
+  return '<div class="leySede">'+out.join('')+'</div>';
+}
+function sedeElegida(v){
+  if(v==='TODOS')return null;
+  if(v==='ACTUAL')return SEDE_ACTIVA;
+  return Number(v)||SEDE_ACTIVA;
+}
+/* Combo de local. Devuelve '' si el usuario no es administrador general. */
+function selectorSedeHTML(valor,fn,extra){
+  if(!esAdminGeneral())return '';
+  var ops='<option value="ACTUAL"'+(valor==='ACTUAL'?' selected':'')+'>'+SEDE_NOMBRE+' · donde estoy</option>'+
+          '<option value="TODOS"'+(valor==='TODOS'?' selected':'')+'>Todos los locales</option>';
+  SEDES_TODAS.forEach(function(s){
+    if(Number(s.id)===Number(SEDE_ACTIVA))return;
+    ops+='<option value="'+s.id+'"'+(String(valor)===String(s.id)?' selected':'')+'>'+s.nombre+'</option>';
+  });
+  return '<div class="fila" style="align-items:flex-end;margin-bottom:12px">'+
+    '<div style="flex:1;min-width:190px"><label style="margin:0 0 4px">Local</label>'+
+    '<select onchange="'+fn+'(this.value)">'+ops+'</select></div>'+
+    (extra||'')+'</div>';
+}
+
+/* ============ PRODUCTIVIDAD · sale de la base ============
+   Criterios acordados con el cliente:
+   · "Facturado" = órdenes marcadas PAGADA, por su fecha de pago.
+   · "Autos" = esas mismas órdenes, para que el ticket cuadre.
+   · "Tiempo en taller" = del ingreso al pago.
+   El administrador general puede mirar un local o todos; el
+   administrador de local ve el suyo y no puede cambiarlo. */
+var PERIODO='mes',SERIE='autos';
+var PROD_SEDE='ACTUAL',PROD_ORD=null,PROD_ERR='',PROD_CARGANDO=false;
+
+function prodAdmin(){ return !!(SESION&&SESION.rol==='admin_general') }
+function prodTodos(){ return PROD_SEDE==='TODOS'&&prodAdmin() }
+function prodSedeId(){
+  if(prodTodos())return null;
+  if(PROD_SEDE==='ACTUAL')return SEDE_ACTIVA;
+  return Number(PROD_SEDE)||SEDE_ACTIVA;
+}
+function prodSedeNombre(id){
+  if(id===undefined)id=prodSedeId();
+  if(id===null)return 'Todos los locales';
+  return sedeNombrePorId(id);
+}
 function setPeriodo(p){
   PERIODO=p;
   ['dia','mes','anio'].forEach(function(x){
@@ -5742,15 +5878,124 @@ function setSerie(s){
   });
   pintarEvo();
 }
-function datosPeriodo(){
-  return SERIES[PERIODO==='dia'?'hoy':PERIODO];
+function prodCambiaSede(v){ PROD_SEDE=v; cargarProdBD() }
+
+/* Entrada del módulo: trae las sedes para el combo y luego los datos. */
+function abrirProductividad(){
+  ['dia','mes','anio'].forEach(function(x){
+    var b=document.getElementById(x==='dia'?'mDia':(x==='mes'?'mMes':'mAnio'));
+    if(b)b.classList.toggle('on',x===PERIODO);
+  });
+  cargarSedesTodas(function(){ cargarProdBD() });
+}
+function prodFiltro(){
+  var z=document.getElementById('prodFiltroZona');if(!z)return;
+  z.innerHTML=selectorSedeHTML(PROD_SEDE,'prodCambiaSede',
+    '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="cargarProdBD()">Actualizar</button></div>');
+}
+function prodFila(o){
+  return {sede:o.sede_id,ing:o.ingreso?new Date(o.ingreso):null,
+          pag:new Date(o.ot_pagada),monto:Number(o.total_taller||0),
+          mec:(o.mecanico_nombre||'Sin asignar')};
+}
+function cargarProdBD(){
+  prodFiltro();
+  if(!sb){PROD_ERR='sin conexión con la base';PROD_ORD=[];pintarProd();return}
+  PROD_CARGANDO=true;PROD_ERR='';pintarProd();
+  var ini=new Date(new Date().getFullYear(),0,1).toISOString();
+  /* Las órdenes que registra un administrador general son pruebas y
+     no entran en la estadística. Si la columna todavía no existe en
+     la base, se consulta sin ese filtro y se avisa. */
+  function consultar(conFiltro){
+    var q=sb.from('ordenes')
+      .select('id,numero,sede_id,ingreso,ot_pagada,total_taller,mecanico_nombre')
+      .not('ot_pagada','is',null).gte('ot_pagada',ini).limit(5000);
+    if(conFiltro)q=q.or('es_prueba.is.null,es_prueba.eq.false');
+    var sid=prodSedeId();
+    if(sid!==null)q=q.eq('sede_id',sid);
+    return q;
+  }
+  consultar(true).then(function(r){
+    PROD_CARGANDO=false;
+    if(r.error&&/es_prueba/.test(r.error.message||'')){
+      consultar(false).then(function(r2){
+        PROD_ERR='falta correr el paso30 en Supabase: las órdenes de prueba están incluidas';
+        PROD_ORD=(r2.data||[]).map(prodFila);pintarProd();
+      },function(){ PROD_ERR='no se pudo consultar';PROD_ORD=[];pintarProd() });
+      return;
+    }
+    if(r.error){PROD_ERR=r.error.message;PROD_ORD=[];pintarProd();return}
+    PROD_ORD=(r.data||[]).map(prodFila);
+    pintarProd();
+  },function(e){
+    PROD_CARGANDO=false;PROD_ERR=(e&&e.message)||'no se pudo consultar';
+    PROD_ORD=[];pintarProd();
+  });
+}
+/* ¿la fecha cae en el periodo elegido? */
+function prodEnPeriodo(f,p){
+  if(!f)return false;
+  p=p||PERIODO;
+  var h=new Date();
+  if(f.getFullYear()!==h.getFullYear())return false;
+  if(p==='anio')return true;
+  if(f.getMonth()!==h.getMonth())return false;
+  if(p==='mes')return true;
+  return f.getDate()===h.getDate();
+}
+function prodLista(p){
+  return (PROD_ORD||[]).filter(function(o){ return prodEnPeriodo(o.pag,p) });
+}
+function prodSeries(){
+  var h=new Date(),lab=[],autos=[],monto=[],i,lista=prodLista();
+  if(PERIODO==='dia'){
+    for(i=8;i<=18;i++){lab.push((i>12?i-12:i)+(i<12?'am':'pm'));autos.push(0);monto.push(0)}
+    lista.forEach(function(o){
+      var k=o.pag.getHours()-8; if(k<0)k=0; if(k>10)k=10;
+      autos[k]++;monto[k]+=o.monto;
+    });
+  } else if(PERIODO==='mes'){
+    var D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],dias=h.getDate();
+    for(i=1;i<=dias;i++){
+      var f=new Date(h.getFullYear(),h.getMonth(),i);
+      lab.push(D[f.getDay()]+' '+i);autos.push(0);monto.push(0);
+    }
+    lista.forEach(function(o){
+      var k=o.pag.getDate()-1; if(k>=0&&k<autos.length){autos[k]++;monto[k]+=o.monto}
+    });
+  } else {
+    var M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    for(i=0;i<=h.getMonth();i++){lab.push(M[i]);autos.push(0);monto.push(0)}
+    lista.forEach(function(o){
+      var k=o.pag.getMonth(); if(k>=0&&k<autos.length){autos[k]++;monto[k]+=o.monto}
+    });
+  }
+  return {lab:lab,autos:autos,monto:monto};
+}
+function prodAgrupar(lista,clave){
+  var m={};
+  lista.forEach(function(o){
+    var k=clave(o);
+    m[k]=m[k]||{n:k,autos:0,fac:0,horas:0,conH:0};
+    m[k].autos++;m[k].fac+=o.monto;
+    if(o.ing){m[k].horas+=(o.pag-o.ing)/3600000;m[k].conH++}
+  });
+  return Object.keys(m).map(function(k){return m[k]});
+}
+/* promedio de horas en taller, en texto */
+function prodTiempo(lista){
+  var t=0,n=0;
+  lista.forEach(function(o){ if(o.ing&&o.pag>o.ing){t+=(o.pag-o.ing)/60000;n++} });
+  if(!n)return '—';
+  return tiempo(Math.round(t/n));
 }
 function pintarEvo(){
-  var d=datosPeriodo(),serie,fmt,titulo;
-  if(SERIE==='autos'){serie=d.autos;fmt=function(v){return v};titulo='Autos atendidos';}
-  else if(SERIE==='monto'){serie=d.monto;fmt=function(v){return v>=1000?Math.round(v/1000)+'k':v};titulo='Facturado';}
+  if(!$('grafEvo'))return;
+  var d=prodSeries(),serie,fmt,titulo;
+  if(SERIE==='autos'){serie=d.autos;fmt=function(v){return v};titulo='Autos facturados';}
+  else if(SERIE==='monto'){serie=d.monto;fmt=function(v){return v>=1000?Math.round(v/1000)+'k':Math.round(v)};titulo='Facturado';}
   else{serie=d.autos.map(function(a,i){return a?Math.round(d.monto[i]/a):0});
-       fmt=function(v){return v};titulo='Ticket promedio';}
+       fmt=function(v){return v>=1000?Math.round(v/1000)+'k':v};titulo='Ticket promedio';}
   var max=Math.max.apply(null,serie)||1;
   var muchos=serie.length>14;
   $('grafEvo').innerHTML='<div class="gb" style="height:200px'+(muchos?';gap:3px':'')+'">'+serie.map(function(v,i){
@@ -5765,72 +6010,116 @@ function pintarEvo(){
     (PERIODO==='dia'?'hoy':PERIODO==='mes'?'mes en curso':'año acumulado');
 }
 function pintarProd(){
-  var per=TEC_PERIODO[PERIODO],d=datosPeriodo();
-  var tMO=TECNICOS.reduce(function(a,t){return a+t[per.k]},0);
-  var tAu=TECNICOS.reduce(function(a,t){return a+t[per.a]},0);
-  var util=Math.round(TECNICOS.reduce(function(a,t){return a+t.hf/t.hd},0)/TECNICOS.length*100);
-  var fact=d.monto.reduce(function(a,v){return a+v},0);
-  var autos=d.autos.reduce(function(a,v){return a+v},0);
-  var etq=PERIODO==='dia'?'hoy':(PERIODO==='mes'?'del mes':'del año');
+  if(!$('kpisProd'))return;
+  var tit=$('prodTitulo');
+  if(tit)tit.textContent='Productividad · '+prodSedeNombre();
+  var av=$('prodAviso');
+  if(av)av.innerHTML = PROD_ERR
+    ? '<div class="aviso rojo" style="margin-top:12px">No se pudo traer la información: '+PROD_ERR+'</div>'
+    : (PROD_CARGANDO?'<div class="hint" style="margin-top:10px">Consultando la base…</div>':'');
+
+  var lista=prodLista(),
+      etq=PERIODO==='dia'?'hoy':(PERIODO==='mes'?'del mes':'del año'),
+      fact=lista.reduce(function(a,o){return a+o.monto},0),
+      autos=lista.length;
 
   $('kpisProd').innerHTML=
-    kpi(autos.toLocaleString(),'Autos atendidos '+etq,'tinta')+
-    kpi(S(fact),'Facturado '+etq)+
+    kpi(autos.toLocaleString(),'Autos facturados '+etq,'tinta')+
+    kpi(S(Math.round(fact)),'Facturado '+etq)+
     kpi(S(autos?Math.round(fact/autos):0),'Ticket promedio','tinta')+
-    kpi(util+'%','Utilización del taller',util>=75?'verde':'');
+    kpi(prodTiempo(lista),'Tiempo promedio en taller');
 
   pintarEvo();
 
-  /* ranking: importe y autos en un solo gráfico */
-  var lista=TECNICOS.slice().sort(function(a,b){return b[per.f]-a[per.f]});
-  var maxFa=Math.max.apply(null,lista.map(function(t){return t[per.f]}))||1;
-  var maxAu=Math.max.apply(null,lista.map(function(t){return t[per.a]}))||1;
+  /* ---- ranking de mecánicos ---- */
+  var rank=prodAgrupar(lista,function(o){return o.mec}).sort(function(a,b){return b.fac-a.fac});
   $('tituloGraf').textContent='Ranking de mecánicos por facturación · '+
     (PERIODO==='dia'?'hoy':PERIODO==='mes'?'mes acumulado':'año acumulado');
-  $('grafMec').innerHTML=
-    '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:10px">'+
-      '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Monto facturado</span>'+
-      '<span><i style="display:inline-block;width:9px;height:9px;background:var(--tinta);border-radius:2px"></i> Autos atendidos</span></div>'+
-    '<div class="gb" style="height:190px">'+lista.map(function(t){
-      return '<div class="col"><div class="vv">'+S(t[per.f])+'</div>'+
-        '<div style="display:flex;gap:4px;align-items:flex-end;width:100%;justify-content:center;height:100%">'+
-          '<div class="bar" style="height:'+Math.round(t[per.f]/maxFa*100)+'%;max-width:30px"></div>'+
-          '<div class="bar" style="height:'+Math.round(t[per.a]/maxAu*45)+'%;max-width:14px;background:var(--tinta)"></div>'+
-        '</div>'+
-        '<div class="ll">'+t.n.split(' ')[0]+'<br><b>'+t[per.a]+' autos</b></div></div>';
-    }).join('')+'</div>';
+  if(!rank.length){
+    $('grafMec').innerHTML='<div class="vacio"><b>Sin órdenes pagadas '+etq+'</b>'+
+      'El ranking aparece cuando caja marque la primera orden como pagada.</div>';
+    $('ranking').innerHTML='';
+  } else {
+    var maxFa=Math.max.apply(null,rank.map(function(t){return t.fac}))||1,
+        maxAu=Math.max.apply(null,rank.map(function(t){return t.autos}))||1;
+    $('grafMec').innerHTML=
+      '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:10px">'+
+        '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Monto facturado</span>'+
+        '<span><i style="display:inline-block;width:9px;height:9px;background:var(--tinta);border-radius:2px"></i> Autos atendidos</span></div>'+
+      '<div class="gb" style="height:190px">'+rank.slice(0,12).map(function(t){
+        return '<div class="col"><div class="vv">'+S(Math.round(t.fac))+'</div>'+
+          '<div style="display:flex;gap:4px;align-items:flex-end;width:100%;justify-content:center;height:100%">'+
+            '<div class="bar" style="height:'+Math.round(t.fac/maxFa*100)+'%;max-width:30px"></div>'+
+            '<div class="bar" style="height:'+Math.round(t.autos/maxAu*45)+'%;max-width:14px;background:var(--tinta)"></div>'+
+          '</div>'+
+          '<div class="ll">'+String(t.n).split(' ')[0]+'<br><b>'+t.autos+' autos</b></div></div>';
+      }).join('')+'</div>';
+    var tope=rank[0].fac||1;
+    $('ranking').innerHTML=rank.map(function(t,i){
+      var pct=Math.round(t.fac/tope*100);
+      return '<div style="margin-bottom:13px"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
+        '<span class="cond" style="font-size:19px;color:var(--mudo)">'+(i+1)+'</span><b>'+t.n+'</b>'+
+        '<span class="num" style="color:var(--mudo);font-size:12px">'+t.autos+' autos</span>'+
+        '<span class="num" style="margin-left:auto;font-weight:700">'+S(Math.round(t.fac))+'</span></div>'+
+        '<div class="barra"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="hint">'+S(Math.round(t.fac/t.autos))+' por auto'+
+        (t.conH?' · '+tiempo(Math.round(t.horas/t.conH*60))+' promedio en taller':'')+'</div></div>';
+    }).join('');
+  }
 
-  var meta=PERIODO==='dia'?Math.round(META_MES/26):(PERIODO==='mes'?META_MES:META_MES*12);
-  $('ranking').innerHTML=lista.map(function(t,i){
-    var v=t[per.k],pct=Math.min(100,Math.round(v/meta*100)),ok=v>=meta;
-    return '<div style="margin-bottom:13px"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
-      '<span class="cond" style="font-size:19px;color:var(--mudo)">'+(i+1)+'</span><b>'+t.n+'</b>'+
-      '<span class="num" style="color:var(--mudo);font-size:12px">'+S(t[per.f])+' facturado</span>'+
-      '<span class="num" style="margin-left:auto;font-weight:700;color:'+(ok?'var(--verde)':'var(--rojo)')+'">'+
-      pct+'% de la meta</span></div>'+
-      '<div class="barra"><i class="'+(ok?'':'bajo')+'" style="width:'+pct+'%"></i></div>'+
-      '<div class="hint">'+S(v)+' en mano de obra · '+t[per.a]+' autos · '+
-      S(Math.round(v/t[per.a]))+' por auto</div></div>';
-  }).join('');
+  /* ---- comparativo por local, solo al mirar todos ---- */
+  var cl=$('cardLocales');
+  if(cl){
+    if(prodTodos()){
+      cl.style.display='block';
+      var porSede=prodAgrupar(lista,function(o){return o.sede}).sort(function(a,b){return b.fac-a.fac});
+      $('tablaLocales').innerHTML=
+        '<tr><th>Local</th><th class="der">Autos</th><th class="der">Facturado</th>'+
+        '<th class="der">Ticket</th><th class="der">En taller</th></tr>'+
+        (porSede.length?porSede.map(function(s){
+          return '<tr><td data-l="Local"><span class="pfSede">'+sedePrefijo(s.n)+'</span><b>'+prodSedeNombre(s.n)+'</b></td>'+
+            '<td class="num der" data-l="Autos">'+s.autos+'</td>'+
+            '<td class="num der" data-l="Facturado">'+S(Math.round(s.fac))+'</td>'+
+            '<td class="num der" data-l="Ticket">'+S(Math.round(s.fac/s.autos))+'</td>'+
+            '<td class="num der" data-l="En taller">'+(s.conH?tiempo(Math.round(s.horas/s.conH*60)):'—')+'</td></tr>';
+        }).join('')
+        :'<tr><td colspan="5" class="vacio"><b>Sin datos '+etq+'</b>Todavía no hay órdenes pagadas.</td></tr>')+
+        (porSede.length>1?'<tr style="background:var(--gris)"><td><b>Total</b></td>'+
+          '<td class="num der"><b>'+autos+'</b></td>'+
+          '<td class="num der"><b>'+S(Math.round(fact))+'</b></td>'+
+          '<td class="num der"><b>'+S(autos?Math.round(fact/autos):0)+'</b></td>'+
+          '<td class="num der">'+prodTiempo(lista)+'</td></tr>':'');
+    } else cl.style.display='none';
+  }
 
+  /* ---- detalle por mecánico: día, mes y año a la vez ---- */
+  var dia={},mes={},anio={};
+  function acum(m,o){ m[o.mec]=m[o.mec]||{autos:0,fac:0}; m[o.mec].autos++; m[o.mec].fac+=o.monto }
+  (PROD_ORD||[]).forEach(function(o){
+    if(prodEnPeriodo(o.pag,'anio')){
+      acum(anio,o);
+      if(prodEnPeriodo(o.pag,'mes')){ acum(mes,o);
+        if(prodEnPeriodo(o.pag,'dia'))acum(dia,o); }
+    }
+  });
+  var nombres=Object.keys(anio).sort(function(a,b){return anio[b].fac-anio[a].fac});
+  var cero={autos:0,fac:0};
   $('tablaTec').innerHTML=
-   '<tr><th>Mecánico</th><th class="der">Autos hoy</th><th class="der">MO hoy</th>'+
-   '<th class="der">Autos mes</th><th class="der">MO mes</th>'+
-   '<th class="der">Autos año</th><th class="der">MO año</th><th class="der">Utilización</th></tr>'+
-   TECNICOS.slice().sort(function(a,b){return b.aMO-a.aMO}).map(function(t){
-     return '<tr><td>'+t.n+'</td><td class="num der">'+t.dAutos+'</td><td class="num der">'+S(t.dMO)+'</td>'+
-     '<td class="num der">'+t.mAutos+'</td><td class="num der">'+S(t.mMO)+'</td>'+
-     '<td class="num der">'+t.aAutos+'</td><td class="num der"><b>'+S(t.aMO)+'</b></td>'+
-     '<td class="num der">'+Math.round(t.hf/t.hd*100)+'%</td></tr>';
-   }).join('')+
-   '<tr style="background:var(--gris)"><td><b>Total taller</b></td>'+
-   '<td class="num der"><b>'+TECNICOS.reduce(function(a,t){return a+t.dAutos},0)+'</b></td>'+
-   '<td class="num der"><b>'+S(TECNICOS.reduce(function(a,t){return a+t.dMO},0))+'</b></td>'+
-   '<td class="num der"><b>'+TECNICOS.reduce(function(a,t){return a+t.mAutos},0)+'</b></td>'+
-   '<td class="num der"><b>'+S(TECNICOS.reduce(function(a,t){return a+t.mMO},0))+'</b></td>'+
-   '<td class="num der"><b>'+TECNICOS.reduce(function(a,t){return a+t.aAutos},0)+'</b></td>'+
-   '<td class="num der"><b>'+S(TECNICOS.reduce(function(a,t){return a+t.aMO},0))+'</b></td>'+
-   '<td class="num der">—</td></tr>';
+   '<tr><th>Mecánico</th><th class="der">Autos hoy</th><th class="der">Facturado hoy</th>'+
+   '<th class="der">Autos mes</th><th class="der">Facturado mes</th>'+
+   '<th class="der">Autos año</th><th class="der">Facturado año</th></tr>'+
+   (nombres.length?nombres.map(function(n){
+     var d=dia[n]||cero,m=mes[n]||cero,a=anio[n]||cero;
+     return '<tr><td data-l="Mecánico">'+n+'</td>'+
+       '<td class="num der" data-l="Autos hoy">'+d.autos+'</td>'+
+       '<td class="num der" data-l="Facturado hoy">'+S(Math.round(d.fac))+'</td>'+
+       '<td class="num der" data-l="Autos mes">'+m.autos+'</td>'+
+       '<td class="num der" data-l="Facturado mes">'+S(Math.round(m.fac))+'</td>'+
+       '<td class="num der" data-l="Autos año">'+a.autos+'</td>'+
+       '<td class="num der" data-l="Facturado año"><b>'+S(Math.round(a.fac))+'</b></td></tr>';
+   }).join('')
+   :'<tr><td colspan="7" class="vacio"><b>Todavía no hay órdenes pagadas este año</b>'+
+    'La reportería se llena sola a medida que caja vaya cobrando.</td></tr>');
 }
 
 function linkCliente(fase){
@@ -6270,9 +6559,11 @@ function facturaNegra(snap,titulo){
    (en diagnóstico, sin mecánico asignado). Van en una consulta aparte
    porque el filtro es por estado de taller, no por estado de OT. */
 var SIN_OT_TALLER=['RECIBIDO','EN_DIAGNOSTICO'];
-var COLS_ORDEN='id,numero,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)';
-function cargarOrdenesBD(estadosOT,cb){
+var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)';
+function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   if(!sb){cb([]);return}
+  /* sedeOpt: sin pasar = el local activo · null = todos · número = ese local */
+  var sedeF=(sedeOpt===undefined)?SEDE_ACTIVA:sedeOpt;
   var sinOT=estadosOT.indexOf('SIN_OT')>-1,
       conOT=estadosOT.filter(function(e){return e!=='SIN_OT'}),
       out=[],pend=(conOT.length?1:0)+(sinOT?1:0);
@@ -6287,20 +6578,21 @@ function cargarOrdenesBD(estadosOT,cb){
     (r.data||[]).forEach(function(o){ out.push(mapearOrden(o)) });
     fin();
   }
+  function conSede(q){ return sedeF===null?q:q.eq('sede_id',sedeF) }
   if(conOT.length)
-    sb.from('ordenes').select(COLS_ORDEN).in('estado_ot',conOT).eq('sede_id',SEDE_ACTIVA)
-      .order('ingreso',{ascending:false}).limit(100).then(recibir,function(){fin()});
+    conSede(sb.from('ordenes').select(COLS_ORDEN).in('estado_ot',conOT))
+      .order('ingreso',{ascending:false}).limit(200).then(recibir,function(){fin()});
   if(sinOT)
-    sb.from('ordenes').select(COLS_ORDEN).is('estado_ot',null).eq('sede_id',SEDE_ACTIVA)
+    conSede(sb.from('ordenes').select(COLS_ORDEN).is('estado_ot',null))
       .in('estado_taller',SIN_OT_TALLER)
-      .order('ingreso',{ascending:false}).limit(100).then(recibir,function(){fin()});
+      .order('ingreso',{ascending:false}).limit(200).then(recibir,function(){fin()});
 }
 function mapearOrden(o){
   return (function(){
         var v=o.vehiculos||{},c=o.clientes||{};
         return {id:o.id,ot:o.numero,placa:v.placa||'—',
           veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
-          cliente:c.nombre||'—',tel:c.telefono||'',
+          cliente:c.nombre||'—',tel:c.telefono||'',sede:o.sede_id,
           estado_ot:o.estado_ot,estado_taller:o.estado_taller,
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
           forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
@@ -7420,7 +7712,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=126;
+var APP_VER=128;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
