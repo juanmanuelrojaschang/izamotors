@@ -1,4 +1,4 @@
-<!--IZAV:128-->
+<!--IZAV:129-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -438,6 +438,9 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .fichaL .cab .cl{grid-column:1/3;grid-row:2;font-size:13.5px;color:var(--tinta);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fichaL .cab .fl{grid-column:3;grid-row:2;text-align:right;color:var(--mudo);font-size:11px}
+.fichaL .cab .cr{grid-column:1/4;grid-row:3;font-size:11.5px;color:var(--mudo);
+  border-top:1px dashed var(--borde);margin-top:4px;padding-top:5px}
+.fichaL .cab .cr b{color:var(--tinta);font-family:'JetBrains Mono',monospace}
 .fichaL .cuerpo{border-top:1px solid var(--borde);background:var(--gris);padding:4px 12px 10px}
 .fichaL .cuerpo .dt{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
   border-bottom:1px solid rgba(0,0,0,.05);font-size:13px}
@@ -533,6 +536,29 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .modo-cliente #crono{display:none!important}
 
 /* ===== kanban ===== */
+/* Las etapas van una debajo de otra, como el auto va avanzando.
+   En el celular el grid de 5 columnas no entraba. */
+.flujoE{display:flex;flex-direction:column;gap:6px}
+.eFila{border:1.5px solid var(--borde);border-radius:11px;background:var(--blanco);
+  cursor:pointer;overflow:hidden;transition:border-color .15s}
+.eFila:hover{border-color:#B9C1CB}
+.eFila.on{border-color:var(--rojo);box-shadow:0 0 0 3px var(--rojo-cl)}
+.eFila .cabE{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:11px 12px}
+.eFila .cabE .ic{font-size:17px;line-height:1}
+.eFila .cabE .tt{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mudo);font-weight:700}
+.eFila .cabE .tt i{display:block;font-style:normal;font-size:11px;letter-spacing:0;
+  text-transform:none;color:var(--mudo);font-weight:400;margin-top:2px}
+.eFila .cabE .nn{font-family:'JetBrains Mono',monospace;font-size:23px;font-weight:700;line-height:1}
+.eFila.on .cabE .nn{color:var(--rojo)}
+.eFila .cabE .fl{color:var(--mudo);font-size:11px}
+.eFila .cuerpoE{border-top:1px solid var(--gris2);padding:9px 12px 11px;background:var(--gris)}
+.eFila .topn{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--rojo);font-weight:700;margin-bottom:6px}
+/* placa arriba, tiempo abajo: así el prefijo del local no parte la placa */
+.eFila .pl{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 8px;
+  border-radius:7px;margin-bottom:4px;background:var(--blanco);border:1px solid var(--borde)}
+.eFila .pl b{font-family:'JetBrains Mono',monospace;font-size:13.5px;white-space:nowrap}
+.eFila .pl span{color:var(--mudo);font-size:11px;white-space:nowrap}
+.eFila .pl.mas{color:var(--rojo);font-weight:700;font-size:11.5px;background:transparent;border-style:dashed}
 .kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;align-items:start}
 .kb{background:var(--blanco);border:1.5px solid var(--borde);border-radius:12px;padding:13px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s}
 .kb .disc{font-size:10px;color:var(--mudo);line-height:1.25;min-height:26px;margin:2px 0 4px}
@@ -638,7 +664,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 128</span>
+  <span class="demo-tag">versión 129</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1176,11 +1202,11 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <h3 id="tiendaTitulo">Tienda · órdenes por estación</h3>
     <div id="tiendaSedeSel"></div>
-    <div class="kanban" id="kanbanTienda"></div>
+    <div id="leyTienda"></div>
+    <div class="flujoE" id="kanbanTienda"></div>
   </div>
   <div class="card">
     <h3>Detalle de la estación</h3>
-    <div id="leyTienda"></div>
     <div id="tablaTienda"></div>
   </div>
 </section>
@@ -1189,6 +1215,7 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <h3 id="tallerTitulo">Taller · ocupación</h3>
     <div id="tallerSedeSel"></div>
+    <div id="leyTaller"></div>
     <div class="fila" style="align-items:flex-end;margin-bottom:12px">
       <div style="min-width:170px"><label>Rango</label>
         <select id="tallerRango" onchange="cambioRangoTaller()">
@@ -1207,8 +1234,8 @@ tr.sel td{background:var(--rojo-cl)}
   </div>
   <div class="card">
     <h3>Vehículos por etapa</h3>
-    <div class="kanban" id="kanban"></div>
-    <div class="hint">Cada etapa muestra los 5 más antiguos. Toca la etapa para ver el detalle completo abajo.</div>
+    <div class="flujoE" id="kanban"></div>
+    <div class="hint">Toca una etapa para ver sus 5 más antiguos; desde ahí pasas a la lista completa.</div>
   </div>
   <div class="card">
     <div class="navproc">
@@ -1224,7 +1251,6 @@ tr.sel td{background:var(--rojo-cl)}
           <option value="fidelidad">Nivel de fidelidad</option>
         </select></div>
     </div>
-    <div id="leyTaller"></div>
     <div id="tablaEtapa"></div>
   </div>
 </section>
@@ -5582,7 +5608,7 @@ var TALLER_SEDE='ACTUAL';
 function tallerCambiaSede(v){ TALLER_SEDE=v; pintarTaller() }
 function tallerTodos(){ return TALLER_SEDE==='TODOS'&&esAdminGeneral() }
 function abrirTaller(){
-  cargarSedesTodas(function(){ pintarTaller() });
+  cargarSedesTodas(function(){ detectarEsPrueba(function(){ pintarTaller() }) });
 }
 function pintarTaller(){
   if(!sb)return;
@@ -5596,6 +5622,7 @@ function pintarTaller(){
     .not('estado_taller','eq','ANULADO');
   var sid=tallerTodos()?null:sedeElegida(TALLER_SEDE);
   if(sid!==null)q=q.eq('sede_id',sid);
+  q=sinPruebas(q);
   if(rg.desde)q=q.gte('ingreso',rg.desde.toISOString());
   if(rg.hasta)q=q.lte('ingreso',rg.hasta.toISOString());
   q.order('ingreso',{ascending:true}).limit(500)
@@ -5613,20 +5640,46 @@ function pintarTaller(){
     },function(){});
 }
 function deEtapa(k){return KAN_T.filter(function(o){return o.estado===k})}
+/* promedio de permanencia de una lista de órdenes */
+function promMins(ots){
+  if(!ots.length)return '—';
+  var t=0;ots.forEach(function(o){t+=(o.mins||0)});
+  return tiempo(Math.round(t/ots.length));
+}
+var ETAPA_ABIERTA='RECIBIDO';
+function toggleEtapa(k){
+  ETAPA_ABIERTA=(ETAPA_ABIERTA===k)?null:k;
+  pintarKanbanTaller();
+}
 function pintarKanbanTaller(){
-  var enPiso=KAN_T.filter(function(o){return o.estado!=='ENTREGADO'}).length;
+  var enPiso=KAN_T.filter(function(o){return o.estado!=='ENTREGADO'}).length,
+      todos=tallerTodos();
   document.getElementById('kanban').innerHTML=ETAPAS_T.map(function(e){
     var ots=deEtapa(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
-        imp=ots.reduce(function(a,o){return a+o.importe},0),vis=ots.slice(0,5);
-    var lista=vis.map(function(o){
-      return '<div class="pl" onclick="event.stopPropagation();elegirOT(&quot;'+e.k+'&quot;,&quot;'+o.ot+'&quot;)">'+
-        '<b>'+placaConSede(o.placa,o.sede,tallerTodos())+'</b><span>'+tiempo(o.mins)+'</span></div>'}).join('');
-    var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
-    return '<div class="kb'+(ETAPA_SEL===e.k?' on':'')+'" onclick="verEtapa(&quot;'+e.k+'&quot;)">'+
-      '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
-      '<div class="n">'+ots.length+'</div><div class="sub">'+S(imp)+'</div>'+
-      (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
-      '<div class="lista abierta">'+lista+pie+'</div></div>';
+        imp=ots.reduce(function(a,o){return a+o.importe},0),
+        ab=(ETAPA_ABIERTA===e.k);
+    var cuerpo='';
+    if(ab){
+      var vis=ots.slice(0,5);
+      cuerpo='<div class="cuerpoE" onclick="event.stopPropagation()">'+
+        (ots.length?'<div class="topn">Top 5 más antiguos</div>'+
+          vis.map(function(o){
+            return '<div class="pl" onclick="elegirOT(&quot;'+e.k+'&quot;,&quot;'+o.ot+'&quot;)">'+
+              '<b>'+placaConSede(o.placa,o.sede,todos)+'</b>'+
+              '<span>'+tiempo(o.mins)+'</span></div>';
+          }).join('')+
+          '<div class="pl mas" onclick="verEtapa(&quot;'+e.k+'&quot;)">'+
+            (ots.length>5?'Ver las '+ots.length+' abajo':'Ver el detalle abajo')+'</div>'
+         :'<div class="hint" style="margin:0">Ninguno en esta etapa.</div>')+
+      '</div>';
+    }
+    return '<div class="eFila'+(ab?' on':'')+'" onclick="toggleEtapa(&quot;'+e.k+'&quot;)">'+
+      '<div class="cabE">'+
+        '<span class="ic">'+e.ic+'</span>'+
+        '<span class="tt">'+e.t+'<i>'+S(imp)+' · '+promMins(ots)+' promedio</i></span>'+
+        '<span class="nn">'+ots.length+'</span>'+
+        '<span class="fl">'+(ab?'▲':'▼')+'</span>'+
+      '</div>'+cuerpo+'</div>';
   }).join('');
   /* La capacidad instalada todavía no está definida, así que no se
      muestra porcentaje ni barra: solo el conteo. */
@@ -5639,13 +5692,18 @@ function pintarKanbanTaller(){
           return v==='1'?'ingresos de hoy':v==='0'?'todo el histórico':v==='custom'?'rango elegido':'últimos '+v+' días'})()+'</span></div>';
   }
   var ly=document.getElementById('leyTaller');
-  if(ly)ly.innerHTML=tallerTodos()?leyendaSedes(KAN_T.map(function(o){return o.sede})):'';
+  if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_T.map(function(o){return o.sede})):'');
   var sel=document.getElementById('selEtapa');
   if(sel)sel.innerHTML=ETAPAS_T.map(function(e){
     return '<option value="'+e.k+'"'+(ETAPA_SEL===e.k?' selected':'')+'>'+e.ic+' '+e.t+' · '+deEtapa(e.k).length+'</option>'}).join('');
   pintarTabla();
 }
-function verEtapa(k){ETAPA_SEL=k;OT_SEL=null;pintarKanbanTaller();}
+function verEtapa(k){
+  if(event&&event.stopPropagation)event.stopPropagation();
+  ETAPA_SEL=k;OT_SEL=null;ETAPA_ABIERTA=k;pintarKanbanTaller();
+  var t=document.getElementById('tablaEtapa');
+  if(t)t.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarKanbanTaller();
   document.getElementById('tablaEtapa').scrollIntoView({behavior:'smooth',block:'center'});}
 
@@ -5659,7 +5717,7 @@ var ETAPAS_TIENDA=[
 var TIENDA_SEDE='ACTUAL';
 function tiendaCambiaSede(v){ TIENDA_SEDE=v; pintarTienda() }
 function tiendaTodos(){ return TIENDA_SEDE==='TODOS'&&esAdminGeneral() }
-function abrirTienda(){ cargarSedesTodas(function(){ pintarTienda() }) }
+function abrirTienda(){ cargarSedesTodas(function(){ detectarEsPrueba(function(){ pintarTienda() }) }) }
 function pintarTienda(){
   if(!sb)return;
   var zs=document.getElementById('tiendaSedeSel');
@@ -5693,26 +5751,42 @@ function pintarTienda(){
   },tiendaTodos()?null:sedeElegida(TIENDA_SEDE));
 }
 function deTienda(k){return KAN_TIENDA.filter(function(o){return o.est===k})}
+var ETAPA_T_ABIERTA='despacho';
+function toggleEtapaT(k){
+  ETAPA_T_ABIERTA=(ETAPA_T_ABIERTA===k)?null:k;
+  pintarKanbanTienda();
+}
 function pintarKanbanTienda(){
+  var todos=tiendaTodos();
   document.getElementById('kanbanTienda').innerHTML=ETAPAS_TIENDA.map(function(e){
     var ots=deTienda(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
-        imp=ots.reduce(function(a,o){return a+o.total},0),vis=ots.slice(0,5);
-    var lista=vis.map(function(o){
-      return '<div class="pl"><b>'+placaConSede(o.placa,o.sede,tiendaTodos())+'</b><span'+
-        (o.mins>240?' style="color:var(--rojo);font-weight:700"':'')+'>'+tiempo(o.mins)+'</span></div>'}).join('');
-    var pie=ots.length>5?'<div class="pl mas">+ '+(ots.length-5)+' más · toca para ver todas</div>':'';
-    return '<div class="kb'+(TIENDA_SEL===e.k?' on':'')+'" onclick="verTienda(&quot;'+e.k+'&quot;)">'+
-      '<div class="et"><span class="ic">'+e.ic+'</span> '+e.t+'</div>'+
-      '<div class="disc">'+e.d+'</div>'+
-      '<div class="n">'+ots.length+'</div><div class="sub">'+S(imp)+'</div>'+
-      (ots.length>5?'<div class="topn">Top 5 más antiguos</div>':'')+
-      '<div class="lista abierta">'+lista+pie+'</div></div>';
+        imp=ots.reduce(function(a,o){return a+o.total},0),
+        ab=(ETAPA_T_ABIERTA===e.k),cuerpo='';
+    if(ab){
+      cuerpo='<div class="cuerpoE" onclick="event.stopPropagation()">'+
+        (ots.length?'<div class="topn">Top 5 más antiguos</div>'+
+          ots.slice(0,5).map(function(o){
+            return '<div class="pl">'+
+              '<b>'+placaConSede(o.placa,o.sede,todos)+'</b>'+
+              '<span'+(o.mins>240?' style="color:var(--rojo);font-weight:700"':'')+'>'+tiempo(o.mins)+'</span></div>';
+          }).join('')+
+          '<div class="pl mas" onclick="verTienda(&quot;'+e.k+'&quot;)">'+
+            (ots.length>5?'Ver las '+ots.length+' abajo':'Ver el detalle abajo')+'</div>'
+         :'<div class="hint" style="margin:0">Nada pendiente acá.</div>')+
+      '</div>';
+    }
+    return '<div class="eFila'+(ab?' on':'')+'" onclick="toggleEtapaT(&quot;'+e.k+'&quot;)">'+
+      '<div class="cabE">'+
+        '<span class="ic">'+e.ic+'</span>'+
+        '<span class="tt">'+e.t+'<i>'+S(imp)+' · '+promMins(ots)+' promedio</i></span>'+
+        '<span class="nn">'+ots.length+'</span>'+
+        '<span class="fl">'+(ab?'▲':'▼')+'</span>'+
+      '</div>'+cuerpo+'</div>';
   }).join('');
-  var e=ETAPAS_TIENDA.filter(function(x){return x.k===TIENDA_SEL})[0];
+  var e=ETAPAS_TIENDA.filter(function(x){return x.k===TIENDA_SEL})[0]||ETAPAS_TIENDA[0];
   var ots=deTienda(TIENDA_SEL).slice().sort(function(a,b){return b.mins-a.mins});
   var ly=document.getElementById('leyTienda');
-  if(ly)ly.innerHTML=tiendaTodos()?leyendaSedes(ots.map(function(o){return o.sede})):'';
-  var todos=tiendaTodos();
+  if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_TIENDA.map(function(o){return o.sede})):'');
   document.getElementById('tablaTienda').innerHTML=
     '<div style="margin-bottom:12px"><span style="font-size:19px">'+e.ic+'</span> '+
       '<b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+(ots.length===1?' orden':' órdenes')+'</div>'+
@@ -5722,12 +5796,17 @@ function pintarKanbanTienda(){
         ['Vehículo',o.veh||'—'],
         ['Tiempo en la estación',(o.mins>240?'<b style="color:var(--rojo)">':'<b>')+tiempo(o.mins)+'</b>'],
         ['Importe',S(o.total)]
-      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]));
+      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]),
+      'En la estación · <b>'+tiempo(o.mins)+'</b>');
     }).join('')
     :'<div class="vacio"><b>Sin órdenes</b>Nada pendiente en esta estación.</div>');
 }
-function verTienda(k){TIENDA_SEL=k;pintarKanbanTienda();
-  document.getElementById('tablaTienda').scrollIntoView({behavior:'smooth',block:'center'});}
+function verTienda(k){
+  if(event&&event.stopPropagation)event.stopPropagation();
+  TIENDA_SEL=k;ETAPA_T_ABIERTA=k;pintarKanbanTienda();
+  var t=document.getElementById('tablaTienda');
+  if(t)t.scrollIntoView({behavior:'smooth',block:'start'});
+}
 
 function pintarTabla(){
   var orden=document.getElementById('selOrden').value;
@@ -5739,8 +5818,14 @@ function pintarTabla(){
   var tot=ots.reduce(function(a,o){return a+o.importe},0),todos=tallerTodos();
   document.getElementById('tablaEtapa').innerHTML=
     '<div style="margin-bottom:12px"><span style="font-size:19px">'+et.ic+'</span> '+
-      '<b class="cond" style="font-size:19px">'+et.t+'</b> · '+ots.length+(ots.length===1?' vehículo':' vehículos')+' · '+S(tot)+'</div>'+
+      '<b class="cond" style="font-size:19px">'+et.t+'</b> · '+ots.length+(ots.length===1?' vehículo':' vehículos')+' · '+S(tot)+
+      '<div class="hint" style="margin:2px 0 0">Ordenados por '+
+        (orden==='importe'?'importe, mayor primero':orden==='fidelidad'?'nivel de fidelidad':'tiempo en taller, más antiguo primero')+
+      '</div></div>'+
     (ots.length?ots.map(function(o){
+      var cr = orden==='importe' ? 'Importe · <b>'+S(o.importe)+'</b>'
+             : orden==='fidelidad' ? 'Nivel · <b>'+(o.nivel||'Plata')+'</b>'
+             : 'En taller · <b>'+tiempo(o.mins)+'</b>';
       return fichaOrden('taller',o,todos,[
         ['Vehículo',o.veh||'—'],
         ['Nivel','<span class="niv '+claseNivel(o.nivel)+'">'+(o.nivel||'Plata')+'</span>'],
@@ -5748,7 +5833,7 @@ function pintarTabla(){
         ['Mecánico',o.tec||'—'],
         ['En taller',(o.mins>1440?'<b style="color:var(--rojo)">':'<b>')+tiempo(o.mins)+'</b>'],
         ['Importe',S(o.importe)]
-      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]));
+      ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]),cr);
     }).join('')
     :'<div class="vacio"><b>Sin vehículos en esta etapa</b>Elige otra etapa arriba.</div>');
 }
@@ -5762,7 +5847,7 @@ function toggleFicha(mod,ot){
   if(mod==='taller')pintarTabla();
   else if(mod==='tienda')pintarKanbanTienda();
 }
-function fichaOrden(mod,o,todos,campos){
+function fichaOrden(mod,o,todos,campos,criterio){
   var ab=(FICHA_ABIERTA[mod]===o.ot);
   return '<div class="fichaL'+(ab?' on':'')+'" onclick="toggleFicha(&quot;'+mod+'&quot;,&quot;'+o.ot+'&quot;)">'+
     '<div class="cab">'+
@@ -5770,6 +5855,7 @@ function fichaOrden(mod,o,todos,campos){
       '<div class="ot">'+otCorto(o.ot)+'</div>'+
       '<div class="cl">'+(o.cliente||'—')+'</div>'+
       '<div class="fl">'+(ab?'▲ cerrar':'▼ ver más')+'</div>'+
+      (criterio?'<div class="cr">'+criterio+'</div>':'')+
     '</div>'+
     (ab?'<div class="cuerpo">'+campos.map(function(c){
       return '<div class="dt"><span>'+c[0]+'</span><b>'+c[1]+'</b></div>' }).join('')+'</div>':'')+
@@ -5787,6 +5873,25 @@ function cargarSedesTodas(cb){
   },function(){cb&&cb()});
 }
 function esAdminGeneral(){ return !!(SESION&&SESION.rol==='admin_general') }
+/* Las órdenes que registra un administrador general son pruebas y no
+   deben verse en taller, tienda ni reportería. La columna llega con el
+   paso30; mientras no esté, se consulta sin ese filtro. */
+var HAY_ES_PRUEBA=null;
+function detectarEsPrueba(cb){
+  if(HAY_ES_PRUEBA!==null||!sb){cb&&cb();return}
+  sb.from('ordenes').select('es_prueba').limit(1).then(function(r){
+    HAY_ES_PRUEBA=!r.error;cb&&cb();
+  },function(){ HAY_ES_PRUEBA=false;cb&&cb() });
+}
+function sinPruebas(q){
+  return HAY_ES_PRUEBA?q.or('es_prueba.is.null,es_prueba.eq.false'):q;
+}
+function avisoPaso30(){
+  return HAY_ES_PRUEBA===false
+    ? '<div class="aviso info" style="margin:0 0 12px">Falta correr el <b>paso30</b> en Supabase: '+
+      'por eso siguen apareciendo los vehículos de prueba.</div>'
+    : '';
+}
 function sedeNombrePorId(id){
   var n='';
   SEDES_TODAS.forEach(function(s){ if(Number(s.id)===Number(id))n=s.nombre });
@@ -5886,7 +5991,7 @@ function abrirProductividad(){
     var b=document.getElementById(x==='dia'?'mDia':(x==='mes'?'mMes':'mAnio'));
     if(b)b.classList.toggle('on',x===PERIODO);
   });
-  cargarSedesTodas(function(){ cargarProdBD() });
+  cargarSedesTodas(function(){ detectarEsPrueba(function(){ cargarProdBD() }) });
 }
 function prodFiltro(){
   var z=document.getElementById('prodFiltroZona');if(!z)return;
@@ -5903,27 +6008,13 @@ function cargarProdBD(){
   if(!sb){PROD_ERR='sin conexión con la base';PROD_ORD=[];pintarProd();return}
   PROD_CARGANDO=true;PROD_ERR='';pintarProd();
   var ini=new Date(new Date().getFullYear(),0,1).toISOString();
-  /* Las órdenes que registra un administrador general son pruebas y
-     no entran en la estadística. Si la columna todavía no existe en
-     la base, se consulta sin ese filtro y se avisa. */
-  function consultar(conFiltro){
-    var q=sb.from('ordenes')
-      .select('id,numero,sede_id,ingreso,ot_pagada,total_taller,mecanico_nombre')
-      .not('ot_pagada','is',null).gte('ot_pagada',ini).limit(5000);
-    if(conFiltro)q=q.or('es_prueba.is.null,es_prueba.eq.false');
-    var sid=prodSedeId();
-    if(sid!==null)q=q.eq('sede_id',sid);
-    return q;
-  }
-  consultar(true).then(function(r){
+  var q=sb.from('ordenes')
+    .select('id,numero,sede_id,ingreso,ot_pagada,total_taller,mecanico_nombre')
+    .not('ot_pagada','is',null).gte('ot_pagada',ini).limit(5000);
+  var sid=prodSedeId();
+  if(sid!==null)q=q.eq('sede_id',sid);
+  sinPruebas(q).then(function(r){
     PROD_CARGANDO=false;
-    if(r.error&&/es_prueba/.test(r.error.message||'')){
-      consultar(false).then(function(r2){
-        PROD_ERR='falta correr el paso30 en Supabase: las órdenes de prueba están incluidas';
-        PROD_ORD=(r2.data||[]).map(prodFila);pintarProd();
-      },function(){ PROD_ERR='no se pudo consultar';PROD_ORD=[];pintarProd() });
-      return;
-    }
     if(r.error){PROD_ERR=r.error.message;PROD_ORD=[];pintarProd();return}
     PROD_ORD=(r.data||[]).map(prodFila);
     pintarProd();
@@ -6014,9 +6105,9 @@ function pintarProd(){
   var tit=$('prodTitulo');
   if(tit)tit.textContent='Productividad · '+prodSedeNombre();
   var av=$('prodAviso');
-  if(av)av.innerHTML = PROD_ERR
+  if(av)av.innerHTML = (PROD_ERR
     ? '<div class="aviso rojo" style="margin-top:12px">No se pudo traer la información: '+PROD_ERR+'</div>'
-    : (PROD_CARGANDO?'<div class="hint" style="margin-top:10px">Consultando la base…</div>':'');
+    : (PROD_CARGANDO?'<div class="hint" style="margin-top:10px">Consultando la base…</div>':''))+avisoPaso30();
 
   var lista=prodLista(),
       etq=PERIODO==='dia'?'hoy':(PERIODO==='mes'?'del mes':'del año'),
@@ -6578,7 +6669,7 @@ function cargarOrdenesBD(estadosOT,cb,sedeOpt){
     (r.data||[]).forEach(function(o){ out.push(mapearOrden(o)) });
     fin();
   }
-  function conSede(q){ return sedeF===null?q:q.eq('sede_id',sedeF) }
+  function conSede(q){ return sinPruebas(sedeF===null?q:q.eq('sede_id',sedeF)) }
   if(conOT.length)
     conSede(sb.from('ordenes').select(COLS_ORDEN).in('estado_ot',conOT))
       .order('ingreso',{ascending:false}).limit(200).then(recibir,function(){fin()});
@@ -7712,7 +7803,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=128;
+var APP_VER=129;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
