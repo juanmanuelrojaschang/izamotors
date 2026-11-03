@@ -1,4 +1,4 @@
-<!--IZAV:133-->
+<!--IZAV:134-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -429,6 +429,27 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .leySede{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mudo);margin:0 0 12px}
 .leySede>span{display:inline-flex;align-items:center}
 
+.aceLn{font-size:11.5px;color:var(--mudo);margin-top:3px;line-height:1.3}
+.aceLn .xq{background:transparent;border:0;color:var(--rojo);font-size:11px;
+  cursor:pointer;text-decoration:underline;padding:0 0 0 4px}
+.cajaAce{border:1.5px dashed var(--rojo);border-radius:11px;padding:12px;margin-top:12px;background:var(--rojo-cl)}
+.cajaAce .tt{font-weight:700;font-size:14px;margin-bottom:4px}
+.cajaAce .marcas{display:flex;gap:6px;flex-wrap:wrap}
+.cajaAce .marcas .mk{border:1px solid var(--borde);background:#fff;border-radius:8px;
+  padding:9px 11px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em;
+  min-height:42px;flex:1 1 auto;white-space:nowrap}
+.cajaAce .marcas .mk.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.cajaAce .tblAce{margin-top:10px;background:#fff;border-radius:9px;padding:4px 8px 8px}
+.cajaAce .tblAce table{width:100%;font-size:12.5px}
+.cajaAce .tblAce th{font-size:10px;letter-spacing:.05em;padding:7px 3px}
+.cajaAce .tblAce td{padding:5px 3px;vertical-align:middle;border-bottom:1px solid var(--gris2)}
+.cajaAce .tblAce .pz{background:var(--gris);border:1px solid var(--borde);border-radius:7px;
+  padding:7px 8px;font:700 12px/1 ui-monospace,monospace;cursor:pointer;min-height:36px;width:100%}
+.cajaAce .tblAce .pz:hover{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.cajaAce .tblAce .nd{color:var(--mudo);font-size:12px}
+.cajaAdic{border:1px solid var(--borde);border-radius:11px;padding:12px;margin-top:14px;background:var(--gris)}
+
+
 #avisoSolic{position:fixed;left:10px;right:10px;bottom:14px;z-index:900;max-width:460px;margin:0 auto}
 #avisoSolic.oculto{display:none}
 .popSolic{background:var(--tinta);color:#E8ECF1;border-radius:14px;padding:12px 13px;
@@ -706,7 +727,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 133</span>
+  <span class="demo-tag">versión 134</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -997,6 +1018,7 @@ tr.sel td{background:var(--rojo-cl)}
             <div style="flex:0 0 auto"><button class="btn chico" onclick="agregarServicio()">Agregar</button></div>
           </div>
           <div id="servDato"></div>
+          <div id="zonaAceite"></div>
         </div>
 
         <label>2 · Repuestos y accesorios</label>
@@ -1008,6 +1030,8 @@ tr.sel td{background:var(--rojo-cl)}
         </div>
         <div class="aviso info" style="font-size:12.5px">Los repuestos van con <b>precio referencial</b>.
           El precio definitivo lo confirma el asesor de servicio con el cliente.</div>
+
+        <div id="zonaAdic"></div>
 
         <div style="margin-top:14px"><label>Comentario del preliminar · lo ve el cliente</label>
           <textarea id="sintoma" rows="2" placeholder="Ej. pastillas al 15%, discos con surcos. Repuestos sujetos a disponibilidad."></textarea></div>
@@ -2411,6 +2435,103 @@ function srvDato(){
     '<span>'+s.descripcion+'</span>'+
     '<span class="cods">cód '+(s.codigo||'—')+(s.codigo2?' · cód 2 '+s.codigo2:'')+'</span></div>';
 }
+/* ============ ACEITES Y SERVICIOS ADICIONALES ============
+   Preciario de octubre 2026. El precio es referencial: el jefe de
+   taller lo ajusta a criterio antes de guardar. */
+var ACEITES=[{"m":"MOBIL","l":[["Mobil 1 · 0W40 / 5W30 sintético",195.0,260.0,325.0],["5W30 sintético 100%",175.0,225.0,285.0],["5W30 semi-sintético",150.0,190.0,245.0],["10W30 multigrado",120.0,135.0,180.0],["10W30 / 10W40 semi-sintético",155.0,195.0,245.0],["10W30 Super Gas",105.0,135.0,175.0],["20W50 / 25W50 alto km",120.0,135.0,180.0],["20W50 Super Gas",120.0,135.0,180.0],["15W40 tapa ploma",135.0,160.0,195.0],["15W40 tapa negra",135.0,160.0,195.0]]},{"m":"TOTAL","l":[["5W30 INEO",180.0,235.0,300.0],["5W30 / 5W40 sintético 9000",165.0,220.0,285.0],["5W40 INEO",195.0,255.0,325.0],["10W30 / 10W40 semi-sintético 7000",120.0,145.0,190.0],["20W50 5000",90.0,115.0,140.0],["25W60 Power",90.0,115.0,140.0],["15W40 Rubia 7400",105.0,135.0,175.0]]},{"m":"SHELL","l":[["5W30 Ultra",230.0,295.0,370.0],["5W30 HX8",205.0,265.0,335.0],["5W30 (CAM 2)",140.0,165.0,215.0],["10W30 / 10W40",150.0,195.0,245.0],["20W50 / 25W60",120.0,150.0,200.0],["15W40 (diésel)",305.0,270.0,235.0]]},{"m":"CASTROL","l":[["5W30 Edge",225.0,295.0,370.0],["5W30 GTX / Magnatec",210.0,265.0,340.0],["10W30 / 10W40 GTX",165.0,205.0,260.0],["20W50 / 25W60 GTX",125.0,155.0,195.0],["15W40 GTX blanco",135.0,160.0,195.0]]},{"m":"LIQUI MOLY","l":[["5W40 Synthoil High Tech",270.0,325.0,410.0],["5W40 Top Tec 4100",225.0,265.0,335.0],["5W30 Longtime High Tech",225.0,280.0,355.0],["5W30 Molygen",225.0,285.0,360.0],["5W30 Special Tec AA",210.0,245.0,315.0],["10W30 Special Tec AA",195.0,240.0,300.0],["10W40 Leichtlauf",180.0,225.0,285.0]]},{"m":"ACDELCO","l":[["0W20",null,255.0,325.0],["5W30 Dexos2",null,220.0,270.0],["10W30",null,155.0,195.0],["20W50",null,115.0,145.0]]},{"m":"GULF / VISTONY","l":[["5W30 / 5W40",145.0,170.0,220.0],["10W30 / 10W40",110.0,130.0,170.0],["20W50",75.0,90.0,120.0],["25W60",70.0,85.0,115.0]]},{"m":"AVA","l":[["5W30 sintético Nittro",140.0,190.0,235.0],["10W30 semi Nittro",100.0,130.0,165.0],["10W30 mineral",95.0,110.0,140.0],["20W50",70.0,90.0,120.0],["25W60",65.0,85.0,115.0],["Power 15W40 (diésel)",210.0,195.0,180.0]]}];
+var ADICIONALES=[{"g":"Servicios","d":"Trío electrónico – auto","p":120.0,"t":"MO"},{"g":"Servicios","d":"Trío electrónico – camioneta","p":160.0,"t":"MO"},{"g":"Aditivos Liqui Moly","d":"Cera Tec","p":130.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Engine Flush","p":45.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Tapafugas de radiador","p":35.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Elevador de octanaje","p":45.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Top Tec ATF 1800 (6 × 1 L)","p":80.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"Gearlube 80W90 API GL-5 · 1 L","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"Gearlube 85W140 · 1 L","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"ATF III","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 50/50 · galón","p":45.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 50/50 · litro","p":15.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 33% verde · galón","p":35.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 33% verde · litro","p":12.0,"t":"REP"}];
+var MEDIDAS=['3/4 gal','4/4 gal','5/4 gal'];
+var ACE_MARCA=null,ACE_LINEA=null;   /* índice de la línea de servicio en edición */
+
+function esCambioAceite(t){ return /aceite/i.test(t||'') }
+function esMantenimiento(t){ return /mantenimiento/i.test(t||'') }
+/* ¿hay en la OT algo que habilite los adicionales? */
+function hayServicioConAdicionales(){
+  return LINEAS_SERV.some(function(l){ return esCambioAceite(l.desc)||esMantenimiento(l.desc) });
+}
+/* El selector se abre para la línea de cambio de aceite que no tenga
+   aceite elegido todavía. Al guardar desaparece. */
+function lineaAceitePendiente(){
+  for(var i=0;i<LINEAS_SERV.length;i++)
+    if(esCambioAceite(LINEAS_SERV[i].desc)&&!LINEAS_SERV[i].aceite)return i;
+  return -1;
+}
+function aceMarca(i){ ACE_MARCA=(ACE_MARCA===i)?null:i; pintarPresupuestoLista() }
+function aceElegir(mi,li,col){
+  var m=ACEITES[mi],a=m.l[li],pr=a[col+1];
+  if(pr===null||pr===undefined){alert('Esa medida no está disponible para este aceite.');return}
+  var i=ACE_LINEA;
+  if(i===null||i===undefined||!LINEAS_SERV[i])return;
+  LINEAS_SERV[i].aceite=m.m+' · '+a[0]+' · '+MEDIDAS[col];
+  LINEAS_SERV[i].precio=Number(pr);
+  ACE_MARCA=null;ACE_LINEA=null;
+  conex('Aceite elegido · precio referencial '+S(pr)+', ajústalo si corresponde');
+  pintarPresupuestoLista();
+}
+function aceQuitar(i){
+  if(LINEAS_SERV[i]){LINEAS_SERV[i].aceite='';pintarPresupuestoLista()}
+}
+function bloqueAceite(){
+  var i=lineaAceitePendiente();
+  if(i<0)return '';
+  ACE_LINEA=i;
+  var h='<div class="cajaAce"><div class="tt">Elige el aceite para «'+esc(LINEAS_SERV[i].desc)+'»</div>'+
+    '<div class="hint" style="margin:0 0 9px">El precio que traen es <b>referencial</b> e incluye aceite y filtro. '+
+    'Camioneta que solo usa 4/4: suma S/ 10.</div>'+
+    '<div class="marcas">'+ACEITES.map(function(m,k){
+      return '<button class="mk'+(ACE_MARCA===k?' on':'')+'" onclick="aceMarca('+k+')">'+m.m+'</button>';
+    }).join('')+'</div>';
+  if(ACE_MARCA!==null&&ACEITES[ACE_MARCA]){
+    var m=ACEITES[ACE_MARCA];
+    h+='<div class="tblAce"><table><tr><th>'+m.m+'</th>'+
+      MEDIDAS.map(function(x){return '<th class="der">'+x+'</th>'}).join('')+'</tr>'+
+      m.l.map(function(a,li){
+        return '<tr><td>'+esc(a[0])+'</td>'+
+          [1,2,3].map(function(c){
+            var v=a[c];
+            return '<td class="der">'+(v===null||v===undefined
+              ? '<span class="nd">—</span>'
+              : '<button class="pz" onclick="aceElegir('+ACE_MARCA+','+li+','+(c-1)+')">'+S(v)+'</button>')+'</td>';
+          }).join('')+'</tr>';
+      }).join('')+'</table></div>';
+  }
+  return h+'</div>';
+}
+
+/* ---- servicios adicionales: solo con mantenimiento o cambio de aceite ---- */
+var ADIC_SEL='';
+function adicAgregar(){
+  var v=document.getElementById('adicSel').value;
+  if(v===''){alert('Elige un servicio adicional.');return}
+  var a=ADICIONALES[Number(v)];
+  if(!a)return;
+  if(a.t==='MO'){
+    if(LINEAS_SERV.filter(function(l){return l.desc===a.d}).length){alert('Ya está en el presupuesto.');return}
+    LINEAS_SERV.push({codigo:'',codigo2:'',desc:a.d,precio:a.p,cant:1,categoria:'Adicionales'});
+  } else {
+    if(LINEAS_REP.filter(function(l){return l.desc===a.d}).length){alert('Ya está en el presupuesto.');return}
+    LINEAS_REP.push({codigo:'',codigo2:'',desc:a.d,precio:a.p,cant:1,marca:'',modelo:'',ubicacion:''});
+  }
+  auditar('AGREGA_ITEM','orden',OT_NUM,'Adicional: '+a.d+' · '+S(a.p),a.p);
+  document.getElementById('adicSel').value='';
+  pintarPresupuestoLista();
+}
+function bloqueAdicionales(){
+  if(!hayServicioConAdicionales())return '';
+  var g='',ops='';
+  ADICIONALES.forEach(function(a,i){
+    if(a.g!==g){ if(g)ops+='</optgroup>'; ops+='<optgroup label="'+a.g+'">'; g=a.g }
+    ops+='<option value="'+i+'">'+a.d+' · '+S(a.p)+'</option>';
+  });
+  if(g)ops+='</optgroup>';
+  return '<div class="cajaAdic"><label style="margin:0 0 4px">3 · Servicios adicionales</label>'+
+    '<div class="hint" style="margin:0 0 8px">Se ofrecen con mantenimiento y con cambio de aceite.</div>'+
+    '<div class="fila" style="align-items:flex-end">'+
+      '<div style="flex:2;min-width:200px"><select id="adicSel">'+
+        '<option value="">— elige un adicional —</option>'+ops+'</select></div>'+
+      '<div style="flex:0 0 auto"><button class="btn chico" onclick="adicAgregar()">Agregar</button></div>'+
+    '</div></div>';
+}
 function agregarServicio(){
   var s=SRV_SEL;
   if(!s){
@@ -2478,12 +2599,19 @@ function botonLinea(tipo,i){
   return '';
 }
 function pintarPresupuestoLista(){
+  var za=document.getElementById('zonaAceite');
+  if(za)za.innerHTML=bloqueAceite();
+  var zd=document.getElementById('zonaAdic');
+  if(zd)zd.innerHTML=bloqueAdicionales();
   var t=totalesV2();
   var filas='';
   if(LINEAS_SERV.length){
     filas+='<tr><td colspan="5" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>';
     filas+=LINEAS_SERV.map(function(l,i){
-      return '<tr><td>'+l.desc+'</td>'+
+      return '<tr><td>'+l.desc+
+      (l.aceite?'<div class="aceLn">'+esc(l.aceite)+
+        (otYaAprobada()?'':' <button class="xq" onclick="aceQuitar('+i+')" title="elegir otro">cambiar</button>')+
+        '</div>':'')+'</td>'+
       '<td class="der"><input type="number" min="1" value="'+(l.cant||1)+'" style="width:60px;text-align:right;padding:6px" '+
         'oninput="cantServicio('+i+',this.value)"></td>'+
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
@@ -4040,7 +4168,7 @@ function cargarLineasOrden(ordenId){
       if(l.tipo==='MO')
         LINEAS_SERV.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
-          id_bd:l.id,de_vent:dv});
+          aceite:l.sub||'',id_bd:l.id,de_vent:dv});
       else if(l.incluir)
         LINEAS_REP.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
@@ -5680,7 +5808,7 @@ function continuarSinConfirmarCon(m){
   setOT(kApr,nota);
   if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true}).eq('numero',OT_NUM).then(function(){},function(){});
   snapshotPorNumero(OT_NUM,kApr,
-    LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
+    LINEAS_SERV.map(function(l){return {desc:l.desc+(l.aceite?' ('+l.aceite+')':''),cant:l.cant,precio:l.precio,tipo:'MO'}})
       .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
     totalesV2().tot,nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
@@ -6786,7 +6914,8 @@ function armarWA(tipo){
       '\nGracias por confiar en IZA Motors.';
   }
   var t=totales();
-  var lineas=LINEAS_SERV.map(function(l){return '• '+l.desc+' — '+S(l.precio)}).join('\n')+
+  var lineas=LINEAS_SERV.map(function(l){
+    return '• '+l.desc+(l.aceite?'\n   _'+l.aceite+'_':'')+' — '+S(l.precio)}).join('\n')+
     (LINEAS_REP.length?'\n'+LINEAS_REP.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.precio*l.cant)+' (ref.)'}).join('\n'):'');
   return '*IZA MOTORS* — Servicio propuesto '+(OT_NUM||d.num)+'\n'+
     'Hola '+d.cliente+', terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').\n\n'+
@@ -6822,7 +6951,8 @@ function enviarPreliminar(){
       ?'durante el trabajo de su '+d.veh+' (placa '+d.placa+') surgió un servicio adicional. Este es el presupuesto actualizado; reemplaza al anterior.'
       :'terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').')+'\n\n'+
     (coment?'_'+coment+'_\n\n':'')+
-    '*Servicios*\n'+(LINEAS_SERV.length?LINEAS_SERV.map(function(l){return '• '+l.desc+' — '+S(l.precio)}).join('\n'):'• —')+'\n'+
+    '*Servicios*\n'+(LINEAS_SERV.length?LINEAS_SERV.map(function(l){
+      return '• '+l.desc+(l.aceite?'\n   _'+l.aceite+'_':'')+' — '+S(l.precio)}).join('\n'):'• —')+'\n'+
     (LINEAS_REP.length?'\n*Repuestos y accesorios (referencial)*\n'+
       LINEAS_REP.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.precio*l.cant)}).join('\n')+'\n':'')+
     '\n*Estimado con IGV: '+S(t.tot)+'*\n'+
@@ -6844,7 +6974,7 @@ function enviarPreliminar(){
       setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
     }
     snapshotPorNumero(OT_NUM,esP2?'PRELIM2_ENVIADA':'PRELIM_ENVIADA',
-      LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
+      LINEAS_SERV.map(function(l){return {desc:l.desc+(l.aceite?' ('+l.aceite+')':''),cant:l.cant,precio:l.precio,tipo:'MO'}})
         .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
       t.tot,'Revisión '+PRELIM_REV);
     hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada'+
@@ -7103,7 +7233,8 @@ function guardarDetalleBD(){
         if(l.de_vent&&l.id_bd)return;
         filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
                     precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
-                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
+                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
+                    sub_desc:l.aceite||null});
       });
       LINEAS_REP.forEach(function(l){
         if(l.de_vent&&l.id_bd)return;
@@ -7224,7 +7355,7 @@ function cargarLineasBD(ordenId,cb){
                 stock:l.stock_ok,cod_alm:l.codigo_almacen||'',
                 incluir:(l.cobrado!==false),cambio:l.cambio||'',orig:l.descripcion_original||'',
                 nota:l.nota_cambio||'',desp:l.despachado_el||null,desp_por:l.despachado_por||'',
-                por:l.agregado_por||'',
+                por:l.agregado_por||'',sub:l.sub_desc||'',
                 cod2:l.codigo2||'',ubic:l.ubicacion||'',marca:l.marca||'',modelo:l.modelo||''};
       }));
     },function(){cb([])});
@@ -8326,7 +8457,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=133;
+var APP_VER=134;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
