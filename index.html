@@ -1,4 +1,4 @@
-<!--IZAV:137-->
+<!--IZAV:138-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -261,6 +261,22 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
   max-height:min(62vh,440px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   background:#fff;border:1px solid var(--borde);border-radius:11px;
   box-shadow:0 12px 30px rgba(0,0,0,.14)}
+/* a pantalla completa: el teclado ya no tapa la lista */
+.invRes.pantalla{position:fixed;inset:0;margin:0;max-height:none;height:100%;
+  border:0;border-radius:0;z-index:1400;box-shadow:none;padding-bottom:20px}
+body.sinScroll{overflow:hidden}
+.invTop{display:none}
+.invRes.pantalla .invTop{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:3;
+  background:var(--tinta);color:#fff;padding:12px 12px;margin:0 0 2px}
+.invRes.pantalla .invTop .q{font-size:14px;font-weight:600;flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.invRes.pantalla .invTop .ed{background:transparent;border:1px solid #4A5565;color:#D7DEE7;
+  border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;min-height:38px;flex:0 0 auto}
+.invRes.pantalla .invTop .cx{background:transparent;border:0;color:#fff;font-size:20px;
+  cursor:pointer;padding:0 6px;min-height:38px;flex:0 0 auto}
+.invRes.pantalla .invCab{padding:8px 12px 6px}
+.invRes.pantalla .invMarcas{top:60px;padding:0 12px 9px}
+.invRes.pantalla .invLista{padding:0 6px 24px}
 .invRes.on{display:block}
 .invRes .invLista{border:0;border-radius:0}
 .invCab{font-size:12px;color:var(--mudo);padding:4px 2px 8px}
@@ -754,7 +770,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 137</span>
+  <span class="demo-tag">versión 138</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2787,8 +2803,8 @@ function invBuscar(ctx,texto,familia,dentroDe){
         });
       return;
     }
-    cont.classList.add('on');
     invPintar(ctx.cont,familia);
+    invPantalla(ctx.cont);
   },function(){cont.innerHTML='<div class="invVacio">No se pudo consultar.</div>'});
 }
 /* Con 60 resultados la lista flotante no se puede recorrer en el
@@ -2824,7 +2840,14 @@ function invPintar(cont,familia){
           esc(m)+' <b>'+cuenta[m]+'</b></button>';
       }).join('')+'</div>';
   }
+  var ctxInp=document.getElementById(ctx.input||''),
+      buscado=ctxInp?(ctxInp.value||'').trim():'';
   z.innerHTML=
+    '<div class="invTop">'+
+      '<div class="q">'+(buscado?'«'+esc(buscado)+'»':'Repuestos')+'</div>'+
+      '<button class="ed" onclick="invEditarBusqueda(&quot;'+cont+'&quot;)">✎ cambiar</button>'+
+      '<button class="cx" onclick="invCerrarYa(&quot;'+cont+'&quot;)">✕</button>'+
+    '</div>'+
     '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>'
       :'<b>'+lista.length+'</b> de '+todo.length+' resultado'+(todo.length===1?'':'s'))+
       (marcas.length>1?' · filtra por marca':' · toca un nombre para ver su ficha')+'</div>'+
@@ -2907,8 +2930,7 @@ function invAgregar(cont,i){
   /* se cierra apenas se agrega */
   var z=document.getElementById(cont+'-fi'+i);
   if(z)z.innerHTML='';
-  var caja=document.getElementById(cont);
-  if(caja)caja.classList.remove('on');
+  invCerrarYa(cont);
   var inp=document.getElementById(ctx.input||'');
   if(inp)inp.value='';
   ctx.onAdd({codigo:it.codigo,codigo2:it.codigo2||'',desc:it.descripcion,
@@ -2920,6 +2942,27 @@ function invAgregar(cont,i){
     ubicacion:s.ubicacion||'',stock:Number(s.stock||0)});
 }
 /* Volver al campo con algo escrito reabre la lista. */
+/* En el celular la lista flotante no sirve: el teclado tapa media
+   pantalla y no se alcanza a recorrer. Con resultados, el panel pasa
+   a ocupar toda la pantalla y se baja el teclado. */
+function invPantalla(cont){
+  var z=document.getElementById(cont);if(!z)return;
+  z.classList.add('on','pantalla');
+  document.body.classList.add('sinScroll');
+  var ctx=INV_CTX[cont],inp=ctx&&document.getElementById(ctx.input||'');
+  if(inp)try{inp.blur()}catch(e){}
+}
+function invCerrarYa(cont){
+  var z=document.getElementById(cont);
+  if(z)z.classList.remove('on','pantalla');
+  document.body.classList.remove('sinScroll');
+}
+function invEditarBusqueda(cont){
+  var ctx=INV_CTX[cont];
+  invCerrarYa(cont);
+  var inp=ctx&&document.getElementById(ctx.input||'');
+  if(inp){inp.focus();try{inp.setSelectionRange(inp.value.length,inp.value.length)}catch(e){}}
+}
 function invFoco(cont){
   var ctx=INV_CTX[cont];if(!ctx)return;
   var inp=document.getElementById(ctx.input||'');
@@ -2930,7 +2973,9 @@ function invCerrar(cont){
   /* margen para que el toque en un resultado alcance a contar */
   setTimeout(function(){
     var z=document.getElementById(cont);
-    if(z)z.classList.remove('on');
+    /* a pantalla completa se cierra solo con el botón: si no, tocar
+       un chip de marca lo cerraba antes de poder elegir nada */
+    if(z&&!z.classList.contains('pantalla'))z.classList.remove('on');
   },260);
 }
 
@@ -8676,7 +8721,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=137;
+var APP_VER=138;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
