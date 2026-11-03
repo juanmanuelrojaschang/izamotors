@@ -1,4 +1,4 @@
-<!--IZAV:143-->
+<!--IZAV:144-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -270,12 +270,19 @@ body.sinScroll{overflow:hidden}
   background:var(--tinta);color:#fff;padding:12px 12px;margin:0 0 2px}
 .invRes.pantalla .invTop .q{font-size:14px;font-weight:600;flex:1;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
-.invRes.pantalla .invTop .ed{background:transparent;border:1px solid #4A5565;color:#D7DEE7;
-  border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;min-height:38px;flex:0 0 auto}
+.invRes.pantalla .invTop .qq{flex:1;min-width:0;background:#0E1116;border:1px solid #39424F;
+  color:#fff;border-radius:9px;padding:10px 12px;font-size:15px;min-height:42px}
+.invRes.pantalla .invTop .qq::placeholder{color:#7A8698}
 .invRes.pantalla .invTop .cx{background:transparent;border:0;color:#fff;font-size:20px;
   cursor:pointer;padding:0 6px;min-height:38px;flex:0 0 auto}
 .invRes.pantalla .invCab{padding:8px 12px 6px}
-.invRes.pantalla .invMarcas{top:60px;padding:0 12px 9px}
+.invRes.pantalla .invMarcas{top:auto;padding:0 12px 8px}
+.invMarcas .et{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:2px}
+.invMarcas.sub .mc.on{background:var(--tinta);border-color:var(--tinta)}
+.invOtros{display:flex;align-items:center;gap:8px;padding:2px 12px 10px;font-size:12.5px;
+  color:var(--tinta);cursor:pointer}
+.invOtros input{width:18px;height:18px;margin:0}
 .invRes.pantalla .invLista{padding:0 6px 24px}
 .invRes.on{display:block}
 .invRes .invLista{border:0;border-radius:0}
@@ -766,7 +773,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 143</span>
+  <span class="demo-tag">versión 144</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2788,7 +2795,7 @@ function invBuscar(ctx,texto,familia,dentroDe){
       });
     }
     INV_CACHE[ctx.cont]=lista;
-    INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';
+    INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';INV_SUB[ctx.cont]='';
     if(!lista.length){
       /* Distinguir "no coincide" de "no hay inventario cargado":
          sin este conteo, el usuario cree que el buscador está roto. */
@@ -2810,10 +2817,61 @@ function invBuscar(ctx,texto,familia,dentroDe){
     invPantalla(ctx.cont);
   },function(){invMsg(cont,'<div class="invVacio">No se pudo consultar.</div>')});
 }
-/* Con 60 resultados la lista flotante no se puede recorrer en el
-   celular. Se agrupan por marca: unos chips arriba y la lista baja a
-   lo que trae esa marca. El filtro es local, no vuelve a consultar. */
-var INV_TODO={},INV_MARCA={};
+/* Refinado sin volver a consultar: sobre los resultados ya traídos se
+   arman subgrupos con las palabras que más se repiten, chips de marca,
+   y por defecto solo se muestra lo que hay en el local. */
+var INV_TODO={},INV_MARCA={},INV_SUB={},INV_OTROS={};
+var INV_VACIAS=['de','del','la','el','los','las','para','con','y','a','en','por','x',
+                'mm','pza','pzas','und','kit','juego','set'];
+/* Palabras candidatas a subgrupo: las que dividen la lista en partes
+   útiles, ni en todos los resultados ni en uno solo. */
+function invSubgrupos(lista,buscado){
+  var ya=invPalabras(buscado),cnt={},n=lista.length;
+  lista.forEach(function(it){
+    var vistas={};
+    limpiarBusq(it.descripcion||'').toUpperCase().split(/[^A-ZÑ0-9]+/).forEach(function(p){
+      if(p.length<3)return;
+      var l=p.toLowerCase();
+      if(INV_VACIAS.indexOf(l)>-1)return;
+      if(ya.indexOf(l)>-1)return;
+      if(vistas[p])return; vistas[p]=1;
+      cnt[p]=(cnt[p]||0)+1;
+    });
+  });
+  /* Cuanto más larga la lista, más exigente: con pocos resultados
+     cualquier palabra sirve para afinar; con muchos, solo las comunes. */
+  var min=n>40?3:(n>12?2:1);
+  return Object.keys(cnt)
+    .filter(function(p){ return cnt[p]>=min && cnt[p]<n })
+    .sort(function(a,b){ return cnt[b]-cnt[a]||a.localeCompare(b,'es') })
+    .slice(0,10)
+    .map(function(p){ return {p:p,n:cnt[p]} });
+}
+function invEnMiLocal(it){
+  return (it.catalogo_stock||[]).some(function(s){
+    return Number(s.sede_id)===Number(SEDE_ACTIVA)&&Number(s.stock)>0;
+  });
+}
+function invFiltrarSub(cont,p){
+  INV_SUB[cont]=(INV_SUB[cont]===p)?'':p;
+  invPintar(cont,'');
+  var z=document.getElementById(cont);if(z)z.scrollTop=0;
+}
+function invToggleOtros(cont){
+  INV_OTROS[cont]=!INV_OTROS[cont];
+  invPintar(cont,'');
+}
+/* Lo que se escribe dentro del panel acota la lista en vivo. */
+function invRefinar(cont,txt){
+  var ctx=INV_CTX[cont];
+  var orig=ctx&&document.getElementById(ctx.input||'');
+  if(orig)orig.value=txt;
+  INV_SUB[cont]='';INV_MARCA[cont]='';
+  clearTimeout(INV_TIMER);
+  INV_TIMER=setTimeout(function(){
+    invBuscar(ctx,String(txt||'').trim());
+  },380);
+}
 function invMarcaDe(it){ return (it.marca||'').trim()||'Sin marca' }
 function invFiltrarMarca(cont,m){
   INV_MARCA[cont]=(INV_MARCA[cont]===m)?'':m;
@@ -2824,34 +2882,72 @@ function invFiltrarMarca(cont,m){
 function invPintar(cont,familia){
   var ctx=INV_CTX[cont],z=document.getElementById(cont);
   if(!ctx||!z)return;
-  var todo=INV_TODO[cont]||[],sel=INV_MARCA[cont]||'';
+  /* si se estaba escribiendo en el panel, hay que devolver el cursor */
+  var act=document.activeElement,
+      escribiendo=!!(act&&act.id===cont+'-q'),
+      caret=escribiendo?act.selectionStart:0;
+  var todo=INV_TODO[cont]||[],
+      marca=INV_MARCA[cont]||'',sub=INV_SUB[cont]||'',otros=!!INV_OTROS[cont];
+
+  /* 1 · el local manda: lo de otros locales entra solo si se pide */
+  var enLocal=todo.filter(invEnMiLocal),
+      base=otros?todo:enLocal,
+      fuera=todo.length-enLocal.length;
+  /* si en el local no hay nada, no tiene sentido esconder el resto */
+  if(!base.length&&todo.length){ base=todo;otros=true;INV_OTROS[cont]=true }
+
+  /* 2 · subgrupo por palabra */
+  var lista=base;
+  if(sub)lista=lista.filter(function(it){
+    return limpiarBusq(it.descripcion||'').toUpperCase().indexOf(sub)>-1;
+  });
+  /* 3 · marca */
   var cuenta={};
-  todo.forEach(function(it){ var m=invMarcaDe(it); cuenta[m]=(cuenta[m]||0)+1 });
+  lista.forEach(function(it){ var m=invMarcaDe(it); cuenta[m]=(cuenta[m]||0)+1 });
   var marcas=Object.keys(cuenta).sort(function(a,b){
     return cuenta[b]-cuenta[a]||a.localeCompare(b,'es');
   });
-  var lista=sel?todo.filter(function(it){return invMarcaDe(it)===sel}):todo;
+  if(marca)lista=lista.filter(function(it){return invMarcaDe(it)===marca});
   INV_CACHE[cont]=lista;
-  var chips='';
-  if(marcas.length>1){
-    chips='<div class="invMarcas">'+
-      '<button class="mc'+(sel?'':' on')+'" onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;&quot;)">'+
-        'Todas <b>'+todo.length+'</b></button>'+
-      marcas.map(function(m){
-        return '<button class="mc'+(sel===m?' on':'')+'" '+
-          'onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;'+m.replace(/"/g,'')+'&quot;)">'+
-          esc(m)+' <b>'+cuenta[m]+'</b></button>';
-      }).join('')+'</div>';
-  }
+
+  var subs=invSubgrupos(base,(document.getElementById(ctx.input||'')||{}).value||'');
+  var chipsSub=subs.length?'<div class="invMarcas sub">'+
+    '<span class="et">Afinar</span>'+
+    subs.map(function(s){
+      return '<button class="mc'+(sub===s.p?' on':'')+'" '+
+        'onclick="invFiltrarSub(&quot;'+cont+'&quot;,&quot;'+s.p.replace(/"/g,'')+'&quot;)">'+
+        esc(s.p)+' <b>'+s.n+'</b></button>';
+    }).join('')+'</div>':'';
+  var chipsMar=marcas.length>1?'<div class="invMarcas">'+
+    '<span class="et">Marca</span>'+
+    '<button class="mc'+(marca?'':' on')+'" onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;&quot;)">'+
+      'Todas</button>'+
+    marcas.map(function(m){
+      return '<button class="mc'+(marca===m?' on':'')+'" '+
+        'onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;'+m.replace(/"/g,'')+'&quot;)">'+
+        esc(m)+' <b>'+cuenta[m]+'</b></button>';
+    }).join('')+'</div>':'';
+
   z.innerHTML=
     invBarra(cont)+
-    '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>'
-      :'<b>'+lista.length+'</b> de '+todo.length+' resultado'+(todo.length===1?'':'s'))+
-      (marcas.length>1?' · filtra por marca':' · toca un nombre para ver su ficha')+'</div>'+
-    chips+
+    '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b> · '
+      :'')+'<b>'+lista.length+'</b> de '+todo.length+
+      ' · '+(otros?'todos los locales':esc(SEDE_NOMBRE))+'</div>'+
+    (fuera>0
+      ? '<label class="invOtros"><input type="checkbox"'+(otros?' checked':'')+
+        ' onchange="invToggleOtros(&quot;'+cont+'&quot;)"> Incluir otros locales '+
+        '<b>+'+fuera+'</b></label>'
+      : '')+
+    chipsSub+chipsMar+
     '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
       '<span class="st">Stock</span><span class="loc">Dónde hay</span></div>'+
-    lista.map(function(it,i){return invLinea(ctx,it,i)}).join('')+'</div>';
+    (lista.length?lista.map(function(it,i){return invLinea(ctx,it,i)}).join('')
+      :'<div class="invVacio">Nada con esos filtros. Quita uno o escribe distinto.</div>')+
+    '</div>';
+  if(escribiendo){
+    var q=document.getElementById(cont+'-q');
+    if(q){ q.focus(); try{ q.setSelectionRange(caret,caret) }catch(e){} }
+  }
 }
 /* Línea de la lista: lo mínimo para decidir si es el que busca. */
 function invLinea(ctx,it,i){
@@ -2945,12 +3041,15 @@ function invAgregar(cont,i){
 /* La barra con el botón de cerrar. Va en TODO lo que se pinte dentro
    del panel: sin ella, un "sin resultados" dejaba la pantalla en
    blanco y sin salida, y había que recargar la app. */
+/* El campo va DENTRO del panel: antes había que cerrarlo para seguir
+   escribiendo, y eso cortaba la búsqueda a media palabra. */
 function invBarra(cont){
   var ctx=INV_CTX[cont],inp=ctx&&document.getElementById(ctx.input||''),
-      q=inp?(inp.value||'').trim():'';
+      q=inp?(inp.value||''):'';
   return '<div class="invTop">'+
-    '<div class="q">'+(q?'«'+esc(q)+'»':'Repuestos')+'</div>'+
-    '<button class="ed" onclick="invEditarBusqueda(&quot;'+cont+'&quot;)">✎ cambiar</button>'+
+    '<input class="qq" id="'+cont+'-q" value="'+esc(q).replace(/"/g,'&quot;')+'" '+
+      'autocomplete="off" placeholder="Escribe para acotar…" '+
+      'oninput="invRefinar(&quot;'+cont+'&quot;,this.value)">'+
     '<button class="cx" onclick="invCerrarYa(&quot;'+cont+'&quot;)">✕</button>'+
   '</div>';
 }
@@ -2982,6 +3081,8 @@ document.addEventListener('keydown',function(e){
 /* Al arrancar, nunca heredar el bloqueo de scroll de una sesión previa. */
 try{ document.body.classList.remove('sinScroll') }catch(e){}
 function invEditarBusqueda(cont){
+  var q=document.getElementById(cont+'-q');
+  if(q){q.focus();try{q.setSelectionRange(q.value.length,q.value.length)}catch(e){}return}
   var ctx=INV_CTX[cont];
   invCerrarYa(cont);
   var inp=ctx&&document.getElementById(ctx.input||'');
@@ -8851,7 +8952,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=143;
+var APP_VER=144;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
