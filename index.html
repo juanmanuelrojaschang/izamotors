@@ -1,4 +1,4 @@
-<!--IZAV:139-->
+<!--IZAV:140-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -770,7 +770,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 139</span>
+  <span class="demo-tag">versión 140</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2748,14 +2748,14 @@ function invBuscar(ctx,texto,familia,dentroDe){
   var cont=document.getElementById(ctx.cont);if(!cont)return;
   var pal=invPalabras(texto);
   if(!familia&&(!pal.length||limpiarBusq(texto).length<2)){
-    cont.innerHTML='<div class="invVacio">'+
+    invMsg(cont,'<div class="invVacio">'+
       (ctx.fam?'Elige una familia o escribe':'Escribe')+
-      ' al menos dos letras: parte de la descripción, la marca, el modelo o el código.</div>';
+      ' al menos dos letras: parte de la descripción, la marca, el modelo o el código.</div>');
     return;
   }
-  if(!sb){cont.innerHTML='<div class="invVacio">Sin conexión con la base.</div>';return}
+  if(!sb){invMsg(cont,'<div class="invVacio">Sin conexión con la base.</div>');return}
   cont.classList.add('on');
-  cont.innerHTML='<div class="invVacio">Buscando…</div>';
+  invMsg(cont,'<div class="invVacio">Buscando…</div>');
   var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
              'catalogo_stock(sede_id,stock,ubicacion)';
   var sel=sb.from('catalogo').select(campos).eq('tipo','REP').eq('activo',true);
@@ -2775,9 +2775,9 @@ function invBuscar(ctx,texto,familia,dentroDe){
   }
   sel.order('descripcion').limit(familia?400:250).then(function(r){
     if(r.error){
-      cont.innerHTML='<div class="aviso rojo" style="margin:0">'+r.error.message+
+      invMsg(cont,'<div class="aviso rojo" style="margin:0">'+r.error.message+
         (/column|relation|permission|schema/i.test(r.error.message)
-          ? '<br><b>Falta correr el paso 17 en Supabase.</b>' : '')+'</div>';
+          ? '<br><b>Falta correr el paso 17 en Supabase.</b>' : '')+'</div>');
       return;
     }
     var lista=r.data||[];
@@ -2795,20 +2795,20 @@ function invBuscar(ctx,texto,familia,dentroDe){
       sb.from('catalogo').select('id',{count:'exact',head:true})
         .eq('tipo','REP').eq('activo',true).then(function(c){
           var n=c.count||0;
-          cont.innerHTML='<div class="invVacio">'+
+          invMsg(cont,'<div class="invVacio">'+
             (n===0
               ? 'No hay <b>ningún repuesto</b> cargado en el catálogo todavía.<br>'+
                 'Usa el campo <b>Otro (fuera de inventario)</b> mientras tanto.'
               : 'Sin resultados'+(familia?' en '+familia:'')+' entre los <b>'+n+'</b> repuestos del catálogo.<br>'+
-                'Prueba con otra palabra, la marca o el código.')+'</div>';
+                'Prueba con otra palabra, la marca o el código.')+'</div>');
         },function(){
-          cont.innerHTML='<div class="invVacio">Sin resultados'+(familia?' en '+familia:'')+'.</div>';
+          invMsg(cont,'<div class="invVacio">Sin resultados'+(familia?' en '+familia:'')+'.</div>');
         });
       return;
     }
     invPintar(ctx.cont,familia);
     invPantalla(ctx.cont);
-  },function(){cont.innerHTML='<div class="invVacio">No se pudo consultar.</div>'});
+  },function(){invMsg(cont,'<div class="invVacio">No se pudo consultar.</div>')});
 }
 /* Con 60 resultados la lista flotante no se puede recorrer en el
    celular. Se agrupan por marca: unos chips arriba y la lista baja a
@@ -2843,14 +2843,8 @@ function invPintar(cont,familia){
           esc(m)+' <b>'+cuenta[m]+'</b></button>';
       }).join('')+'</div>';
   }
-  var ctxInp=document.getElementById(ctx.input||''),
-      buscado=ctxInp?(ctxInp.value||'').trim():'';
   z.innerHTML=
-    '<div class="invTop">'+
-      '<div class="q">'+(buscado?'«'+esc(buscado)+'»':'Repuestos')+'</div>'+
-      '<button class="ed" onclick="invEditarBusqueda(&quot;'+cont+'&quot;)">✎ cambiar</button>'+
-      '<button class="cx" onclick="invCerrarYa(&quot;'+cont+'&quot;)">✕</button>'+
-    '</div>'+
+    invBarra(cont)+
     '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>'
       :'<b>'+lista.length+'</b> de '+todo.length+' resultado'+(todo.length===1?'':'s'))+
       (marcas.length>1?' · filtra por marca':' · toca un nombre para ver su ficha')+'</div>'+
@@ -2948,6 +2942,25 @@ function invAgregar(cont,i){
 /* En el celular la lista flotante no sirve: el teclado tapa media
    pantalla y no se alcanza a recorrer. Con resultados, el panel pasa
    a ocupar toda la pantalla y se baja el teclado. */
+/* La barra con el botón de cerrar. Va en TODO lo que se pinte dentro
+   del panel: sin ella, un "sin resultados" dejaba la pantalla en
+   blanco y sin salida, y había que recargar la app. */
+function invBarra(cont){
+  var ctx=INV_CTX[cont],inp=ctx&&document.getElementById(ctx.input||''),
+      q=inp?(inp.value||'').trim():'';
+  return '<div class="invTop">'+
+    '<div class="q">'+(q?'«'+esc(q)+'»':'Repuestos')+'</div>'+
+    '<button class="ed" onclick="invEditarBusqueda(&quot;'+cont+'&quot;)">✎ cambiar</button>'+
+    '<button class="cx" onclick="invCerrarYa(&quot;'+cont+'&quot;)">✕</button>'+
+  '</div>';
+}
+/* Pinta un mensaje conservando la salida si el panel está desplegado. */
+function invMsg(cont,html){
+  var z=(typeof cont==='string')?document.getElementById(cont):cont;
+  if(!z)return;
+  var id=z.id;
+  z.innerHTML=(z.classList.contains('pantalla')?invBarra(id):'')+html;
+}
 function invPantalla(cont){
   var z=document.getElementById(cont);if(!z)return;
   z.classList.add('on','pantalla');
@@ -2960,6 +2973,14 @@ function invCerrarYa(cont){
   if(z)z.classList.remove('on','pantalla');
   document.body.classList.remove('sinScroll');
 }
+/* Escape cierra cualquier panel abierto. */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;
+  var z=document.querySelector('.invRes.pantalla');
+  if(z)invCerrarYa(z.id);
+});
+/* Al arrancar, nunca heredar el bloqueo de scroll de una sesión previa. */
+try{ document.body.classList.remove('sinScroll') }catch(e){}
 function invEditarBusqueda(cont){
   var ctx=INV_CTX[cont];
   invCerrarYa(cont);
@@ -2990,7 +3011,7 @@ function invMontar(contId,onAdd,inputId){
 }
 function invTeclea(contId,valor){
   var z=document.getElementById(contId);
-  if(z&&!String(valor||'').trim().length)z.classList.remove('on');
+  if(z&&!String(valor||'').trim().length)invCerrarYa(contId);
   clearTimeout(INV_TIMER);
   /* 450 ms de pausa: deja escribir de corrido y la lista sale al soltar */
   INV_TIMER=setTimeout(function(){
@@ -8778,7 +8799,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=139;
+var APP_VER=140;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
