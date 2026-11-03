@@ -1,4 +1,4 @@
-<!--IZAV:145-->
+<!--IZAV:146-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -780,7 +780,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 145</span>
+  <span class="demo-tag">versión 146</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1842,7 +1842,10 @@ function segFila(d,txt,fE){
     '<td class="num click" data-l="OT" onclick="'+ir+'"><b>'+otCorto(d.ot)+'</b></td>'+
     '<td class="num click" data-l="Placa" onclick="'+ir+'"><b>'+d.placa+'</b></td>'+
     '<td class="click" data-l="Cliente" onclick="'+ir+'">'+d.cliente+
-      (d.mec?'<div style="font-size:11px;color:var(--mudo)">'+d.mec+'</div>':'')+
+      (d.mec
+        ? '<div style="font-size:11px;color:var(--mudo)">'+d.mec+'</div>'
+        : (est!=='RECIBIDO'
+            ? '<div style="font-size:11px;color:var(--rojo)">sin mecánico asignado</div>' : ''))+
       (d.solo_local?'<div style="font-size:11px;color:var(--rojo)">solo en este equipo</div>':'')+'</td>'+
     '<td data-l="Estado"><span class="eti '+(CHIP[est]||'e1')+'">'+
       (NOMBRE_EST[est]||est)+'</span></td>'+
@@ -2532,11 +2535,6 @@ function desglosarIGV(total){
   return {sub:sub,igv:total-sub,tot:total};
 }
 function esCambioAceite(t){ return /aceite/i.test(t||'') }
-function esMantenimiento(t){ return /mantenimiento/i.test(t||'') }
-/* ¿hay en la OT algo que habilite los adicionales? */
-function hayServicioConAdicionales(){
-  return LINEAS_SERV.some(function(l){ return esCambioAceite(l.desc)||esMantenimiento(l.desc) });
-}
 /* El aceite ya no cuelga del servicio: entra al bloque de repuestos
    como una línea más, con su precio. El servicio de cambio de aceite
    queda en cero porque el precio del preciario ya lo incluye todo. */
@@ -2617,8 +2615,9 @@ function adicAgregar(){
   document.getElementById('adicSel').value='';
   pintarPresupuestoLista();
 }
+/* Se ofrecen con cualquier familia de servicio: el jefe de taller los
+   propone sea un mantenimiento, una afinación o una reparación. */
 function bloqueAdicionales(){
-  if(!hayServicioConAdicionales())return '';
   var g='',ops='';
   ADICIONALES.forEach(function(a,i){
     if(a.g!==g){ if(g)ops+='</optgroup>'; ops+='<optgroup label="'+a.g+'">'; g=a.g }
@@ -2626,7 +2625,7 @@ function bloqueAdicionales(){
   });
   if(g)ops+='</optgroup>';
   return '<div class="cajaAdic"><label style="margin:0 0 4px">3 · Servicios adicionales</label>'+
-    '<div class="hint" style="margin:0 0 8px">Se ofrecen con mantenimiento y con cambio de aceite.</div>'+
+    '<div class="hint" style="margin:0 0 8px">Se pueden ofrecer con cualquier servicio.</div>'+
     '<div class="fila" style="align-items:flex-end">'+
       '<div style="flex:2;min-width:200px"><select id="adicSel">'+
         '<option value="">— elige un adicional —</option>'+ops+'</select></div>'+
@@ -5693,6 +5692,20 @@ function idxOT(k){for(var i=0;i<F_OT.length;i++)if(F_OT[i].k===k)return i;return
 
 function setTaller(k,nota){
   if(idxTaller(k)<idxTaller(EST_TALLER)){alert('El flujo del taller solo avanza.');return}
+  /* Antes de dar el auto por listo tiene que haber responsable. El
+     lavador solo si el trabajo incluyó lavado. */
+  if(idxTaller(k)>=idxTaller('LISTO')&&idxTaller(EST_TALLER)<idxTaller('LISTO')){
+    var falta=[];
+    if(!MECANICO_OT&&!(($('gMec')&&$('gMec').value)||'').trim())falta.push('el mecánico que atendió');
+    if(faltaLavador())falta.push('quién hizo el lavado');
+    if(falta.length){
+      alert('Antes de marcar el vehículo listo falta asignar '+
+            falta.join(' y ')+'.\n\nEstá en el bloque del mecánico, más arriba.');
+      var foco=document.getElementById(falta[0].indexOf('lavado')>-1?'gLavador':'gMec');
+      if(foco){foco.focus();foco.scrollIntoView({behavior:'smooth',block:'center'})}
+      return;
+    }
+  }
   EST_TALLER=k;PANEL_SEL=null;
   HITOS['T_'+k]=selloHora();
   ACC_ABIERTO=carrilPorDefecto();
@@ -5873,14 +5886,22 @@ function renderPanel(){
      igual se muestran las acciones disponibles para su rol */
   if(sel.f==='ot'&&sel.k===EST_OT_ACT)esAccion=true;
   var puede=puedeEjecutar(sel.k);
-  var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO');
+  /* Como el mecánico puede quedar pendiente, el bloque sigue a mano
+     mientras el trabajo avanza: es el único lugar donde asignarlo. */
+  var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO'||EST_TALLER==='EN_PROCESO');
   $('gAsig').style.display=(esAccion&&sel.f==='taller'&&tocaMec&&puede)?'block':'none';
   var hMec=document.getElementById('tituloMec');
-  if(hMec)hMec.textContent=(EST_TALLER==='RECIBIDO')
-    ? 'Asignar mecánico e iniciar diagnóstico'
-    : 'Mecánico asignado · puedes cambiarlo';
   var bMec=document.getElementById('btnMec');
-  if(bMec)bMec.textContent=(EST_TALLER==='RECIBIDO')?'Iniciar diagnóstico':'Cambiar mecánico';
+  if(EST_TALLER==='RECIBIDO'){
+    if(hMec)hMec.textContent='Asignar mecánico e iniciar diagnóstico';
+    if(bMec)bMec.textContent='Iniciar diagnóstico';
+  }else if(MECANICO_OT){
+    if(hMec)hMec.textContent='Mecánico asignado · puedes cambiarlo';
+    if(bMec)bMec.textContent='Cambiar mecánico';
+  }else{
+    if(hMec)hMec.textContent='Mecánico pendiente de asignar';
+    if(bMec)bMec.textContent='Asignar mecánico';
+  }
   var tocaPres = (!EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
                  ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO')))
                  || EDITANDO_OT;
@@ -6065,8 +6086,9 @@ function renderGestion(){ renderFlujos(); }
 function renderAcciones(){
   var avisos='',botones='';
   if(EST_TALLER==='RECIBIDO'){
-    avisos='<div class="aviso rojo"><b>Falta asignar un mecánico.</b><br>'+
-      'Sin responsable asignado la orden no pasa a diagnóstico ni se habilita el presupuesto preliminar.</div>';
+    avisos='<div class="aviso info"><b>Mecánico pendiente de asignar.</b><br>'+
+      'Se puede avanzar al diagnóstico y armar el presupuesto, pero hay que asignarlo '+
+      'antes de marcar el vehículo listo.</div>';
   }
 
   /* --- flujo administrativo --- */
@@ -6116,6 +6138,9 @@ function renderAcciones(){
 
   /* --- flujo del taller --- */
   if(EST_TALLER==='EN_PROCESO'){
+    if(!MECANICO_OT)
+      avisos+='<div class="aviso rojo"><b>Sin mecánico asignado.</b><br>'+
+        'Hay que asignarlo antes de marcar el vehículo listo.</div>';
     botones+='<button class="btn chico" onclick="setTaller(&quot;LISTO&quot;,&quot;Trabajo terminado&quot;)">Marcar vehículo LISTO</button>';
   }
   if(EST_TALLER==='LISTO'){
@@ -6261,7 +6286,7 @@ function cargarMecanicos(cb){
 function mecVerOtros(){ MECS_OTROS=true;MECS=[];pintarMecanicos(MECANICO_OT||''); }
 function mecOpciones(tipo,sel){
   var l=MECS.filter(function(m){return m.tipo===tipo});
-  return '<option value="">— elige '+(tipo==='LAVADOR'?'un lavador':'un mecánico')+' —</option>'+
+  return '<option value="">'+(tipo==='LAVADOR'?'— pendiente de asignar —':'— pendiente de asignar —')+'</option>'+
     l.map(function(m){
       var v=m.codigo+' · '+m.nombre;
       var loc=(MECS_OTROS&&m.sedes&&m.sedes.nombre&&m.sede_id!==SEDE_ACTIVA)?' ('+m.sedes.nombre+')':'';
@@ -6346,34 +6371,45 @@ function guardarLavador(){
 }
 
 function irDiagnostico(){
+  /* El mecánico puede quedar pendiente: se exige recién al marcar el
+     vehículo listo. El kilometraje sí es obligatorio desde el inicio. */
   var mec=($('gMec')&&$('gMec').value||'').trim();
-  if(!mec){
-    alert('Elige un mecánico: la orden no puede pasar a diagnóstico sin responsable asignado.');
-    return;
-  }
   var km=kmNum('gKm');
   if(!km){
     alert('Falta el kilometraje de ingreso.');
     if($('gKm'))$('gKm').focus();
     return;
   }
+  /* Fuera de la recepción el botón solo guarda al mecánico: sin nombre
+     no hay nada que guardar. */
+  if(EST_TALLER!=='RECIBIDO'&&!mec){
+    alert('Elige un mecánico de la lista para asignarlo.');
+    if($('gMec'))$('gMec').focus();
+    return;
+  }
   if(ORD)ORD.km=km;
   if($('kmIngreso'))$('kmIngreso').value=String(km);
   if(sb&&OT_NUM)sb.from('ordenes').update({km_ingreso:km}).eq('numero',OT_NUM).then(function(){},function(){});
   guardarLavador();
+  var antes=MECANICO_OT;
   MECANICO_OT=mec;
-  if(EST_TALLER==='EN_DIAGNOSTICO'){
-    auditar('CAMBIA_MECANICO','orden',OT_NUM,'Nuevo mecánico: '+mec);
-    if(sb&&OT_NUM)sb.from('ordenes').update({diagnostico:null}).eq('numero',OT_NUM).then(function(){},function(){});
-    renderFlujos();
-    return;
-  }
-  if(sb&&OT_NUM){
+  /* El nombre se graba siempre, no solo la primera vez: antes, cambiar
+     de mecánico después del diagnóstico no quedaba en la base. */
+  if(sb&&OT_NUM&&mec){
     var pm=mec.split(' · ');
     sb.from('ordenes').update({mecanico_nombre:pm[1]||mec,mecanico_codigo:pm[0]||null})
       .eq('numero',OT_NUM).then(function(){},function(){});
   }
-  setTaller('EN_DIAGNOSTICO','Mecánico asignado: '+mec);
+  if(EST_TALLER!=='RECIBIDO'){
+    auditar(antes?'CAMBIA_MECANICO':'ASIGNA_MECANICO','orden',OT_NUM,
+            (antes?'Antes: '+antes+' · ahora: ':'Mecánico: ')+mec);
+    if(EST_TALLER==='EN_DIAGNOSTICO'&&sb&&OT_NUM)
+      sb.from('ordenes').update({diagnostico:null}).eq('numero',OT_NUM).then(function(){},function(){});
+    guardarOrden();
+    renderFlujos();
+    return;
+  }
+  setTaller('EN_DIAGNOSTICO',mec?'Mecánico asignado: '+mec:'Diagnóstico iniciado sin mecánico asignado');
   pintarPresupuesto();
   guardarOrden();
 }
@@ -9085,7 +9121,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=145;
+var APP_VER=146;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
