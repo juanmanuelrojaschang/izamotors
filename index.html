@@ -1,4 +1,4 @@
-<!--IZAV:136-->
+<!--IZAV:137-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -258,12 +258,19 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .invBox{position:relative}
 .invBox input{width:100%}
 .invRes{display:none;position:absolute;left:0;right:0;top:100%;z-index:26;margin-top:4px;
-  max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  max-height:min(62vh,440px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   background:#fff;border:1px solid var(--borde);border-radius:11px;
   box-shadow:0 12px 30px rgba(0,0,0,.14)}
 .invRes.on{display:block}
 .invRes .invLista{border:0;border-radius:0}
 .invCab{font-size:12px;color:var(--mudo);padding:4px 2px 8px}
+.invMarcas{display:flex;gap:5px;overflow-x:auto;padding:0 6px 8px;position:sticky;top:0;
+  background:#fff;z-index:2;-webkit-overflow-scrolling:touch}
+.invMarcas .mc{flex:0 0 auto;border:1px solid var(--borde);background:#fff;border-radius:16px;
+  padding:6px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap;min-height:34px;color:var(--tinta)}
+.invMarcas .mc b{font-family:ui-monospace,monospace;color:var(--mudo);margin-left:2px}
+.invMarcas .mc.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.invMarcas .mc.on b{color:#fff}
 .invLista{border:1px solid var(--borde);border-radius:10px;overflow:hidden}
 .invHd{display:flex;padding:7px 12px;background:var(--gris);border-bottom:1px solid var(--borde);
   font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--mudo);font-weight:700}
@@ -428,6 +435,14 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
   font:700 10.5px/1.6 ui-monospace,monospace;padding:0 5px;letter-spacing:.5px;vertical-align:middle;margin-right:5px}
 .leySede{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mudo);margin:0 0 12px}
 .leySede>span{display:inline-flex;align-items:center}
+.chipsCol{display:flex;flex-wrap:wrap;gap:6px}
+.chipsCol .cc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--borde);
+  background:#fff;border-radius:20px;padding:6px 11px 6px 7px;font-size:12.5px;cursor:pointer;
+  min-height:38px;color:var(--tinta)}
+.chipsCol .cc.on{border-color:var(--rojo);background:var(--rojo-cl);font-weight:700}
+.chipsCol .cc i{width:15px;height:15px;border-radius:50%;display:inline-block;
+  border:1px solid rgba(0,0,0,.14);flex:0 0 auto}
+.chipsCol .cc i.multi{background:conic-gradient(#D32F2F,#F2C200,#2E7D32,#1565C0,#6A2E8F,#D32F2F)}
 
 .padRes{position:absolute;z-index:1200;background:#fff;border:1px solid var(--borde);
   border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:290px;overflow:auto;display:none}
@@ -739,7 +754,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 136</span>
+  <span class="demo-tag">versión 137</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2754,6 +2769,7 @@ function invBuscar(ctx,texto,familia,dentroDe){
       });
     }
     INV_CACHE[ctx.cont]=lista;
+    INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';
     if(!lista.length){
       /* Distinguir "no coincide" de "no hay inventario cargado":
          sin este conteo, el usuario cree que el buscador está roto. */
@@ -2772,13 +2788,50 @@ function invBuscar(ctx,texto,familia,dentroDe){
       return;
     }
     cont.classList.add('on');
-    cont.innerHTML=
-      '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>':'<b>'+lista.length+'</b> resultado'+(lista.length===1?'':'s'))+
-        ' · toca un nombre para ver su ficha</div>'+
-      '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
-        '<span class="st">Stock</span><span class="loc">Dónde hay</span></div>'+
-      lista.map(function(it,i){return invLinea(ctx,it,i)}).join('')+'</div>';
+    invPintar(ctx.cont,familia);
   },function(){cont.innerHTML='<div class="invVacio">No se pudo consultar.</div>'});
+}
+/* Con 60 resultados la lista flotante no se puede recorrer en el
+   celular. Se agrupan por marca: unos chips arriba y la lista baja a
+   lo que trae esa marca. El filtro es local, no vuelve a consultar. */
+var INV_TODO={},INV_MARCA={};
+function invMarcaDe(it){ return (it.marca||'').trim()||'Sin marca' }
+function invFiltrarMarca(cont,m){
+  INV_MARCA[cont]=(INV_MARCA[cont]===m)?'':m;
+  invPintar(cont,'');
+  var z=document.getElementById(cont);
+  if(z)z.scrollTop=0;
+}
+function invPintar(cont,familia){
+  var ctx=INV_CTX[cont],z=document.getElementById(cont);
+  if(!ctx||!z)return;
+  var todo=INV_TODO[cont]||[],sel=INV_MARCA[cont]||'';
+  var cuenta={};
+  todo.forEach(function(it){ var m=invMarcaDe(it); cuenta[m]=(cuenta[m]||0)+1 });
+  var marcas=Object.keys(cuenta).sort(function(a,b){
+    return cuenta[b]-cuenta[a]||a.localeCompare(b,'es');
+  });
+  var lista=sel?todo.filter(function(it){return invMarcaDe(it)===sel}):todo;
+  INV_CACHE[cont]=lista;
+  var chips='';
+  if(marcas.length>1){
+    chips='<div class="invMarcas">'+
+      '<button class="mc'+(sel?'':' on')+'" onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;&quot;)">'+
+        'Todas <b>'+todo.length+'</b></button>'+
+      marcas.map(function(m){
+        return '<button class="mc'+(sel===m?' on':'')+'" '+
+          'onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;'+m.replace(/"/g,'')+'&quot;)">'+
+          esc(m)+' <b>'+cuenta[m]+'</b></button>';
+      }).join('')+'</div>';
+  }
+  z.innerHTML=
+    '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b>'
+      :'<b>'+lista.length+'</b> de '+todo.length+' resultado'+(todo.length===1?'':'s'))+
+      (marcas.length>1?' · filtra por marca':' · toca un nombre para ver su ficha')+'</div>'+
+    chips+
+    '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
+      '<span class="st">Stock</span><span class="loc">Dónde hay</span></div>'+
+    lista.map(function(it,i){return invLinea(ctx,it,i)}).join('')+'</div>';
 }
 /* Línea de la lista: lo mínimo para decidir si es el que busca. */
 function invLinea(ctx,it,i){
@@ -3019,7 +3072,7 @@ function editarEnProceso(){
       '<div><label>Modelo</label><select id="epModeloSel" onchange="epModeloSelCambio()"></select>'+
         '<input id="epModelo" style="margin-top:6px;display:none" value="'+esc(v.modelo||'')+'"></div>'+
       '<div><label>Año</label><select id="epAnio">'+optAnios(v.anio)+'</select></div>'+
-      '<div><label>Color</label><select id="epColor">'+optColores(v.color)+'</select></div>'+
+      '<div style="grid-column:1/-1"><label>Color</label>'+colorChips('epColor',v.color||'')+'</div>'+
       '<div><label>Kilometraje</label><input id="epKm" inputmode="numeric" value="'+
         (Number(v.km)||0).toLocaleString('es-PE')+'" oninput="fmtKm(this)"></div>'+
     '</div>'+
@@ -3317,8 +3370,33 @@ var MODELOS={
  'Ssangyong':['Tivoli','Korando','Rexton','Musso']
 };
 
-var COLORES=['Blanco','Negro','Gris','Plata','Plomo','Rojo','Azul','Azul marino','Celeste',
- 'Verde','Verde oscuro','Beige','Marrón','Dorado','Amarillo','Naranja','Vino','Púrpura','Otro'];
+/* Cada color con su muestra: en el taller se identifica el auto por
+   el color antes que por la placa. */
+var COLORES_HEX={'Blanco':'#FFFFFF','Negro':'#15181D','Gris':'#8A94A3','Plata':'#C8CDD4',
+ 'Plomo':'#6B7280','Rojo':'#D32F2F','Azul':'#1565C0','Azul marino':'#16305C','Celeste':'#5BA7E8',
+ 'Verde':'#2E7D32','Verde oscuro':'#14451A','Beige':'#D9C9A3','Marrón':'#6D4423','Dorado':'#C9922B',
+ 'Amarillo':'#F2C200','Naranja':'#E8701A','Vino':'#6B1226','Púrpura':'#6A2E8F','Otro':''};
+var COLORES=Object.keys(COLORES_HEX);
+var COLOR_SEL={};
+function colorChips(id,sel){
+  COLOR_SEL[id]=sel||'';
+  return '<div class="chipsCol" id="'+id+'Chips">'+COLORES.map(function(c){
+    var hx=COLORES_HEX[c];
+    return '<button type="button" class="cc'+(sel===c?' on':'')+'" '+
+      'onclick="elegirColor(&quot;'+id+'&quot;,&quot;'+c+'&quot;)">'+
+      (hx?'<i style="background:'+hx+(c==='Blanco'?';border-color:#C8CDD4':'')+'"></i>'
+         :'<i class="multi"></i>')+c+'</button>';
+  }).join('')+'</div><input type="hidden" id="'+id+'" value="'+(sel||'')+'">';
+}
+function elegirColor(id,c){
+  var e=document.getElementById(id);
+  if(e)e.value=(COLOR_SEL[id]===c)?'':c;
+  COLOR_SEL[id]=(COLOR_SEL[id]===c)?'':c;
+  var z=document.getElementById(id+'Chips');
+  if(z)[].forEach.call(z.querySelectorAll('.cc'),function(b){
+    b.classList.toggle('on',b.textContent.trim()===COLOR_SEL[id]);
+  });
+}
 
 var FLOTAS=[];
 function cargarFlotas(){
@@ -3403,28 +3481,40 @@ function marcaEscrita(){
   llenarModelos();
 }
 
+/* El modelo se escribe igual que la marca: sugerencias de la lista de
+   esa marca, y si no está, se guarda tal como se escribió. */
+var MODELO_PREV='';
 function llenarModelos(){
   var mi=document.getElementById('nvMarca');if(!mi)return;
-  var m=mi.value;
-  var sel=document.getElementById('nvModeloSel');
-  var inp=document.getElementById('nvModelo');
-  if(!sel)return;
-  var lista=MODELOS[m]||[];
-  sel.innerHTML='<option value="">— modelo · obligatorio —</option>'+
-    lista.map(function(x){return '<option>'+x+'</option>'}).join('')+
-    '<option value="__otro">Otro · escribir modelo</option>';
-  if(inp){inp.style.display=lista.length?'none':'block';inp.value=''}
-  if(!lista.length){
-    sel.innerHTML='<option value="__otro">Escribir modelo</option>';
-    sel.value='__otro';
-    if(inp)inp.style.display='block';
-  }
+  var dl=document.getElementById('listaModelos');
+  if(!dl)return;
+  var lista=MODELOS[mi.value]||[];
+  dl.innerHTML=lista.map(function(x){return '<option value="'+x+'">'}).join('');
+  modeloEscrito();
 }
-function modeloDesdeLista(){
-  var sel=document.getElementById('nvModeloSel'),inp=document.getElementById('nvModelo');
-  if(!sel||!inp)return;
-  if(sel.value==='__otro'){inp.style.display='block';inp.value='';inp.focus()}
-  else{inp.style.display='none';inp.value=sel.value}
+function modeloNormal(txt){
+  var mi=document.getElementById('nvMarca');
+  var lista=MODELOS[mi?mi.value:'']||[];
+  var t=(txt||'').trim().toLowerCase();
+  if(!t)return txt;
+  for(var i=0;i<lista.length;i++) if(lista[i].toLowerCase()===t) return lista[i];
+  for(var j=0;j<lista.length;j++) if(lista[j].toLowerCase().indexOf(t)===0) return lista[j];
+  return txt;
+}
+function modeloEscrito(){
+  var inp=document.getElementById('nvModelo');if(!inp)return;
+  var nota=document.getElementById('nvModeloNota');
+  var bruto=inp.value,limpio=modeloNormal(bruto);
+  var borrando=bruto.length<MODELO_PREV.length;
+  MODELO_PREV=bruto;
+  if(!borrando&&limpio!==bruto&&bruto.trim().length>1){inp.value=limpio;MODELO_PREV=limpio}
+  var mi=document.getElementById('nvMarca');
+  var lista=MODELOS[mi?mi.value:'']||[];
+  if(nota){
+    nota.innerHTML=!inp.value ? ''
+      : (lista.indexOf(inp.value)>-1 ? ''
+         : '<b>Modelo nuevo</b> · se guardará tal como lo escribiste');
+  }
 }
 /* kilometraje con separador de miles */
 function fmtKm(el){
@@ -3999,11 +4089,12 @@ function formVehiculo(pref){
       datalistMarcas()+
       '<div class="hint" id="nvMarcaNota" style="margin:3px 0 0"></div></div>'+
     '<div><label>Modelo</label>'+
-      '<select id="nvModeloSel" onchange="modeloDesdeLista()"><option value="">— elige la marca primero —</option></select>'+
-      '<input id="nvModelo" style="margin-top:6px;display:none" placeholder="obligatorio">'+
-    '</div>'+
+      '<input id="nvModelo" list="listaModelos" autocomplete="off" placeholder="obligatorio" '+
+        'oninput="modeloEscrito()" onchange="modeloEscrito()">'+
+      '<datalist id="listaModelos"></datalist>'+
+      '<div class="hint" id="nvModeloNota" style="margin:3px 0 0"></div></div>'+
     '<div><label>Año</label><select id="nvAnio">'+optAnios()+'</select></div>'+
-    '<div><label>Color</label><select id="nvColor">'+optColores()+'</select></div>'+
+    '<div style="grid-column:1/-1"><label>Color · opcional</label>'+colorChips('nvColor','')+'</div>'+
     '<div><label>Kilometraje</label><input id="nvKm" inputmode="numeric" placeholder="opcional · 24,000" oninput="fmtKm(this)"></div>'+
   '</div>';
 }
@@ -8585,7 +8676,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=136;
+var APP_VER=137;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
