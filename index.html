@@ -1,4 +1,4 @@
-<!--IZAV:131-->
+<!--IZAV:132-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -664,7 +664,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 131</span>
+  <span class="demo-tag">versión 132</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1262,10 +1262,9 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <div class="navproc">
       <button class="atras" onclick="ir('recepcion')">← Volver a clientes</button>
-      <span class="donde">Detalle por etapa del taller</span>
+      <span class="donde">Detalle de la etapa elegida arriba</span>
     </div>
     <div class="fila" style="align-items:flex-end;margin-bottom:14px">
-      <div style="min-width:190px"><label>Etapa</label><select id="selEtapa" onchange="verEtapa(this.value)"></select></div>
       <div style="min-width:190px"><label>Ordenar por</label>
         <select id="selOrden" onchange="pintarTabla()">
           <option value="tiempo">Tiempo en taller · más antiguo</option>
@@ -5726,9 +5725,6 @@ function pintarKanbanTaller(){
   }
   var ly=document.getElementById('leyTaller');
   if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_T.map(function(o){return o.sede})):'');
-  var sel=document.getElementById('selEtapa');
-  if(sel)sel.innerHTML=ETAPAS_T.map(function(e){
-    return '<option value="'+e.k+'"'+(ETAPA_SEL===e.k?' selected':'')+'>'+e.ic+' '+e.t+' · '+deEtapa(e.k).length+'</option>'}).join('');
   pintarTabla();
 }
 function verEtapa(k){
@@ -7911,7 +7907,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=131;
+var APP_VER=132;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
