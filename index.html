@@ -1,4 +1,4 @@
-<!--IZAV:141-->
+<!--IZAV:142-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -471,10 +471,6 @@ body.sinScroll{overflow:hidden}
 .padRes .it .d{font-size:11.5px;color:var(--mudo);font-family:ui-monospace,monospace;margin-top:2px}
 
 
-.filaAce td{font-size:11.5px;color:var(--mudo);padding:0 0 7px 2px!important;
-  border-top:0!important;white-space:normal}
-.filaAce .xq{background:transparent;border:0;color:var(--rojo);font-size:11px;
-  cursor:pointer;text-decoration:underline;padding:0 0 0 6px}
 .cajaAce{border:1.5px dashed var(--rojo);border-radius:11px;padding:12px;margin-top:12px;background:var(--rojo-cl)}
 .cajaAce .tt{font-weight:700;font-size:14px;margin-bottom:4px}
 .cajaAce .marcas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -770,7 +766,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 141</span>
+  <span class="demo-tag">versión 142</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -790,7 +786,6 @@ tr.sel td{background:var(--rojo-cl)}
     <label>Motivo</label>
     <select id="vbMotivo" onchange="document.getElementById('vbOtroZona').classList.toggle('oculto',this.value!=='Otro')">
       <option>Cliente acepta presencialmente</option>
-      <option>Cliente sin celular</option>
       <option>Cliente de flota</option>
       <option>Otro</option>
     </select>
@@ -2509,39 +2504,47 @@ function esMantenimiento(t){ return /mantenimiento/i.test(t||'') }
 function hayServicioConAdicionales(){
   return LINEAS_SERV.some(function(l){ return esCambioAceite(l.desc)||esMantenimiento(l.desc) });
 }
-/* El selector se abre para la línea de cambio de aceite que no tenga
-   aceite elegido todavía. Al guardar desaparece. */
+/* El aceite ya no cuelga del servicio: entra al bloque de repuestos
+   como una línea más, con su precio. El servicio de cambio de aceite
+   queda en cero porque el precio del preciario ya lo incluye todo. */
+function hayAceiteEnRepuestos(){
+  return LINEAS_REP.some(function(l){return l.es_aceite});
+}
 function lineaAceitePendiente(){
+  if(hayAceiteEnRepuestos())return -1;
   for(var i=0;i<LINEAS_SERV.length;i++)
-    if(esCambioAceite(LINEAS_SERV[i].desc)&&!LINEAS_SERV[i].aceite)return i;
+    if(esCambioAceite(LINEAS_SERV[i].desc))return i;
   return -1;
 }
 function aceMarca(i){ ACE_MARCA=(ACE_MARCA===i)?null:i; pintarPresupuestoLista() }
 function aceElegir(mi,li,col){
   var m=ACEITES[mi],a=m.l[li],pr=a[col+1];
   if(pr===null||pr===undefined){alert('Esa medida no está disponible para este aceite.');return}
-  var i=ACE_LINEA;
-  if(i===null||i===undefined||!LINEAS_SERV[i])return;
-  LINEAS_SERV[i].aceite=nombreAceite(m.m,a[0],col);
-  /* El cambio de aceite no baja de su precio de lista: si el aceite
-     cuesta menos, se cobra el del servicio. */
-  var base=Number(LINEAS_SERV[i].precio_base||LINEAS_SERV[i].precio||0);
-  LINEAS_SERV[i].precio=Math.max(base,Number(pr));
+  var nom=nombreAceite(m.m,a[0],col);
+  if(LINEAS_REP.filter(function(l){return l.desc===nom}).length){
+    alert('Ese aceite ya está en el presupuesto.');return;
+  }
+  LINEAS_REP.push({codigo:'',codigo2:'',desc:nom,precio:Number(pr),cant:1,
+                   marca:m.m,modelo:'',ubicacion:'',es_aceite:true});
+  /* El precio del preciario ya incluye aceite y filtro, así que el
+     servicio no vuelve a cobrarse. */
+  var i=ACE_LINEA,ajustado=false;
+  if(i!==null&&i!==undefined&&LINEAS_SERV[i]&&Number(LINEAS_SERV[i].precio)>0){
+    LINEAS_SERV[i].precio=0;ajustado=true;
+  }
   ACE_MARCA=null;ACE_LINEA=null;
-  conex(Number(pr)<base
-    ? 'Aceite elegido · se mantiene '+S(base)+', el mínimo del servicio'
-    : 'Aceite elegido · referencial '+S(pr)+', ajústalo si corresponde');
+  auditar('AGREGA_ITEM','orden',OT_NUM,'Aceite: '+nom+' · '+S(pr),pr);
+  conex('Aceite agregado a repuestos · '+S(pr)+
+    (ajustado?' · el servicio queda en S/ 0':'')+' · ajústalo si corresponde');
   pintarPresupuestoLista();
-}
-function aceQuitar(i){
-  if(LINEAS_SERV[i]){LINEAS_SERV[i].aceite='';pintarPresupuestoLista()}
 }
 function bloqueAceite(){
   var i=lineaAceitePendiente();
   if(i<0)return '';
   ACE_LINEA=i;
   var h='<div class="cajaAce"><div class="tt">Elige el aceite para «'+esc(LINEAS_SERV[i].desc)+'»</div>'+
-    '<div class="hint" style="margin:0 0 9px">El precio que traen es <b>referencial</b> e incluye aceite y filtro. '+
+    '<div class="hint" style="margin:0 0 9px">Entra en <b>repuestos</b> con su precio, que ya incluye '+
+    'aceite y filtro. Es <b>referencial</b>: ajústalo si corresponde. '+
     'Camioneta que solo usa 4/4: suma S/ 10.</div>'+
     '<div class="marcas">'+ACEITES.map(function(m,k){
       return '<button class="mk'+(ACE_MARCA===k?' on':'')+'" onclick="aceMarca('+k+')">'+m.m+'</button>';
@@ -2679,10 +2682,7 @@ function pintarPresupuestoLista(){
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioServicio('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
-      '<td>'+botonLinea('MO',i)+'</td></tr>'+
-      (l.aceite?'<tr class="filaAce"><td colspan="5">'+esc(l.aceite)+
-        (otYaAprobada()?'':' <button class="xq" onclick="aceQuitar('+i+')">cambiar</button>')+
-        '</td></tr>':'');
+      '<td>'+botonLinea('MO',i)+'</td></tr>';
     }).join('');
   }
   if(LINEAS_REP.length){
@@ -4376,7 +4376,7 @@ function cargarLineasOrden(ordenId){
       if(l.tipo==='MO')
         LINEAS_SERV.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
-          aceite:l.sub||'',id_bd:l.id,de_vent:dv});
+          id_bd:l.id,de_vent:dv});
       else if(l.incluir)
         LINEAS_REP.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
@@ -4399,8 +4399,12 @@ function sincronizarDesdeBase(){
       if(typeof d.prelim_rev==='number'&&d.prelim_rev>PRELIM_REV)PRELIM_REV=d.prelim_rev;
       if(d.tiene_prelim2&&!TIENE_P2){TIENE_P2=true;armarFOT();cambio=true}
       if(d.prelim_sin_vb&&!HITOS['SINVB_PRELIM_APROBADA']&&!HITOS['SINVB_PRELIM2_APROBADA']){
-        HITOS['SINVB_'+(d.tiene_prelim2?'PRELIM2_APROBADA':'PRELIM_APROBADA')]=true;cambio=true}
-      if(d.def_sin_vb&&!HITOS['SINVB_DEF_APROBADA']){HITOS['SINVB_DEF_APROBADA']=true;cambio=true}
+        var kv=(d.tiene_prelim2?'PRELIM2_APROBADA':'PRELIM_APROBADA');
+        HITOS['SINVB_'+kv]=true;
+        if(d.sin_vb_motivo)HITOS['SINVBTXT_'+kv]=d.sin_vb_motivo;
+        cambio=true}
+      if(d.def_sin_vb&&!HITOS['SINVB_DEF_APROBADA']){HITOS['SINVB_DEF_APROBADA']=true;
+        if(d.sin_vb_motivo)HITOS['SINVBTXT_DEF_APROBADA']=d.sin_vb_motivo;cambio=true}
       /* horas de los hitos guardados en la base, para lo hecho en otros equipos */
       var mapaH={ot_prelim_enviada:'O_PRELIM_ENVIADA',ot_prelim_aprobada:'O_PRELIM_APROBADA',
         ot_prelim2_enviada:'O_PRELIM2_ENVIADA',ot_prelim2_aprobada:'O_PRELIM2_APROBADA',
@@ -5698,7 +5702,8 @@ function renderFlujos(){
         var cls = i<idx?'pasoi done':(i===idx?'pasoi act':'pasoi fut');
         if(PANEL_SEL&&PANEL_SEL.f===id&&PANEL_SEL.k===e.k)cls+=' sel';
         var hh=HITOS[pref+e.k]||((BITACORA[e.k]&&BITACORA[e.k].hora)||'');
-        var sinvb=HITOS['SINVB_'+e.k]?' <span class="eti e3" style="font-size:9px;padding:1px 6px">sin VB cliente</span>':'';
+        var sinvb=HITOS['SINVB_'+e.k]?' <span class="eti e3" style="font-size:9px;padding:1px 6px">'+
+          etiquetaVBde(e.k).replace('aprobada ','').replace('sin VB del cliente','sin VB cliente')+'</span>':'';
         return '<div class="'+cls+'" onclick="verPaso(&quot;'+id+'&quot;,&quot;'+e.k+'&quot;)">'+
           '<span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
           '<span>'+e.ic+' '+e.t+sinvb+'</span>'+
@@ -5949,7 +5954,10 @@ function renderAcciones(){
     botones=EDITANDO_OT?'':'<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
   }
   if(EST_OT_ACT==='PRELIM_APROBADA'){
-    avisos='<div class="aviso ok"><b>Preliminar aprobada.</b> El taller trabaja. Al terminar, ventanilla valida '+
+    avisos='<div class="aviso ok"><b>Preliminar '+
+      (HITOS['SINVB_PRELIM_APROBADA']||HITOS['SINVB_PRELIM2_APROBADA']
+        ? etiquetaVBde(HITOS['SINVB_PRELIM2_APROBADA']?'PRELIM2_APROBADA':'PRELIM_APROBADA')
+        : 'aprobada')+'.</b> El taller trabaja. Al terminar, ventanilla valida '+
       'stock y arma la definitiva.</div>'+
       '<div id="avisoDespacho"></div>';
     setTimeout(pintarAvisoDespacho,50);
@@ -5971,7 +5979,7 @@ function renderAcciones(){
     avisos='<div class="aviso info"><b>Definitiva enviada.</b> Esperando la aprobación del monto final.</div>';
   }
   if(EST_OT_ACT==='DEF_APROBADA'){
-    avisos='<div class="aviso ok"><b>OT final aprobada'+(HITOS['SINVB_DEF_APROBADA']?' · sin VB del cliente':'')+
+    avisos='<div class="aviso ok"><b>OT final aprobada'+(HITOS['SINVB_DEF_APROBADA']?' · '+etiquetaVBde('DEF_APROBADA'):'')+
       '.</b> Con el asesor de servicio para el cobro.</div>';
   }
   if(EST_OT_ACT==='PAGADA'){
@@ -6036,6 +6044,16 @@ function confirmarMotivoRet(){
   var cb=RET_CB;cerrarMotivoRet();
   if(cb)cb(m);
 }
+/* Cómo se llama la aprobación según cómo se consiguió. */
+function etiquetaVB(motivo){
+  var m=(motivo||'');
+  if(/presencial/i.test(m))return 'aprobada presencialmente';
+  if(/flota/i.test(m))return 'aprobada por flota';
+  return 'sin VB del cliente';
+}
+function etiquetaVBde(k){
+  return etiquetaVB(HITOS['SINVBTXT_'+k]||'');
+}
 function pedirMotivoVB(cb){
   VB_CB=cb;
   var s=document.getElementById('vbMotivo');s.value='Cliente acepta presencialmente';
@@ -6069,11 +6087,13 @@ function continuarSinConfirmarCon(m){
   guardarDetalleBD();
   if(!HITOS['O_'+kEnv])HITOS['O_'+kEnv]=selloHora();
   HITOS['SINVB_'+kApr]=true;
+  HITOS['SINVBTXT_'+kApr]=m;
   var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
   setOT(kApr,nota);
-  if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true}).eq('numero',OT_NUM).then(function(){},function(){});
+  if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true,sin_vb_motivo:m})
+    .eq('numero',OT_NUM).then(function(){},function(){});
   snapshotPorNumero(OT_NUM,kApr,
-    LINEAS_SERV.map(function(l){return {desc:l.desc+(l.aceite?' ('+l.aceite+')':''),cant:l.cant,precio:l.precio,tipo:'MO'}})
+    LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
       .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
     totalesV2().tot,nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
@@ -7276,8 +7296,7 @@ function armarWA(tipo){
       '\nGracias por confiar en IZA Motors.';
   }
   var t=totales();
-  var lineas=LINEAS_SERV.map(function(l){
-    return '• '+l.desc+(l.aceite?'\n   _'+l.aceite+'_':'')+' — '+S(l.precio)}).join('\n')+
+  var lineas=LINEAS_SERV.map(function(l){return '• '+l.desc+' — '+S(l.precio)}).join('\n')+
     (LINEAS_REP.length?'\n'+LINEAS_REP.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.precio*l.cant)+' (ref.)'}).join('\n'):'');
   return '*IZA MOTORS* — Servicio propuesto '+(OT_NUM||d.num)+'\n'+
     'Hola '+d.cliente+', terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').\n\n'+
@@ -7314,7 +7333,7 @@ function enviarPreliminar(){
       :'terminamos el diagnóstico de su '+d.veh+' (placa '+d.placa+').')+'\n\n'+
     (coment?'_'+coment+'_\n\n':'')+
     '*Servicios*\n'+(LINEAS_SERV.length?LINEAS_SERV.map(function(l){
-      return '• '+l.desc+(l.aceite?'\n   _'+l.aceite+'_':'')+' — '+S(l.precio)}).join('\n'):'• —')+'\n'+
+      return '• '+l.desc+' — '+S(l.precio)}).join('\n'):'• —')+'\n'+
     (LINEAS_REP.length?'\n*Repuestos y accesorios (referencial)*\n'+
       LINEAS_REP.map(function(l){return '• '+l.cant+'x '+l.desc+' — '+S(l.precio*l.cant)}).join('\n')+'\n':'')+
     '\n*Estimado con IGV: '+S(t.tot)+'*\n'+
@@ -7336,7 +7355,7 @@ function enviarPreliminar(){
       setOT('PRELIM_ENVIADA','Preliminar enviada · estimado '+S(t.tot)+' · rev '+PRELIM_REV);
     }
     snapshotPorNumero(OT_NUM,esP2?'PRELIM2_ENVIADA':'PRELIM_ENVIADA',
-      LINEAS_SERV.map(function(l){return {desc:l.desc+(l.aceite?' ('+l.aceite+')':''),cant:l.cant,precio:l.precio,tipo:'MO'}})
+      LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
         .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
       t.tot,'Revisión '+PRELIM_REV);
     hint.innerHTML='<span style="color:var(--verde);font-weight:700">Marcada como enviada'+
@@ -7595,8 +7614,7 @@ function guardarDetalleBD(){
         if(l.de_vent&&l.id_bd)return;
         filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
                     precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
-                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
-                    sub_desc:l.aceite||null});
+                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
       });
       LINEAS_REP.forEach(function(l){
         if(l.de_vent&&l.id_bd)return;
@@ -8284,7 +8302,7 @@ function ventSinVBCon(m){
   var t=ventTotales(),o=VENT_OT,msg=$('ventMsg');
   msg.innerHTML='<div class="hint">Guardando…</div>';
   ventGuardarLineas(function(){
-    sb.from('ordenes').update({estado_ot:'DEF_APROBADA',def_sin_vb:true,total_taller:t.tot,
+    sb.from('ordenes').update({estado_ot:'DEF_APROBADA',def_sin_vb:true,sin_vb_motivo:m,total_taller:t.tot,
       ventanilla_id:SESION?SESION.id:null,est_ventanilla:new Date().toISOString(),
       ot_def_enviada:new Date().toISOString(),ot_def_aprobada:new Date().toISOString()}).eq('id',o.id)
      .then(function(r){
@@ -8817,7 +8835,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=141;
+var APP_VER=142;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
