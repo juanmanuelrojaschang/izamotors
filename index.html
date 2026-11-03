@@ -1,4 +1,4 @@
-<!--IZAV:130-->
+<!--IZAV:131-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -664,7 +664,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 130</span>
+  <span class="demo-tag">versión 131</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1202,11 +1202,33 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <h3 id="tiendaTitulo">Tienda · órdenes por estación</h3>
     <div id="tiendaSedeSel"></div>
+    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+      <div style="min-width:170px"><label>Rango</label>
+        <select id="tiendaRango" onchange="cambioRangoTienda()">
+          <option value="1">Hoy (1 día)</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="0">Todo</option>
+          <option value="custom">Fechas…</option>
+        </select></div>
+      <div id="tiendaFechas" class="oculto" style="display:flex;gap:8px">
+        <div><label>Desde</label><input type="date" id="tiendaDesde" onchange="pintarTienda()"></div>
+        <div><label>Hasta</label><input type="date" id="tiendaHasta" onchange="pintarTienda()"></div>
+      </div>
+    </div>
     <div id="leyTienda"></div>
     <div class="flujoE" id="kanbanTienda"></div>
   </div>
   <div class="card">
     <h3>Detalle de la estación</h3>
+    <div class="fila" style="align-items:flex-end;margin-bottom:14px">
+      <div style="min-width:190px"><label>Ordenar por</label>
+        <select id="selOrdenT" onchange="pintarKanbanTienda()">
+          <option value="tiempo">Tiempo en la estación · más antiguo</option>
+          <option value="importe">Importe · mayor primero</option>
+          <option value="placa">Placa · alfabético</option>
+        </select></div>
+    </div>
     <div id="tablaTienda"></div>
   </div>
 </section>
@@ -3751,7 +3773,7 @@ function abrirOrden(ot){
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
   PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;armarFOT();
   LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];
-  PANEL_SEL=null;ACC_ABIERTO='taller';
+  PANEL_SEL=null;ACC_ABIERTO=carrilPorDefecto();
   clearInterval(tint);$('crono').classList.remove('on');
   $('gInfo').innerHTML=d.info||(d.veh+' · <b class="num">'+d.placa+'</b> · '+d.cliente);
   $('tiempoFinal').innerHTML='';
@@ -3825,7 +3847,7 @@ function sincronizarDesdeBase(){
       }
       if(d.diagnostico&&$('sintoma')&&!$('sintoma').value)$('sintoma').value=d.diagnostico;
       if(!LINEAS_SERV.length&&!LINEAS_REP.length)cargarLineasOrden(d.id);
-      if(cambio){guardarOrden();renderFlujos();renderGestion()}
+      if(cambio){ACC_ABIERTO=carrilPorDefecto();guardarOrden();renderFlujos();renderGestion()}
     },function(){});
 }
 function pintarSugerencias2(sel){
@@ -4942,6 +4964,7 @@ function setTaller(k,nota){
   if(idxTaller(k)<idxTaller(EST_TALLER)){alert('El flujo del taller solo avanza.');return}
   EST_TALLER=k;PANEL_SEL=null;
   HITOS['T_'+k]=selloHora();
+  ACC_ABIERTO=carrilPorDefecto();
   guardarFlujos();
   auditar('TALLER_'+k,'orden',OT_NUM,nota||'');
   renderFlujos();renderGestion();
@@ -4957,6 +4980,7 @@ function setOT(k,nota){
     EST_TALLER='EN_PROCESO';
     HITOS['T_EN_PROCESO']=HITOS['O_'+k];
   }
+  ACC_ABIERTO=carrilPorDefecto();
   guardarFlujos();
   auditar('OT_'+k,'orden',OT_NUM,nota||'');
   renderFlujos();renderGestion();
@@ -5223,6 +5247,13 @@ function pintarSnapshotEtapa(etapa){
   },function(){});
 }
 
+/* Mientras la OT esté en movimiento y el auto no esté listo, el carril
+   que importa es el de la orden. Cuando el vehículo se marca listo, lo
+   que importa vuelve a ser el auto. */
+function carrilPorDefecto(){
+  var tallerListo=(idxTaller(EST_TALLER)>=idxTaller('LISTO'));
+  return (!tallerListo&&EST_OT_ACT) ? 'ot' : 'taller';
+}
 function toggleMenu(id){
   ACC_ABIERTO=(ACC_ABIERTO===id)?null:id;
   renderFlujos();
@@ -5717,6 +5748,33 @@ var ETAPAS_TIENDA=[
  {k:'caja',      t:'Caja · cobro',               ic:'💳', d:'Tiempo desde final aprobada hasta el pago'}
 ];
 var TIENDA_SEDE='ACTUAL';
+function cambioRangoTienda(){
+  var v=document.getElementById('tiendaRango').value;
+  document.getElementById('tiendaFechas').classList.toggle('oculto',v!=='custom');
+  if(v!=='custom')pintarTienda();
+}
+function rangoTienda(){
+  var v=(document.getElementById('tiendaRango')||{}).value||'30';
+  var d=new Date();d.setHours(0,0,0,0);
+  if(v==='0')return {desde:null,hasta:null};
+  if(v==='custom'){
+    var a=document.getElementById('tiendaDesde').value,b=document.getElementById('tiendaHasta').value;
+    if(!a)return {desde:null,hasta:null};
+    return {desde:new Date(a+'T00:00:00'),hasta:b?new Date(b+'T23:59:59'):null};
+  }
+  d.setDate(d.getDate()-(Number(v)-1));
+  return {desde:d,hasta:null};
+}
+/* el rango se mide sobre la fecha de ingreso del vehículo */
+function tiendaEnRango(iso){
+  var r=rangoTienda();
+  if(!r.desde&&!r.hasta)return true;
+  if(!iso)return false;
+  var f=new Date(iso);
+  if(r.desde&&f<r.desde)return false;
+  if(r.hasta&&f>r.hasta)return false;
+  return true;
+}
 function tiendaCambiaSede(v){ TIENDA_SEDE=v; pintarTienda() }
 function tiendaTodos(){ return TIENDA_SEDE==='TODOS'&&esAdminGeneral() }
 function abrirTienda(){ cargarSedesTodas(function(){ detectarEsPrueba(function(){ pintarTienda() }) }) }
@@ -5738,7 +5796,7 @@ function pintarTienda(){
         por[l.orden_id].t++; if(l.despachado_el)por[l.orden_id].d++;
       });
       KAN_TIENDA=[];
-      lista.forEach(function(o){
+      lista.filter(function(o){return tiendaEnRango(o.ingreso)}).forEach(function(o){
         var c=por[o.id]||{t:0,d:0};
         var enPpto=(o.estado_ot==='PRELIM_APROBADA'||o.estado_ot==='PRELIM2_APROBADA'||o.estado_ot==='DEF_ENVIADA');
         if(enPpto&&c.t>c.d)KAN_TIENDA.push(Object.assign({},o,{est:'despacho',mins:minsDesde(o.aprob)||0,extra:c.d+'/'+c.t+' despachados'}));
@@ -5786,12 +5844,19 @@ function pintarKanbanTienda(){
       '</div>'+cuerpo+'</div>';
   }).join('');
   var e=ETAPAS_TIENDA.filter(function(x){return x.k===TIENDA_SEL})[0]||ETAPAS_TIENDA[0];
-  var ots=deTienda(TIENDA_SEL).slice().sort(function(a,b){return b.mins-a.mins});
+  var ordT=(document.getElementById('selOrdenT')||{}).value||'tiempo';
+  var ots=deTienda(TIENDA_SEL).slice();
+  if(ordT==='importe')ots.sort(function(a,b){return b.total-a.total});
+  else if(ordT==='placa')ots.sort(function(a,b){return String(a.placa).localeCompare(String(b.placa),'es')});
+  else ots.sort(function(a,b){return b.mins-a.mins});
   var ly=document.getElementById('leyTienda');
   if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_TIENDA.map(function(o){return o.sede})):'');
   document.getElementById('tablaTienda').innerHTML=
     '<div style="margin-bottom:12px"><span style="font-size:19px">'+e.ic+'</span> '+
-      '<b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+(ots.length===1?' orden':' órdenes')+'</div>'+
+      '<b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+(ots.length===1?' orden':' órdenes')+
+      '<div class="hint" style="margin:2px 0 0">Ordenadas por '+
+        (ordT==='importe'?'importe, mayor primero':ordT==='placa'?'placa':'tiempo en la estación, más antiguo primero')+
+      '</div></div>'+
     (ots.length?ots.map(function(o){
       return fichaOrden('tienda',o,todos,[
         ['Situación','<span class="eti '+(o.mins>240?'e1':'e3')+'">'+o.extra+'</span>'],
@@ -5799,7 +5864,9 @@ function pintarKanbanTienda(){
         ['Tiempo en la estación',(o.mins>240?'<b style="color:var(--rojo)">':'<b>')+tiempo(o.mins)+'</b>'],
         ['Importe',S(o.total)]
       ].concat(todos?[['Local',sedeNombrePorId(o.sede)]]:[]),
-      'En la estación · <b>'+tiempo(o.mins)+'</b>');
+      ordT==='importe' ? 'Importe · <b>'+S(o.total)+'</b>'
+      : ordT==='placa'   ? 'Placa · <b>'+o.placa+'</b>'
+      : 'En la estación · <b>'+tiempo(o.mins)+'</b>');
     }).join('')
     :'<div class="vacio"><b>Sin órdenes</b>Nada pendiente en esta estación.</div>');
 }
@@ -7844,7 +7911,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=130;
+var APP_VER=131;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
