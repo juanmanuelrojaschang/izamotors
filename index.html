@@ -1,4 +1,4 @@
-<!--IZAV:138-->
+<!--IZAV:139-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -770,7 +770,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 138</span>
+  <span class="demo-tag">versión 139</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1821,8 +1821,11 @@ function segFila(d,txt,fE){
     '<td class="num der" data-l="En taller">'+tiempo(mins)+'</td>'+
     '<td class="der"><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
       'onclick="'+ir+'">Continuar</button>'+
-      (esAdmin?' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
-        'onclick="anularDesdeLista(&quot;'+d.ot+'&quot;)">Anular</button>':'')+
+      (d.solo_local
+        ? ' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
+          'onclick="olvidarLocal(&quot;'+d.ot+'&quot;)" title="Quitarla de este equipo">Descartar</button>'
+        : (esAdmin?' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
+          'onclick="anularDesdeLista(&quot;'+d.ot+'&quot;)">Anular</button>':''))+
     '</td></tr>';
 }
 function segPintar(lista,err,cargando){
@@ -3704,6 +3707,18 @@ function guardarCorreccion(){
   BITACORA['_edit_'+Date.now()]=null;
   $('editMsg').innerHTML='<div class="aviso ok" style="margin:0">Corrección registrada en la bitácora.</div>';
 }
+/* La copia local hace que una orden borrada de la base reaparezca
+   marcada como "solo en este equipo". Esto la borra del navegador. */
+function olvidarLocal(ot){
+  if(!confirm('La orden '+ot+' no está en la base: solo quedó guardada en este equipo.\n\n'+
+     '¿Quitarla de esta lista? No afecta a nadie más.'))return;
+  try{
+    var o=DB.leer();delete o[ot];DB.guardar(o);
+  }catch(e){}
+  if(OT_NUM===ot){OT_NUM='';OT_EST='';ORD=null;SESION_ACT=false}
+  conex('Orden '+ot+' quitada de este equipo');
+  segLista();
+}
 function anularDesdeLista(ot){
   if(!esAdminTaller()){
     alert('La anulación es exclusiva del administrador del taller. '+
@@ -5391,7 +5406,7 @@ function pintarResumenIngreso(){
 
 
 /* ============ MÁQUINA DE ESTADOS DE LA ORDEN ============ */
-var OT_EST='',OT_NUM='OT-2026-00184';
+var OT_EST='',OT_NUM='OT-2026-00184',OT_CREANDO=false;
 var CHIP={ANULADO:'e1',RECIBIDO:'e1',EN_DIAGNOSTICO:'e2',POR_APROBAR:'e3',EN_PROCESO:'e3',EN_VENTANILLA:'e2',CON_ASESOR:'e3',LISTO:'e4',CANCELADO:'e4',ENTREGADO:'e1'};
 var NOMBRE_EST={ANULADO:'ANULADA',RECIBIDO:'RECIBIDO',EN_DIAGNOSTICO:'EN DIAGNÓSTICO',POR_APROBAR:'POR APROBAR',
   EN_PROCESO:'EN PROCESO',EN_VENTANILLA:'EN VENTANILLA',CON_ASESOR:'CON ASESOR',
@@ -5415,12 +5430,26 @@ function recibir(){
         '</b> · Combustible: <b>'+$('cmb').textContent+'</b>');
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
   pintarMecanicos('');
-  /* el número lo entrega la base: en el navegador se repetía entre equipos */
+  /* El número lo entrega la base. Mientras tanto NADA debe escribir en
+     ordenes: antes, un guardado que llegaba primero no encontraba la
+     orden, la creaba de nuevo y quedaban dos OT para el mismo auto. */
   if(sb&&v._id){
-    sb.rpc('nuevo_numero_ot').then(function(rn){
-      if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
-      crearOrdenBD(v,kmIng);
-    },function(){ crearOrdenBD(v,kmIng); });
+    OT_CREANDO=true;
+    ordenAbiertaDe(v._id,function(abierta){
+      if(abierta&&!confirm('La placa '+v.placa+' ya tiene la '+abierta.numero+' abierta ('+
+          (NOMBRE_EST[abierta.estado_taller]||abierta.estado_taller)+').\n\n'+
+          'Aceptar: seguir trabajando en esa orden.\nCancelar: crear una orden nueva igual.')){
+        OT_NUM=abierta.numero;$('gOT').textContent=OT_NUM;if(ORD)ORD.num=OT_NUM;
+        OT_CREANDO=false;
+        conex('Se continúa la orden '+OT_NUM);
+        guardarOrden();
+        return;
+      }
+      sb.rpc('nuevo_numero_ot').then(function(rn){
+        if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
+        crearOrdenBD(v,kmIng);
+      },function(){ crearOrdenBD(v,kmIng); });
+    });
   }
   BITACORA={};
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
@@ -5525,6 +5554,16 @@ function setOT(k,nota){
   auditar('OT_'+k,'orden',OT_NUM,nota||'');
   renderFlujos();renderGestion();
 }
+/* ¿este vehículo ya tiene una orden sin entregar? */
+function ordenAbiertaDe(vehId,cb){
+  if(!sb||!vehId){cb(null);return}
+  sb.from('ordenes').select('numero,estado_taller')
+    .eq('vehiculo_id',vehId)
+    .in('estado_taller',['RECIBIDO','EN_DIAGNOSTICO','POR_APROBAR','EN_PROCESO',
+                         'EN_VENTANILLA','CON_ASESOR','LISTO'])
+    .order('ingreso',{ascending:false}).limit(1)
+    .then(function(r){ cb((r.data||[])[0]||null) },function(){ cb(null) });
+}
 function crearOrdenBD(v,kmIng){
   sb.from('ordenes').insert({
     numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
@@ -5532,6 +5571,7 @@ function crearOrdenBD(v,kmIng){
     combustible:$('cmb').textContent,danos:danosLista(),accesorios:accesoriosLista(),
     recepcion_id:SESION?SESION.id:null,es_prueba:esAdminGeneral()
   }).select('id').then(function(r){
+    OT_CREANDO=false;
     if(r.error){
       conex('No se pudo crear la orden: '+r.error.message,true);
       return;
@@ -5539,8 +5579,9 @@ function crearOrdenBD(v,kmIng){
     conex('Orden '+OT_NUM+' registrada');
     auditar('CREA_OT','orden',OT_NUM,v.placa+' · '+kmIng.toLocaleString('es-PE')+' km');
     guardarOrden();
+    guardarFlujos();   /* ahora sí: la orden ya existe */
     renderFlujos();
-  },function(){});
+  },function(){ OT_CREANDO=false });
 }
 function guardarFlujos(){
   if(SESION)guardarSesion();
@@ -5549,7 +5590,8 @@ function guardarFlujos(){
     if(d){d.estado_taller=EST_TALLER;d.estado_ot=EST_OT_ACT;d.hitos=HITOS;DB.set(d)}
     else guardarOrden();   /* si el número cambió, la entrada local se crea acá */
   }catch(e){}
-  if(sb&&OT_NUM){
+  /* Si la orden se está creando, el estado se guardará al terminar. */
+  if(sb&&OT_NUM&&!OT_CREANDO){
     var p={estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null,prelim_rev:PRELIM_REV,tiene_prelim2:TIENE_P2};
     if(EST_OT_ACT==='PRELIM_ENVIADA')p.ot_prelim_enviada=new Date().toISOString();
     if(EST_OT_ACT==='DEF_ENVIADA')p.ot_def_enviada=new Date().toISOString();
@@ -5567,17 +5609,32 @@ function guardarFlujos(){
 }
 /* Si la orden no llegó a crearse, se crea ahora con el estado actual */
 function reintentarCrearOrden(){
-  if(!sb||!ORD)return;
+  if(!sb||!ORD||OT_CREANDO)return;
   var v=ACTUAL||{};
+  function conVehiculo(vid,cid){
+    if(!vid)return;
+    /* Antes insertaba sin mirar y duplicaba la orden del mismo auto.
+       Si ya hay una abierta, se adopta esa en vez de crear otra. */
+    ordenAbiertaDe(vid,function(abierta){
+      if(abierta){
+        OT_NUM=abierta.numero;
+        var g=document.getElementById('gOT');if(g)g.textContent=OT_NUM;
+        if(ORD)ORD.num=OT_NUM;
+        conex('Se usa la orden '+OT_NUM+', que ya estaba abierta');
+        guardarOrden();
+        sb.from('ordenes').update({estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null})
+          .eq('numero',OT_NUM).then(function(){},function(){});
+        return;
+      }
+      insertarOrden(vid,cid);
+    });
+  }
   if(!v._id){
-    /* se busca el vehículo por placa para poder enlazar la orden */
     sb.from('vehiculos').select('id,cliente_id').eq('placa',ORD.placa).maybeSingle()
-      .then(function(rv){
-        if(rv.data)insertarOrden(rv.data.id,rv.data.cliente_id);
-      },function(){});
+      .then(function(rv){ if(rv.data)conVehiculo(rv.data.id,rv.data.cliente_id) },function(){});
     return;
   }
-  insertarOrden(v._id,v._cliente_id);
+  conVehiculo(v._id,v._cliente_id);
 }
 function insertarOrden(vehId,cliId){
   sb.from('ordenes').insert({
@@ -8721,7 +8778,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=138;
+var APP_VER=139;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
