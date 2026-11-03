@@ -1,4 +1,4 @@
-<!--IZAV:140-->
+<!--IZAV:141-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -770,7 +770,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 140</span>
+  <span class="demo-tag">versión 141</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -4332,6 +4332,7 @@ function guardarOrden(){
     estado_taller:EST_TALLER,estado_ot:EST_OT_ACT,hitos:HITOS,prelim_rev:PRELIM_REV,tiene_p2:TIENE_P2,
     lineas_serv:LINEAS_SERV,lineas_rep:LINEAS_REP,
     bit:BITACORA,minis:FOTOS_MINI.slice(0,3),total:totalesV2().tot,
+    km:Number(ORD.km)||kmNum('gKm')||0,
     info:($('gInfo')?$('gInfo').innerHTML:''),
     creada:ORD.creada||Date.now(),act:Date.now()
   });
@@ -4340,7 +4341,8 @@ function abrirOrden(ot){
   var d=DB.get(ot);if(!d)return;
   SESION_ACT=true;
   OT_NUM=d.ot;$('gOT').textContent=d.ot;
-  ORD={num:d.ot,placa:d.placa,veh:d.veh,cliente:d.cliente,tel:d.tel,creada:d.creada};
+  ORD={num:d.ot,placa:d.placa,veh:d.veh,cliente:d.cliente,tel:d.tel,creada:d.creada,
+       km:Number(d.km)||0};
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
@@ -4419,6 +4421,14 @@ function sincronizarDesdeBase(){
         cambioComprobante();
       }
       if(d.diagnostico&&$('sintoma')&&!$('sintoma').value)$('sintoma').value=d.diagnostico;
+      /* el kilometraje vive en la base: sin esto la ficha mostraba 0
+         cada vez que se reabría la orden */
+      if(d.km_ingreso&&ORD&&!Number(ORD.km)){
+        ORD.km=Number(d.km_ingreso);
+        var ek=$('gKm');
+        if(ek&&!ek.value)ek.value=Number(d.km_ingreso).toLocaleString('es-PE');
+        cambio=true;
+      }
       if(!LINEAS_SERV.length&&!LINEAS_REP.length)cargarLineasOrden(d.id);
       if(cambio){ACC_ABIERTO=carrilPorDefecto();guardarOrden();renderFlujos();renderGestion()}
     },function(){});
@@ -4644,7 +4654,7 @@ function pintarFicha(v){
    '</div>'+
    '<div class="grid g2">'+
      '<div class="card" style="margin:0"><label>Vehículo</label>'+
-       '<div style="font-size:18px;font-weight:600">'+v.marca+' '+v.modelo+' '+v.anio+'</div>'+
+       '<div style="font-size:18px;font-weight:600">'+[v.marca,v.modelo,v.anio].filter(Boolean).join(' ')+'</div>'+
        '<div style="color:var(--mudo);font-size:13px">'+v.color+' · '+v.km.toLocaleString()+' km · placa <b class="num">'+v.placa+'</b></div></div>'+
      '<div class="card" style="margin:0"><label>Contacto</label>'+
        '<div class="fila" style="gap:8px">'+
@@ -5441,8 +5451,8 @@ function recibir(){
   OT_NUM=DB.correlativo();  /* provisional hasta que responda la base */
   $('gOT').textContent=OT_NUM;
   var kmIng=kmNum('kmIngreso')||Number(v.km)||0;
-  ORD={num:OT_NUM,placa:v.placa,veh:v.marca+' '+v.modelo+' '+v.anio,cliente:v.cliente,tel:v.tel,
-       km:kmIng,creada:Date.now()};
+  ORD={num:OT_NUM,placa:v.placa,veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
+       cliente:v.cliente,tel:v.tel,km:kmIng,creada:Date.now()};
   if(sb&&kmIng)sb.from('vehiculos').update({km_ultimo:kmIng}).eq('placa',v.placa).then(function(){},function(){});
   $('gInfo').innerHTML=v.marca+' '+v.modelo+' · <b class="num">'+v.placa+'</b> · '+v.cliente+' · '+v.tel+
     (esExpress()
@@ -5769,6 +5779,12 @@ function renderPanel(){
     (puedeEjecutar(sel.k)?'.':' · esta etapa la realiza '+responsableDe(sel.k)+'.')+'</div></div>';
 }
 
+/* El kilometraje que se muestra: el de la orden, y si todavía no se
+   guardó, lo que esté escrito en el campo. */
+function kmFicha(){
+  var k=Number(ORD&&ORD.km)||kmNum('gKm')||kmNum('kmIngreso')||0;
+  return k?k.toLocaleString('es-PE'):'—';
+}
 /* lo que quedó guardado en cada etapa ya cumplida */
 function datosDelPaso(f,k,paso){
   var d=datosOrden(),hh=HITOS[(f==='taller'?'T_':'O_')+k]||'—';
@@ -5777,7 +5793,7 @@ function datosDelPaso(f,k,paso){
 
   if(k==='REGISTRO'){
     filas=fila('Placa',d.placa)+fila('Vehículo',d.veh)+fila('Cliente',d.cliente)+
-      fila('Teléfono',d.tel)+fila('Km de ingreso',(Number(ORD&&ORD.km||0)).toLocaleString('es-PE'))+
+      fila('Teléfono',d.tel)+fila('Km de ingreso',kmFicha())+
       fila('Combustible',$('cmb')?$('cmb').textContent:'—')+
       fila('Daños marcados',(danosLista().length?danosLista().join(', '):'ninguno'))+
       fila('Accesorios',(accesoriosLista().length?accesoriosLista().join(', '):'—'))+
@@ -7237,7 +7253,9 @@ function linkCliente(fase){
 function datosOrden(){
   if(ORD)return ORD;
   var v=ACTUAL||VEH['CTS009'];
-  return {num:OT_NUM,placa:v.placa,veh:v.marca+' '+v.modelo+' '+v.anio,cliente:v.cliente,tel:v.tel};
+  return {num:OT_NUM,placa:v.placa,
+          veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
+          cliente:v.cliente,tel:v.tel};
 }
 function armarWA(tipo){
   var d=datosOrden(),hoy=new Date().toLocaleDateString('es-PE');
@@ -8799,7 +8817,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=140;
+var APP_VER=141;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
