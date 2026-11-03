@@ -1,4 +1,4 @@
-<!--IZAV:146-->
+<!--IZAV:147-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -127,6 +127,11 @@ main{max-width:1180px;margin:0 auto;padding:20px 16px 90px}
 #firma{background:#fff;border:1.5px solid var(--borde);border-radius:10px;width:100%;height:180px;touch-action:none;display:block}
 
 .kpi{background:var(--blanco);border:1px solid var(--borde);border-radius:12px;padding:14px}
+/* Versión compacta: tres indicadores en una fila, también en celular. */
+.kpiFila{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpiFila .kpi{padding:9px 7px;text-align:center}
+.kpiFila .kpi .v{font-size:16px;white-space:nowrap}
+.kpiFila .kpi .l{font-size:8.5px;margin-top:3px;letter-spacing:.03em}
 .kpi .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--rojo);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mudo);margin-top:5px;font-weight:600;
@@ -581,6 +586,8 @@ body.sinScroll{overflow:hidden}
   .grid.g2,.grid.g4{grid-template-columns:1fr 1fr}
   .grid.g3{grid-template-columns:1fr}
   .kpi .v{font-size:18px}
+  .kpiFila .kpi .v{font-size:14px}
+  .kpiFila .kpi .l{font-size:7.8px;letter-spacing:0}
   .fila>*{flex:1 1 100%}
   .fila>[style*="flex:0 0 auto"]{flex:1 1 100%!important}
   .btn{width:100%}
@@ -703,7 +710,8 @@ tr.sel td{background:var(--rojo-cl)}
 
 /* ===== graficos ===== */
 .gb{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:8px}
-.gb .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.gb .col{flex:1;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+  align-items:end;justify-items:center;gap:6px;height:100%;min-width:0}
 .gb .bar{width:100%;max-width:52px;background:var(--rojo);border-radius:6px 6px 0 0;min-height:3px;transition:height .3s}
 .gb .bar.sec{background:#C9D0D9}
 .gb .vv{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
@@ -780,7 +788,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 146</span>
+  <span class="demo-tag">versión 147</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1446,7 +1454,7 @@ tr.sel td{background:var(--rojo-cl)}
         </select>
       </div>
     </div>
-    <div class="grid g3" id="flujoKpis" style="margin-bottom:12px"></div>
+    <div class="kpiFila" id="flujoKpis" style="margin-bottom:12px"></div>
     <div id="grafFlujo"></div>
     <div id="flujoTabla" style="margin-top:10px"></div>
   </div>
@@ -7281,7 +7289,7 @@ function prodTiempo(lista){
    Cada granularidad trae su propia ventana. En automático se elige la
    más fina que entre en el ancho de la pantalla. */
 var GRANS={
-  dia :{t:'Diario',    n:14, min:7, pasos:function(d,i){var x=new Date(d);x.setDate(x.getDate()-i);x.setHours(0,0,0,0);return x},
+  dia :{t:'Diario',    n:7,  min:7, pasos:function(d,i){var x=new Date(d);x.setDate(x.getDate()-i);x.setHours(0,0,0,0);return x},
         sig:function(x){var y=new Date(x);y.setDate(y.getDate()+1);return y},
         lab:function(x){return ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][(x.getDay()+6)%7]+' '+x.getDate()}},
   sem :{t:'Semanal',   n:12, min:6, pasos:function(d,i){var x=new Date(d);x.setDate(x.getDate()-(x.getDay()+6)%7-7*i);x.setHours(0,0,0,0);return x},
@@ -7343,9 +7351,9 @@ function pintarFlujo(){
 
   var k=document.getElementById('flujoKpis');
   if(k)k.innerHTML=
-    kpi(tIng+' / '+tEnt,'Ingresados / entregados','tinta')+
-    kpi(S(Math.round(tMonto)),'Facturado en el periodo')+
-    kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket promedio','tinta');
+    kpi(tIng+' / '+tEnt,'Ingres. / entreg.','tinta')+
+    kpi(S(Math.round(tMonto)),'Facturado')+
+    kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket prom.','tinta');
 
   z.innerHTML=
     '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:8px">'+
@@ -9121,7 +9129,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=146;
+var APP_VER=147;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
