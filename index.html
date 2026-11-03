@@ -1,4 +1,4 @@
-<!--IZAV:142-->
+<!--IZAV:143-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -766,7 +766,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 142</span>
+  <span class="demo-tag">versión 143</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -8323,22 +8323,34 @@ function ventSinVBCon(m){
    ============================================================ */
 var ASE_OT=null,ASE_LIN=[],ASE_ADD=false,ASE_VOUCHER=null;
 
+/* En asesor y caja lo que ordena la cola es cuándo quedó aprobada la
+   OT final: es el momento en que el auto entra a cobro. */
+function fechaCola(o){ return o.def_aprob||o.aprob||o.ingreso||null }
+function ordenarPorCola(lista){
+  return lista.slice().sort(function(a,b){
+    return new Date(fechaCola(b)||0)-new Date(fechaCola(a)||0);
+  });
+}
 function pintarAsesor(){
   ASE_OT=null;
   $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
+    lista=ordenarPorCola(lista);
     $('asesorLista').innerHTML=
+      '<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
       '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
+      '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
         var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
-        '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Pago">'+pago+'</td>'+
+        '<td data-l="Cliente">'+o.cliente+'</td>'+
+        '<td class="num" data-l="Aprobada" style="white-space:nowrap">'+fechaCorta(fechaCola(o))+'</td>'+
+        '<td data-l="Pago">'+pago+'</td>'+
         '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="aseAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
+      :'<tr><td colspan="7" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
       '</table></div>';
   });
 }
@@ -8641,17 +8653,21 @@ function pintarCaja(){
   var z=$('cajaZona');z.innerHTML='<div class="hint">Cargando…</div>';
   if(!CAJEROS.length){cargarCajeros(pintarCaja);return}
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
-    z.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
-      '<th>Pago</th><th class="der">Total</th><th></th></tr>'+
+    lista=ordenarPorCola(lista);
+    z.innerHTML='<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
+      '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
+      '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
         var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
-        '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Pago">'+pago+'</td>'+
+        '<td data-l="Cliente">'+o.cliente+'</td>'+
+        '<td class="num" data-l="Aprobada" style="white-space:nowrap">'+fechaCorta(fechaCola(o))+'</td>'+
+        '<td data-l="Pago">'+pago+'</td>'+
         '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico oscuro" style="min-height:36px;padding:0 10px" onclick="abrirCobro('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="6" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
+      :'<tr><td colspan="7" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
       '</table></div>';
   });
 }
@@ -8835,7 +8851,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=142;
+var APP_VER=143;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
