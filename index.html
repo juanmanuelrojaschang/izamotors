@@ -1,4 +1,4 @@
-<!--IZAV:135-->
+<!--IZAV:136-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -440,15 +440,16 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .padRes .it .d{font-size:11.5px;color:var(--mudo);font-family:ui-monospace,monospace;margin-top:2px}
 
 
-.aceLn{font-size:11.5px;color:var(--mudo);margin-top:3px;line-height:1.3}
-.aceLn .xq{background:transparent;border:0;color:var(--rojo);font-size:11px;
-  cursor:pointer;text-decoration:underline;padding:0 0 0 4px}
+.filaAce td{font-size:11.5px;color:var(--mudo);padding:0 0 7px 2px!important;
+  border-top:0!important;white-space:normal}
+.filaAce .xq{background:transparent;border:0;color:var(--rojo);font-size:11px;
+  cursor:pointer;text-decoration:underline;padding:0 0 0 6px}
 .cajaAce{border:1.5px dashed var(--rojo);border-radius:11px;padding:12px;margin-top:12px;background:var(--rojo-cl)}
 .cajaAce .tt{font-weight:700;font-size:14px;margin-bottom:4px}
-.cajaAce .marcas{display:flex;gap:6px;flex-wrap:wrap}
+.cajaAce .marcas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .cajaAce .marcas .mk{border:1px solid var(--borde);background:#fff;border-radius:8px;
-  padding:9px 11px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em;
-  min-height:42px;flex:1 1 auto;white-space:nowrap}
+  padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.01em;
+  min-height:44px;line-height:1.15;overflow:hidden}
 .cajaAce .marcas .mk.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
 .cajaAce .tblAce{margin-top:10px;background:#fff;border-radius:9px;padding:4px 8px 8px}
 .cajaAce .tblAce table{width:100%;font-size:12.5px}
@@ -738,7 +739,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 135</span>
+  <span class="demo-tag">versión 136</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -965,7 +966,7 @@ tr.sel td{background:var(--rojo-cl)}
               <input id="waNum" value="944255192" maxlength="9" inputmode="numeric" style="font-size:17px">
             </div>
           </div>
-          <button class="btn chico" style="flex:0 0 auto;background:#25D366;color:#0A2E19"
+          <button class="btn chico" style="flex:0 0 auto"
                   onclick="enviarWA('recepcion')">Enviar constancia</button>
         </div>
         <div class="hint" id="waHint">Se abre WhatsApp con el mensaje listo.</div>
@@ -1083,8 +1084,7 @@ tr.sel td{background:var(--rojo-cl)}
               <input id="waNumPre" maxlength="9" inputmode="numeric" placeholder="944 255 192">
             </div>
             <div class="hint" id="preHint">El cliente aprueba desde su celular.</div>
-            <button class="btn chico" style="background:#25D366;color:#0A2E19"
-                    onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
+            <button class="btn chico" onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
           </div>
           <div class="via">
             <label>B · Iniciar sin visto bueno</label>
@@ -2452,8 +2452,23 @@ function srvDato(){
 var ACEITES=[{"m":"MOBIL","l":[["Mobil 1 · 0W40 / 5W30 sintético",195.0,260.0,325.0],["5W30 sintético 100%",175.0,225.0,285.0],["5W30 semi-sintético",150.0,190.0,245.0],["10W30 multigrado",120.0,135.0,180.0],["10W30 / 10W40 semi-sintético",155.0,195.0,245.0],["10W30 Super Gas",105.0,135.0,175.0],["20W50 / 25W50 alto km",120.0,135.0,180.0],["20W50 Super Gas",120.0,135.0,180.0],["15W40 tapa ploma",135.0,160.0,195.0],["15W40 tapa negra",135.0,160.0,195.0]]},{"m":"TOTAL","l":[["5W30 INEO",180.0,235.0,300.0],["5W30 / 5W40 sintético 9000",165.0,220.0,285.0],["5W40 INEO",195.0,255.0,325.0],["10W30 / 10W40 semi-sintético 7000",120.0,145.0,190.0],["20W50 5000",90.0,115.0,140.0],["25W60 Power",90.0,115.0,140.0],["15W40 Rubia 7400",105.0,135.0,175.0]]},{"m":"SHELL","l":[["5W30 Ultra",230.0,295.0,370.0],["5W30 HX8",205.0,265.0,335.0],["5W30 (CAM 2)",140.0,165.0,215.0],["10W30 / 10W40",150.0,195.0,245.0],["20W50 / 25W60",120.0,150.0,200.0],["15W40 (diésel)",305.0,270.0,235.0]]},{"m":"CASTROL","l":[["5W30 Edge",225.0,295.0,370.0],["5W30 GTX / Magnatec",210.0,265.0,340.0],["10W30 / 10W40 GTX",165.0,205.0,260.0],["20W50 / 25W60 GTX",125.0,155.0,195.0],["15W40 GTX blanco",135.0,160.0,195.0]]},{"m":"LIQUI MOLY","l":[["5W40 Synthoil High Tech",270.0,325.0,410.0],["5W40 Top Tec 4100",225.0,265.0,335.0],["5W30 Longtime High Tech",225.0,280.0,355.0],["5W30 Molygen",225.0,285.0,360.0],["5W30 Special Tec AA",210.0,245.0,315.0],["10W30 Special Tec AA",195.0,240.0,300.0],["10W40 Leichtlauf",180.0,225.0,285.0]]},{"m":"ACDELCO","l":[["0W20",null,255.0,325.0],["5W30 Dexos2",null,220.0,270.0],["10W30",null,155.0,195.0],["20W50",null,115.0,145.0]]},{"m":"GULF / VISTONY","l":[["5W30 / 5W40",145.0,170.0,220.0],["10W30 / 10W40",110.0,130.0,170.0],["20W50",75.0,90.0,120.0],["25W60",70.0,85.0,115.0]]},{"m":"AVA","l":[["5W30 sintético Nittro",140.0,190.0,235.0],["10W30 semi Nittro",100.0,130.0,165.0],["10W30 mineral",95.0,110.0,140.0],["20W50",70.0,90.0,120.0],["25W60",65.0,85.0,115.0],["Power 15W40 (diésel)",210.0,195.0,180.0]]}];
 var ADICIONALES=[{"g":"Servicios","d":"Trío electrónico – auto","p":120.0,"t":"MO"},{"g":"Servicios","d":"Trío electrónico – camioneta","p":160.0,"t":"MO"},{"g":"Aditivos Liqui Moly","d":"Cera Tec","p":130.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Engine Flush","p":45.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Tapafugas de radiador","p":35.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Elevador de octanaje","p":45.0,"t":"REP"},{"g":"Aditivos Liqui Moly","d":"Top Tec ATF 1800 (6 × 1 L)","p":80.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"Gearlube 80W90 API GL-5 · 1 L","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"Gearlube 85W140 · 1 L","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"ATF III","p":30.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 50/50 · galón","p":45.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 50/50 · litro","p":15.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 33% verde · galón","p":35.0,"t":"REP"},{"g":"Lubricantes y refrigerantes AVA","d":"AVA MAX 33% verde · litro","p":12.0,"t":"REP"}];
 var MEDIDAS=['3/4 gal','4/4 gal','5/4 gal'];
+/* Solo lo esencial: marca, grado y medida. El resto del texto del
+   preciario no cabe ni aporta en la ficha. */
+function nombreAceite(marca,desc,col){
+  var g=(desc.match(/\d{1,2}W\s?\d{2}(\s*\/\s*\d{1,2}W\s?\d{2})?/i)||[])[0];
+  if(!g)g=desc.split('·')[0].split('(')[0].trim();
+  g=g.replace(/\s*\/\s*/g,'/').toUpperCase();
+  return marca+' '+g+' · '+MEDIDAS[col].replace(' gal','');
+}
 var ACE_MARCA=null,ACE_LINEA=null;   /* índice de la línea de servicio en edición */
 
+/* Todos los precios del taller YA incluyen IGV: el total es la suma
+   de las líneas y el impuesto se extrae por dentro, no se añade. */
+function desglosarIGV(total){
+  total=Math.round(Number(total)||0);
+  var sub=Math.round(total/1.18);
+  return {sub:sub,igv:total-sub,tot:total};
+}
 function esCambioAceite(t){ return /aceite/i.test(t||'') }
 function esMantenimiento(t){ return /mantenimiento/i.test(t||'') }
 /* ¿hay en la OT algo que habilite los adicionales? */
@@ -2473,10 +2488,15 @@ function aceElegir(mi,li,col){
   if(pr===null||pr===undefined){alert('Esa medida no está disponible para este aceite.');return}
   var i=ACE_LINEA;
   if(i===null||i===undefined||!LINEAS_SERV[i])return;
-  LINEAS_SERV[i].aceite=m.m+' · '+a[0]+' · '+MEDIDAS[col];
-  LINEAS_SERV[i].precio=Number(pr);
+  LINEAS_SERV[i].aceite=nombreAceite(m.m,a[0],col);
+  /* El cambio de aceite no baja de su precio de lista: si el aceite
+     cuesta menos, se cobra el del servicio. */
+  var base=Number(LINEAS_SERV[i].precio_base||LINEAS_SERV[i].precio||0);
+  LINEAS_SERV[i].precio=Math.max(base,Number(pr));
   ACE_MARCA=null;ACE_LINEA=null;
-  conex('Aceite elegido · precio referencial '+S(pr)+', ajústalo si corresponde');
+  conex(Number(pr)<base
+    ? 'Aceite elegido · se mantiene '+S(base)+', el mínimo del servicio'
+    : 'Aceite elegido · referencial '+S(pr)+', ajústalo si corresponde');
   pintarPresupuestoLista();
 }
 function aceQuitar(i){
@@ -2556,7 +2576,7 @@ function agregarServicio(){
   }
   var pe=$('servPrecio'),pr=pe&&pe.value!==''?Number(pe.value):Number(s.prec1||s.precio||0);
   LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:s.descripcion,
-    precio:pr,cant:1,categoria:srvFamiliaDe(s)||s.categoria||''});
+    precio:pr,precio_base:pr,cant:1,categoria:srvFamiliaDe(s)||s.categoria||''});
   SEL_SERV[s.codigo]=true;
   SRV_SEL=null;
   if($('servDesc'))$('servDesc').value='';
@@ -2619,16 +2639,16 @@ function pintarPresupuestoLista(){
   if(LINEAS_SERV.length){
     filas+='<tr><td colspan="5" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>';
     filas+=LINEAS_SERV.map(function(l,i){
-      return '<tr><td>'+l.desc+
-      (l.aceite?'<div class="aceLn">'+esc(l.aceite)+
-        (otYaAprobada()?'':' <button class="xq" onclick="aceQuitar('+i+')" title="elegir otro">cambiar</button>')+
-        '</div>':'')+'</td>'+
+      return '<tr><td>'+l.desc+'</td>'+
       '<td class="der"><input type="number" min="1" value="'+(l.cant||1)+'" style="width:60px;text-align:right;padding:6px" '+
         'oninput="cantServicio('+i+',this.value)"></td>'+
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioServicio('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
-      '<td>'+botonLinea('MO',i)+'</td></tr>';
+      '<td>'+botonLinea('MO',i)+'</td></tr>'+
+      (l.aceite?'<tr class="filaAce"><td colspan="5">'+esc(l.aceite)+
+        (otYaAprobada()?'':' <button class="xq" onclick="aceQuitar('+i+')">cambiar</button>')+
+        '</td></tr>':'');
     }).join('');
   }
   if(LINEAS_REP.length){
@@ -2890,7 +2910,7 @@ function totalesV2(){
   var mo=0,rp=0;
   LINEAS_SERV.forEach(function(l){mo+=Number(l.precio)*Number(l.cant||1)});
   LINEAS_REP.forEach(function(l){rp+=l.precio*l.cant});
-  var tot=Math.round((mo+rp)*1.18);
+  var tot=Math.round(mo+rp);
   var e1=$('totMO'),e2=$('totREP'),e3=$('totTOT');
   if(e1){e1.textContent=S(mo);e2.textContent=S(rp);e3.textContent=S(tot)}
   return {mo:mo,rp:rp,tot:tot};
@@ -5212,7 +5232,7 @@ function totales(){
   if(SERVICIOS.length||LINEAS_REP.length)return totalesV2();
   var mo=0,rp=0;
   CATALOGO.forEach(function(s,i){if(SEL[i]){if(s.t==='MO')mo+=s.p;else rp+=s.p}});
-  var tot=Math.round((mo+rp)*1.18);
+  var tot=Math.round(mo+rp);
   var e1=$('totMO'),e2=$('totREP'),e3=$('totTOT');
   if(e1){e1.textContent=S(mo);e2.textContent=S(rp);e3.textContent=S(tot)}
   return {mo:mo,rp:rp,tot:tot};
@@ -5624,7 +5644,7 @@ function pintarSnapshotEtapa(etapa){
         cargarLineasBD(r.data.id,function(lin){
           if(!lin.length){z.innerHTML='<div class="hint">Esta etapa no dejó una foto de la OT.</div>';return}
           var snap={lineas:lin.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:l.incluir?0:1,k:l.cambio}}),
-                    total:lin.filter(function(l){return l.incluir}).reduce(function(a,l){return a+l.final*l.cant},0)*1.18};
+                    total:lin.filter(function(l){return l.incluir}).reduce(function(a,l){return a+l.final*l.cant},0)};
           z.innerHTML=facturaNegra(snap,'OT contratada');
         });
       },function(){z.innerHTML=''});
@@ -5715,8 +5735,7 @@ function renderAcciones(){
   /* Editar la OT: mientras el vehículo no esté listo y no se haya aprobado la segunda versión */
   if(['PRELIM_ENVIADA','PRELIM_APROBADA','PRELIM2_ENVIADA'].indexOf(EST_OT_ACT)>-1&&
      idxTaller(EST_TALLER)<idxTaller('LISTO')&&!EDITANDO_OT){
-    botones+=' <button class="btn chico sec" onclick="editarOT()">✎ Editar OT'+
-      (EST_OT_ACT==='PRELIM_APROBADA'?' · crea preliminar 2':'')+'</button>';
+    botones+=' <button class="btn chico sec" onclick="editarOT()">✎ Editar OT</button>';
   }
   if(EST_OT_ACT==='DEF_ENVIADA'){
     avisos='<div class="aviso info"><b>Definitiva enviada.</b> Esperando la aprobación del monto final.</div>';
@@ -5739,8 +5758,10 @@ function renderAcciones(){
       : '<span class="hint" style="align-self:center">No se entrega hasta que la OT esté pagada.</span>';
   }
 
-  /* Anular o pedir que anulen, según el perfil. Pagada no se toca. */
-  if(puedeAnularDirecto(EST_OT_ACT,EST_TALLER))
+  /* Anular o pedir que anulen, según el perfil. Pagada no se toca, y
+     un auto recién recibido tampoco: todavía no hay nada que anular. */
+  if(EST_TALLER==='RECIBIDO'){ /* sin botón */ }
+  else if(puedeAnularDirecto(EST_OT_ACT,EST_TALLER))
     botones+=' <button class="btn chico sec" style="color:var(--rojo)" onclick="anularOrden()">Anular la orden</button>';
   else if(puedeSolicitar(EST_OT_ACT,EST_TALLER))
     botones+=' <button class="btn chico sec" style="color:var(--rojo)" onclick="solicitarAnulacionOrden()">Solicitar anulación</button>';
@@ -7159,10 +7180,10 @@ function fichaCheckinVEH(placa){
 
 function fichaDesdeOT(ot){
   var o=OTS.filter(function(x){return x.ot===ot})[0];if(!o)return;
-  var sub=o.importe,igv=Math.round(sub*0.18);
+  var d=desglosarIGV(o.importe),sub=d.sub,igv=d.igv;
   var av={RECIBIDO:18,EN_DIAGNOSTICO:35,POR_APROBAR:50,EN_PROCESO:68,LISTO:85,CANCELADO:95,ENTREGADO:100}[o.estado]||60;
   FICHA={ot:o.ot,placa:o.placa,veh:o.veh,cliente:o.cliente,estado:o.estadoT,
-    lineas:[{d:o.tarea,p:sub}],total:sub+igv,fotos:null,avance:av,
+    lineas:[{d:o.tarea,p:o.importe}],total:d.tot,fotos:null,avance:av,
     aprobable:(o.estado==='POR_APROBAR')};
   mostrarFicha();
 }
@@ -7388,7 +7409,7 @@ function snapshotPorNumero(numero,etapa,lineas,total,nota){
 function facturaNegra(snap,titulo){
   var ln=snap.lineas||[];
   var act=ln.filter(function(l){return !l.x}),ret=ln.filter(function(l){return l.x});
-  var sub=act.reduce(function(a,l){return a+l.p*l.c},0),igv=Math.round(sub*0.18);
+  var dg=desglosarIGV(act.reduce(function(a,l){return a+l.p*l.c},0)),sub=dg.sub,igv=dg.igv;
   return '<div class="bloque-pres"><label style="margin:0 0 8px">'+titulo+
     (snap.creado?' · <span class="num" style="font-size:11px">'+selloHora(snap.creado)+'</span>':'')+
     (snap.usuario?' · '+snap.usuario:'')+'</label>'+
@@ -7400,9 +7421,9 @@ function facturaNegra(snap,titulo){
     (ret.length?'<tr><td colspan="3" class="hint">Retirados: '+ret.map(function(l){return l.d}).join(', ')+'</td></tr>':'')+
     '</table>'+
     '<div class="fila" style="margin-top:10px">'+
-      '<div class="kpi kpi-osc"><div class="v">'+S(sub)+'</div><div class="l">Subtotal</div></div>'+
-      '<div class="kpi kpi-osc"><div class="v">'+S(igv)+'</div><div class="l">IGV 18%</div></div>'+
-      '<div class="kpi kpi-osc rojo"><div class="v">'+S(Number(snap.total)||sub+igv)+'</div><div class="l">Total</div></div>'+
+      '<div class="kpi kpi-osc"><div class="v">'+S(sub)+'</div><div class="l">Valor de venta</div></div>'+
+      '<div class="kpi kpi-osc"><div class="v">'+S(igv)+'</div><div class="l">IGV incluido</div></div>'+
+      '<div class="kpi kpi-osc rojo"><div class="v">'+S(Number(snap.total)||dg.tot)+'</div><div class="l">Total</div></div>'+
     '</div>'+(snap.nota?'<div class="hint" style="margin-top:8px">'+snap.nota+'</div>':'')+'</div>';
 }
 /* 'SIN_OT' trae los autos ya recibidos que todavía no tienen OT enviada
@@ -7620,8 +7641,7 @@ function ventAbrir(id){
 function ventTotales(){
   var sub=0;
   VENT_LIN.forEach(function(l){ if(l.incluir)sub+=Number(l.final||0)*Number(l.cant||1) });
-  var igv=Math.round(sub*0.18);
-  return {sub:sub,igv:igv,tot:sub+igv};
+  return desglosarIGV(sub);
 }
 function ventRender(){
   var o=VENT_OT,t=ventTotales();
@@ -7680,8 +7700,8 @@ function ventRender(){
           '</table>'
         : '')+
       '<div class="fila">'+
-        '<div class="kpi kpi-osc"><div class="v">'+S(t.sub)+'</div><div class="l">Subtotal</div></div>'+
-        '<div class="kpi kpi-osc"><div class="v">'+S(t.igv)+'</div><div class="l">IGV 18%</div></div>'+
+        '<div class="kpi kpi-osc"><div class="v">'+S(t.sub)+'</div><div class="l">Valor de venta</div></div>'+
+        '<div class="kpi kpi-osc"><div class="v">'+S(t.igv)+'</div><div class="l">IGV incluido</div></div>'+
         '<div class="kpi kpi-osc rojo"><div class="v">'+S(t.tot)+'</div><div class="l">Total</div></div>'+
       '</div>'+
       (o.total?'<div class="hint" style="margin-top:8px">Preliminar aprobada: '+S(o.total)+' · diferencia '+
@@ -7702,7 +7722,8 @@ function ventRender(){
         '<div class="cel"><span class="num">+51</span>'+
           '<input id="ventWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'"></div>'+
         '<div class="hint" id="ventHint">El cliente aprueba la versión final desde su celular.</div>'+
-        '<button class="btn chico" onclick="ventEnviarFinal()">📤 Enviar OT FINAL</button>'+
+        '<button class="btn chico" style="background:var(--rojo);border-color:var(--rojo)" '+
+          'onclick="ventEnviarFinal()">📤 Enviar OT FINAL</button>'+
       '</div>'+
       '<div class="via">'+
         '<label>B · Continuar sin visto bueno</label>'+
@@ -8082,8 +8103,7 @@ function aseAbrir(id){
 function aseTotales(){
   var sub=0;
   ASE_LIN.forEach(function(l){ if(l.incluir)sub+=Number(l.final||0)*Number(l.cant||1) });
-  var igv=Math.round(sub*0.18);
-  return {sub:sub,igv:igv,tot:sub+igv};
+  return desglosarIGV(sub);
 }
 function aseRender(){
   var o=ASE_OT,t=aseTotales();
@@ -8118,7 +8138,7 @@ function aseRender(){
       '<div class="cel" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
         '<span class="num" style="color:var(--mudo);font-weight:700">+51</span>'+
         '<input id="aseWA" maxlength="9" inputmode="numeric" value="'+(o.tel||'').replace(/\D/g,'')+'" style="flex:1;min-width:0"></div>'+
-      '<button class="btn chico" style="background:#25D366;color:#0A2E19" onclick="aseEnviarDetalle()">📤 Enviar detalle por WhatsApp</button>'+
+      '<button class="btn chico" onclick="aseEnviarDetalle()">📤 Enviar detalle por WhatsApp</button>'+
     '</div>'+
     (bloqueado
       ? '<div class="aviso ok" style="margin-top:12px"><b>Cobro con tarjeta registrado</b> por '+(o.tarjeta_por||'')+
@@ -8394,8 +8414,7 @@ function abrirCobro(id){
   });
 }
 function cajaTotal(){
-  var sub=CAJA_LIN.reduce(function(a,l){return a+(Number(l.final)||0)*Number(l.cant||1)},0);
-  return sub+Math.round(sub*0.18);
+  return CAJA_LIN.reduce(function(a,l){return a+(Number(l.final)||0)*Number(l.cant||1)},0);
 }
 function renderCobro(){
   var o=CAJA_OT,tot=cajaTotal();
@@ -8566,7 +8585,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=135;
+var APP_VER=136;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
