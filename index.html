@@ -1,4 +1,4 @@
-<!--IZAV:134-->
+<!--IZAV:135-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -429,6 +429,17 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .leySede{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mudo);margin:0 0 12px}
 .leySede>span{display:inline-flex;align-items:center}
 
+.padRes{position:absolute;z-index:1200;background:#fff;border:1px solid var(--borde);
+  border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:290px;overflow:auto;display:none}
+.padRes.on{display:block}
+.padRes .tt{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mudo);
+  padding:8px 11px 5px;font-weight:700}
+.padRes .it{padding:9px 11px;border-top:1px solid var(--gris2);cursor:pointer}
+.padRes .it:hover{background:var(--rojo-cl)}
+.padRes .it .n{font-size:13.5px;font-weight:600;line-height:1.25}
+.padRes .it .d{font-size:11.5px;color:var(--mudo);font-family:ui-monospace,monospace;margin-top:2px}
+
+
 .aceLn{font-size:11.5px;color:var(--mudo);margin-top:3px;line-height:1.3}
 .aceLn .xq{background:transparent;border:0;color:var(--rojo);font-size:11px;
   cursor:pointer;text-decoration:underline;padding:0 0 0 4px}
@@ -727,7 +738,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 134</span>
+  <span class="demo-tag">versión 135</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -3913,7 +3924,7 @@ function formCliente(pref){
     '<div><label>Tipo de documento</label><select id="nvTipo" onchange="toggleTipoDoc(&quot;nv&quot;)">'+
       '<option>DNI</option><option>RUC</option><option>CE</option></select></div>'+
     '<div><label>Número de documento</label><input id="nvDoc" inputmode="numeric" maxlength="11" '+
-      'placeholder="obligatorio" value="'+(pref.doc||'')+'" oninput="limitarDoc(this)"></div>'+
+      'placeholder="obligatorio" value="'+(pref.doc||'')+'" oninput="padronDoc(this)"></div>'+
     '<div><label>Nivel del cliente</label>'+
       '<select id="nvNivel" disabled>'+optNiveles('Plata')+'</select>'+
       '<div class="hint" style="margin:3px 0 0">Todos entran como Plata. '+
@@ -3941,11 +3952,14 @@ function formCliente(pref){
     '<button class="btn chico" onclick="flotaAbrirCam()">📷 Tomar foto de validación</button>'+
   '</div>'+
   '<div class="grid g2" id="nvPersona" style="margin-top:10px">'+
-    '<div><label>Nombres</label><input id="nvNombres" oninput="capitalizar(this)" placeholder="obligatorio"></div>'+
-    '<div><label>Apellidos</label><input id="nvApellidos" oninput="capitalizar(this)" placeholder="obligatorio"></div>'+
+    '<div><label>Nombres</label><input id="nvNombres" autocomplete="off" placeholder="obligatorio" '+
+      'oninput="padronTeclea(&quot;nvNombres&quot;,this)" onblur="setTimeout(padronCerrar,180)"></div>'+
+    '<div><label>Apellidos</label><input id="nvApellidos" autocomplete="off" placeholder="obligatorio" '+
+      'oninput="padronTeclea(&quot;nvApellidos&quot;,this)" onblur="setTimeout(padronCerrar,180)"></div>'+
   '</div>'+
   '<div id="nvEmpresa" style="display:none;margin-top:10px">'+
-    '<label>Razón social</label><input id="nvRazon" oninput="capitalizar(this)" placeholder="obligatorio">'+
+    '<label>Razón social</label><input id="nvRazon" autocomplete="off" placeholder="obligatorio" '+
+      'oninput="padronTeclea(&quot;nvRazon&quot;,this)" onblur="setTimeout(padronCerrar,180)">'+
   '</div>'+
   '<div class="grid g2" style="margin-top:10px">'+
     '<div><label>Teléfono</label><input id="nvTel" inputmode="numeric" placeholder="obligatorio · 9XX XXX XXX"></div>'+
@@ -6325,6 +6339,101 @@ function fichaOrden(mod,o,todos,campos,criterio,acciones){
   '</div>';
 }
 
+/* ============ PADRÓN DE CLIENTES ============
+   10 mil clientes históricos de Real Systems como referencia. No son
+   clientes del taller: sirven para no volver a tipear el nombre y el
+   teléfono cuando alguien llega por primera vez. Si no aparece nada,
+   se sigue escribiendo normal. */
+var PAD_T=null,PAD_CAMPO='',PAD_RES=[];
+function sinTildes(s){
+  s=(s||'').toUpperCase();
+  try{ s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') }catch(e){}
+  return s;
+}
+/* Por documento: coincidencia exacta, completa todo de una */
+function padronPorDoc(doc,cb){
+  if(!sb||!doc)return;
+  sb.from('padron_clientes').select('*')
+    .or('num_doc.eq.'+doc+',dni_derivado.eq.'+doc).limit(1)
+    .then(function(r){ cb((r.data||[])[0]||null) },function(){ cb(null) });
+}
+function padronDoc(el){
+  limitarDoc(el);
+  var d=(el.value||'').replace(/\D/g,'');
+  if(d.length<8){padronCerrar();return}
+  padronPorDoc(d,function(p){
+    if(!p)return;
+    padronAplicar(p,true);
+    conex('Datos traídos del padrón · revísalos antes de guardar');
+  });
+}
+/* Por nombre o apellido: sugerencias a partir de dos letras */
+function padronTeclea(campo,el){
+  capitalizar(el);
+  PAD_CAMPO=campo;
+  var t=sinTildes(el.value||'').trim();
+  clearTimeout(PAD_T);
+  if(t.length<2){padronCerrar();return}
+  PAD_T=setTimeout(function(){
+    if(!sb)return;
+    var q=sb.from('padron_clientes')
+      .select('num_doc,tipo_doc,nombre,apellidos,nombres,telefono,direccion,clase')
+      .limit(8);
+    q=(campo==='nvRazon')
+      ? q.eq('clase','Empresa').like('buscar','%'+t+'%')
+      : q.like('buscar',(campo==='nvApellidos'?t+'%':'%'+t+'%'));
+    q.then(function(r){ PAD_RES=r.data||[]; padronPintar(campo) },function(){});
+  },320);
+}
+function padronPintar(campo){
+  var el=document.getElementById(campo);
+  if(!el)return;
+  var z=document.getElementById('padRes');
+  if(!z){
+    z=document.createElement('div');z.id='padRes';z.className='padRes';
+    document.body.appendChild(z);
+  }
+  if(!PAD_RES.length){padronCerrar();return}
+  var r=el.getBoundingClientRect();
+  z.style.left=(r.left+window.scrollX)+'px';
+  z.style.top=(r.bottom+window.scrollY+4)+'px';
+  z.style.width=Math.max(240,r.width)+'px';
+  z.innerHTML='<div class="tt">Del padrón · toca para usarlo</div>'+
+    PAD_RES.map(function(p,i){
+      return '<div class="it" onmousedown="event.preventDefault()" onclick="padronElegir('+i+')">'+
+        '<div class="n">'+esc(p.nombre)+'</div>'+
+        '<div class="d">'+(p.tipo_doc||'')+' '+esc(p.num_doc)+
+          (p.telefono?' · 📞 '+esc(p.telefono):' · sin teléfono')+'</div></div>';
+    }).join('');
+  z.classList.add('on');
+}
+function padronCerrar(){
+  var z=document.getElementById('padRes');
+  if(z){z.classList.remove('on');z.innerHTML=''}
+}
+function padronElegir(i){
+  var p=PAD_RES[i];
+  if(!p)return;
+  padronAplicar(p,false);
+  padronCerrar();
+  conex('Tomado del padrón · revisa antes de guardar');
+}
+/* Rellena solo lo que esté vacío: nunca pisa lo que ya escribieron. */
+function padronAplicar(p,desdeDoc){
+  function pon(id,v){
+    var e=document.getElementById(id);
+    if(e&&v&&!e.value.trim())e.value=v;
+  }
+  var tp=document.getElementById('nvTipo');
+  if(tp&&p.tipo_doc&&tp.value!==p.tipo_doc){ tp.value=p.tipo_doc; toggleTipoDoc('nv') }
+  if(!desdeDoc)pon('nvDoc',p.num_doc);
+  if(p.clase==='Empresa'){ pon('nvRazon',p.nombre) }
+  else { pon('nvApellidos',p.apellidos||''); pon('nvNombres',p.nombres||'') }
+  pon('nvTel',p.telefono||'');
+  var ez=document.getElementById('nvDir');
+  if(ez&&p.direccion&&!ez.value.trim())ez.value=p.direccion;
+}
+
 /* ============ ANULACIONES ============
    Reglas acordadas:
    · administrador general y de local anulan directo, salvo orden pagada
@@ -8457,7 +8566,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=134;
+var APP_VER=135;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
