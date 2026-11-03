@@ -1,4 +1,4 @@
-<!--IZAV:132-->
+<!--IZAV:133-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -429,6 +429,48 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .leySede{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mudo);margin:0 0 12px}
 .leySede>span{display:inline-flex;align-items:center}
 
+#avisoSolic{position:fixed;left:10px;right:10px;bottom:14px;z-index:900;max-width:460px;margin:0 auto}
+#avisoSolic.oculto{display:none}
+.popSolic{background:var(--tinta);color:#E8ECF1;border-radius:14px;padding:12px 13px;
+  box-shadow:0 14px 40px rgba(0,0,0,.34);max-height:62vh;overflow:auto}
+.popSolic.nueva{animation:solicEntra .3s ease}
+@keyframes solicEntra{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.popSolic .cab{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:14px}
+.popSolic .cab .x{margin-left:auto;background:transparent;border:0;color:#9AA6B6;font-size:16px;cursor:pointer;padding:0 4px}
+.popSolic .it{border-top:1px solid #39424F;padding:9px 0 4px}
+.popSolic .it .t{font-size:13.5px;font-weight:600}
+.popSolic .it .m{font-size:12.5px;color:#B9C3D0;margin:3px 0}
+.popSolic .it .q{font-size:11px;color:#8A94A3}
+.popSolic .it .b{display:flex;gap:8px;margin-top:7px}
+.popSolic .it .b .btn{flex:1;min-height:38px}
+
+.movA{border:1px solid var(--borde);border-radius:9px;padding:9px 11px;margin-bottom:6px;background:#fff}
+.movA .l1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.movA .l1 .rf{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--mudo)}
+.movA .l1 .hr{margin-left:auto;font-size:11px;color:var(--mudo);font-family:ui-monospace,monospace}
+.movA .l2{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--tinta);margin-top:2px}
+.movA .l2 .rl{font-size:11px;color:var(--mudo)}
+.movA .l2 .mt{margin-left:auto;font-weight:700;color:var(--verde);font-family:ui-monospace,monospace}
+.movA .l3{font-size:12px;color:var(--mudo);margin-top:4px;line-height:1.35}
+
+.fichaA{border:1px solid var(--borde);border-left:4px solid var(--verde);border-radius:10px;
+  padding:10px 12px;margin-bottom:8px;background:#fff;cursor:pointer}
+.fichaA.on{border-color:var(--rojo);border-left-color:var(--rojo)}
+.fichaA .cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fichaA .cab .ot{font:700 14px/1.2 ui-monospace,monospace}
+.fichaA .cab .pl{font:600 12px/1.2 ui-monospace,monospace;background:var(--gris);
+  border-radius:5px;padding:2px 7px;color:var(--tinta)}
+.fichaA .cab .hora{margin-left:auto;font-size:11px;color:var(--mudo)}
+.fichaA .sub{font-size:12.5px;color:var(--mudo);margin-top:3px}
+.fichaA .qu{font-size:13.5px;margin-top:6px}
+.fichaA .masA{font-size:11.5px;color:var(--mudo);margin-top:6px}
+.fichaA .det{margin-top:9px;border-top:1px solid var(--borde);padding-top:9px}
+.fichaA .det .motivo{background:var(--gris);border-left:3px solid var(--verde);
+  border-radius:0 7px 7px 0;padding:8px 10px;font-size:13px;margin-bottom:8px}
+.fichaA .det .quien{font-size:12px;color:var(--mudo);margin-top:3px}
+.fichaA .det .rev{font-size:12px;color:var(--verde);font-weight:600;margin-top:7px}
+
+
 .fichaL{border:1px solid var(--borde);border-radius:10px;margin-bottom:8px;background:#fff;cursor:pointer;
   overflow:hidden;transition:border-color .12s}
 .fichaL.on{border-color:var(--rojo)}
@@ -664,7 +706,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 132</span>
+  <span class="demo-tag">versión 133</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1044,22 +1086,44 @@ tr.sel td{background:var(--rojo-cl)}
 
 
 <!-- ================= BITÁCORA DE TRANSACCIONES ================= -->
+<div id="avisoSolic" class="oculto"></div>
+
 <section class="vista" id="v-bitacora">
   <div class="card">
-    <h3>📋 Bitácora de transacciones</h3>
-    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
-      <div style="min-width:170px"><label>Periodo</label>
-        <select id="audDia" onchange="cargarAuditoria()">
-          <option value="hoy">Hoy</option>
-          <option value="7">Últimos 7 días</option>
-          <option value="30">Últimos 30 días</option>
-        </select></div>
-      <div style="flex:2;min-width:180px"><label>Filtrar</label>
-        <input id="audTxt" placeholder="Usuario, acción u OT" oninput="pintarAuditoria()"></div>
+    <h3>📋 Bitácora</h3>
+    <div class="modo" style="max-width:360px;margin-bottom:14px">
+      <button id="bitTabT" class="on" onclick="bitTab('trans')">Transacciones</button>
+      <button id="bitTabA" onclick="bitTab('anul')">Anulaciones</button>
     </div>
-    <div class="grid g4" id="audKpis" style="margin-bottom:14px"></div>
-    <div style="overflow-x:auto"><table id="audTabla"></table></div>
-    <div class="hint">Cada movimiento queda firmado con usuario, rol, hora y referencia. No se puede editar ni borrar desde la app.</div>
+
+    <div id="bitTrans">
+      <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+        <div style="min-width:170px"><label>Periodo</label>
+          <select id="audDia" onchange="cargarAuditoria()">
+            <option value="hoy">Hoy</option>
+            <option value="7">Últimos 7 días</option>
+            <option value="30">Últimos 30 días</option>
+          </select></div>
+        <div style="min-width:180px"><label>Área</label>
+          <select id="audArea" onchange="audCambiaArea()"></select></div>
+        <div style="min-width:180px"><label>Tipo</label>
+          <select id="audTipo" onchange="pintarAuditoria()"></select></div>
+        <div style="flex:2;min-width:180px"><label>Filtrar</label>
+          <input id="audTxt" placeholder="Usuario, acción u OT" oninput="pintarAuditoria()"></div>
+      </div>
+      <div class="grid g4" id="audKpis" style="margin-bottom:14px"></div>
+      <div id="audTabla"></div>
+      <div class="hint">Cada movimiento queda firmado con usuario, rol, hora y referencia. No se puede editar ni borrar desde la app.</div>
+    </div>
+
+    <div id="bitAnul" class="oculto">
+      <div class="modo" style="max-width:380px;margin-bottom:12px">
+        <button id="anTabP" class="on" onclick="anulTab('PENDIENTE')">Por revisar</button>
+        <button id="anTabR" onclick="anulTab('RESUELTAS')">Revisadas</button>
+      </div>
+      <div class="hint" style="margin:-4px 0 12px">Lo que ventanilla anuló a pedido del taller. Revísalo y márcalo como revisado.</div>
+      <div id="anulLista"></div>
+    </div>
   </div>
 </section>
 
@@ -1678,7 +1742,7 @@ function segFila(d,txt,fE){
   if(fE&&est!==fE)return '';
   if(!segEnRango(d.creada))return '';
   var mins=Math.round((Date.now()-(d.creada||Date.now()))/60000),
-      esAdmin=SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'),
+      esAdmin=esAdminTaller()&&!ordenPagada(d.estado_ot,est),
       ir='abrirOrdenBD(&quot;'+d.ot+'&quot;)';
   return '<tr style="background:#FFF7F7">'+
     '<td class="num click" data-l="OT" onclick="'+ir+'"><b>'+otCorto(d.ot)+'</b></td>'+
@@ -1820,7 +1884,7 @@ function ir(v,atras){
 
   window.scrollTo(0,0);
   try{pintarAtras()}catch(e){}
-  if(v==='recepcion')segEntrada();if(v==='bitacora')cargarAuditoria();if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
+  if(v==='recepcion')segEntrada();if(v==='bitacora'){cargarAuditoria();if(BIT_TAB==='anul')bitTab('anul');}if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -2398,6 +2462,21 @@ function quitarServicio(i){
   var l=LINEAS_SERV[i];if(l)SEL_SERV[l.codigo]=false;
   LINEAS_SERV.splice(i,1);pintarPresupuestoLista();
 }
+/* Mientras la OT no esté aprobada, el taller edita libre. Una vez
+   aprobada, quitar algo pasa por ventanilla. */
+function otYaAprobada(){
+  return ['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA','PAGADA'].indexOf(EST_OT_ACT)>-1;
+}
+function botonLinea(tipo,i){
+  if(!otYaAprobada()||esAdminTaller())
+    return '<button class="btn chico peligro" onclick="'+
+      (tipo==='MO'?'quitarServicio':'quitarRepuesto')+'('+i+')">✕</button>';
+  if(puedeSolicitar(EST_OT_ACT,EST_TALLER))
+    return '<button class="btn chico sec" style="color:var(--rojo);white-space:nowrap" '+
+      'onclick="solicitarAnulacionLinea(&quot;'+tipo+'&quot;,'+i+')" '+
+      'title="Pide a ventanilla que lo quite">pedir ✕</button>';
+  return '';
+}
 function pintarPresupuestoLista(){
   var t=totalesV2();
   var filas='';
@@ -2410,7 +2489,7 @@ function pintarPresupuestoLista(){
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioServicio('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
-      '<td><button class="btn chico peligro" onclick="quitarServicio('+i+')">✕</button></td></tr>';
+      '<td>'+botonLinea('MO',i)+'</td></tr>';
     }).join('');
   }
   if(LINEAS_REP.length){
@@ -2424,7 +2503,7 @@ function pintarPresupuestoLista(){
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioRepuesto('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*l.cant)+'</b></td>'+
-      '<td><button class="btn chico peligro" onclick="quitarRepuesto('+i+')">✕</button></td></tr>';
+      '<td>'+botonLinea('REP',i)+'</td></tr>';
     }).join('');
   }
   $('presLista').innerHTML=filas
@@ -3290,8 +3369,8 @@ function puedeEditar(){
   return ['CANCELADO','ENTREGADO','ANULADO'].indexOf(OT_EST)===-1;
 }
 function puedeAnular(){
-  return SESION && (SESION.rol==='admin_local'||SESION.rol==='admin_general')
-      && ['CANCELADO','ENTREGADO','ANULADO'].indexOf(OT_EST)===-1;
+  /* Un solo criterio para los dos canales: administrador y no pagada. */
+  return puedeAnularDirecto(EST_OT_ACT,EST_TALLER) && OT_EST!=='ANULADO';
 }
 function renderEditar(){
   var z=document.getElementById('editZona');if(!z)return;
@@ -3332,8 +3411,13 @@ function guardarCorreccion(){
   $('editMsg').innerHTML='<div class="aviso ok" style="margin:0">Corrección registrada en la bitácora.</div>';
 }
 function anularDesdeLista(ot){
-  if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'))){
-    alert('La anulación es exclusiva del administrador del taller.');return;
+  if(!esAdminTaller()){
+    alert('La anulación es exclusiva del administrador del taller. '+
+          'El jefe de taller puede solicitarla desde la orden.');return;
+  }
+  var o=null;SEG_BD.forEach(function(x){if(x.ot===ot)o=x});
+  if(o&&ordenPagada(o.estado_ot,o.estado)){
+    alert('La orden '+ot+' ya está pagada: no se puede anular.');return;
   }
   var motivo=prompt('Motivo de la anulación de '+ot+' (obligatorio):');
   if(motivo===null)return;
@@ -3386,42 +3470,198 @@ function auditar(accion,entidad,ref,detalle,monto){
     monto:(monto===undefined?null:monto)
   }).then(function(){},function(){});
 }
-var AUD=[];
+var AUD=[],BIT_TAB='trans',ANUL_TAB='PENDIENTE',ANUL=[],ANUL_ABIERTA=null;
+
+/* Las acciones agrupadas por área del taller: así se busca cuando se
+   quiere auditar un puesto completo. */
+var AREAS_AUD=[
+ {k:'recepcion',t:'Recepción',  a:['CREA_OT','CREA_CLIENTE','CREA_VEHICULO','EDITA_CLIENTE','EDITA_CONTACTO',
+    'CAMBIA_VEHICULO','EDITA_EN_CHECKIN','MODO_RECEPCION','ENVIA_CONSTANCIA','CLIENTE_EXISTENTE',
+    'CREA_FLOTA','VALIDA_FLOTA']},
+ {k:'taller',   t:'Taller',     a:['CAMBIA_MECANICO','ASIGNA_LAVADOR','AGREGA_ITEM','QUITA_ITEM',
+    'EDITA_ORDEN','EDITA_OT','IMPRIME_PRESUPUESTO','ENVIA_DETALLE','AVANZA_SIN_CONFIRMAR',
+    'SOLICITA_ANULACION']},
+ {k:'ventanilla',t:'Ventanilla',a:['GUARDA_VENTANILLA','ENVIA_DEFINITIVO','DESPACHA','DEF_SIN_VB',
+    'ANULA_PEDIDO','RECHAZA_ANULACION']},
+ {k:'asesor',   t:'Asesor',     a:['GUARDA_ASESOR','COBRA_TARJETA']},
+ {k:'caja',     t:'Caja',       a:['COBRA','RECHAZA_VOUCHER']},
+ {k:'config',   t:'Configuración',a:['IMPORTA_STOCK','IMPORTA_SERVICIOS','IMPORTA_USUARIOS',
+    'IMPORTA_MECANICOS','MARCA_PRUEBA','QUITA_PRUEBA']},
+ {k:'accesos',  t:'Accesos',    a:['LOGIN']},
+ {k:'anula',    t:'Anulaciones',a:['ANULA_ORDEN','ANULA_PEDIDO','RECHAZA_ANULACION','SOLICITA_ANULACION']}
+];
+var NOMBRE_ACC={
+ CREA_OT:'Orden creada',CREA_CLIENTE:'Cliente creado',CREA_VEHICULO:'Vehículo creado',
+ EDITA_CLIENTE:'Cliente editado',EDITA_CONTACTO:'Contacto editado',CAMBIA_VEHICULO:'Vehículo cambiado',
+ EDITA_EN_CHECKIN:'Editado en recepción',MODO_RECEPCION:'Modo de recepción',ENVIA_CONSTANCIA:'Constancia enviada',
+ CLIENTE_EXISTENTE:'Cliente ya existía',CREA_FLOTA:'Flota creada',VALIDA_FLOTA:'Flota validada',
+ CAMBIA_MECANICO:'Mecánico asignado',ASIGNA_LAVADOR:'Lavador asignado',AGREGA_ITEM:'Ítem agregado',
+ QUITA_ITEM:'Ítem quitado',EDITA_ORDEN:'Orden editada',EDITA_OT:'OT editada',
+ IMPRIME_PRESUPUESTO:'Presupuesto impreso',ENVIA_DETALLE:'Detalle enviado',
+ AVANZA_SIN_CONFIRMAR:'Avanzó sin confirmación',SOLICITA_ANULACION:'Anulación solicitada',
+ GUARDA_VENTANILLA:'Ventanilla guardó',ENVIA_DEFINITIVO:'OT final enviada',DESPACHA:'Repuesto despachado',
+ DEF_SIN_VB:'Final sin VB',ANULA_PEDIDO:'Anulación ejecutada',RECHAZA_ANULACION:'Anulación rechazada',
+ GUARDA_ASESOR:'Asesor guardó',COBRA_TARJETA:'Cobro con tarjeta',COBRA:'Cobro',
+ RECHAZA_VOUCHER:'Voucher rechazado',IMPORTA_STOCK:'Carga de inventario',IMPORTA_SERVICIOS:'Carga de servicios',
+ IMPORTA_USUARIOS:'Carga de usuarios',IMPORTA_MECANICOS:'Carga de mecánicos',
+ MARCA_PRUEBA:'Marcada como prueba',QUITA_PRUEBA:'Ya no es prueba',LOGIN:'Entrada al sistema',
+ ANULA_ORDEN:'Orden anulada'
+};
+function nombreAccion(a){
+  if(NOMBRE_ACC[a])return NOMBRE_ACC[a];
+  if(a&&a.indexOf('OT_')===0)return 'OT · '+a.slice(3).replace(/_/g,' ').toLowerCase();
+  if(a&&a.indexOf('TALLER_')===0)return 'Taller · '+a.slice(7).replace(/_/g,' ').toLowerCase();
+  return a||'—';
+}
+function bitTab(t){
+  BIT_TAB=t;
+  document.getElementById('bitTabT').classList.toggle('on',t==='trans');
+  document.getElementById('bitTabA').classList.toggle('on',t==='anul');
+  document.getElementById('bitTrans').classList.toggle('oculto',t!=='trans');
+  document.getElementById('bitAnul').classList.toggle('oculto',t!=='anul');
+  if(t==='anul')cargarAnulaciones();
+}
+function audCambiaArea(){ audLlenarTipos(); pintarAuditoria() }
+function audLlenarTipos(){
+  var sa=document.getElementById('audArea'),st=document.getElementById('audTipo');
+  if(!sa||!st)return;
+  if(!sa.options.length){
+    sa.innerHTML='<option value="">Todas las áreas</option>'+
+      AREAS_AUD.map(function(a){return '<option value="'+a.k+'">'+a.t+'</option>'}).join('');
+  }
+  var area=AREAS_AUD.filter(function(a){return a.k===sa.value})[0];
+  st.innerHTML='<option value="">Todos los tipos</option>'+
+    (area?area.a.map(function(x){return '<option value="'+x+'">'+nombreAccion(x)+'</option>'}).join(''):'');
+}
 function cargarAuditoria(){
   if(!sb)return;
+  audLlenarTipos();
   var d=$('audDia').value,desde=new Date();
   if(d==='hoy')desde.setHours(0,0,0,0);
   else desde.setDate(desde.getDate()-Number(d));
-  $('audTabla').innerHTML='<tr><td class="hint">Cargando…</td></tr>';
+  $('audTabla').innerHTML='<div class="hint">Cargando…</div>';
   sb.from('auditoria').select('*').gte('creado',desde.toISOString())
-    .order('creado',{ascending:false}).limit(300)
+    .order('creado',{ascending:false}).limit(400)
     .then(function(r){ AUD=r.data||[]; pintarAuditoria(); });
 }
+
+/* ---- fichas de anulación ---- */
+function anulTab(t){
+  ANUL_TAB=t;
+  document.getElementById('anTabP').classList.toggle('on',t==='PENDIENTE');
+  document.getElementById('anTabR').classList.toggle('on',t==='RESUELTAS');
+  cargarAnulaciones();
+}
+function cargarAnulaciones(){
+  var z=document.getElementById('anulLista');
+  if(!z)return;
+  if(!sb){z.innerHTML='<div class="aviso rojo">Sin conexión con la base.</div>';return}
+  z.innerHTML='<div class="hint">Cargando…</div>';
+  var q=sb.from('solicitudes_anulacion').select('*').eq('sede_id',SEDE_ACTIVA);
+  q=(ANUL_TAB==='PENDIENTE') ? q.is('revisado_el',null) : q.not('revisado_el','is',null);
+  q.order('creado',{ascending:false}).limit(120).then(function(r){
+    if(r.error){
+      z.innerHTML='<div class="aviso rojo">No se pudo consultar: '+r.error.message+
+        '<div class="hint" style="margin-top:6px">Si dice que la tabla no existe, falta correr el paso33.</div></div>';
+      return;
+    }
+    ANUL=r.data||[];pintarAnulaciones();
+  },function(){ z.innerHTML='<div class="aviso rojo">Sin conexión.</div>' });
+}
+function toggleAnul(id){ ANUL_ABIERTA=(ANUL_ABIERTA===id)?null:id; pintarAnulaciones() }
+function marcarRevisada(id){
+  if(event&&event.stopPropagation)event.stopPropagation();
+  if(!sb||!SESION)return;
+  sb.from('solicitudes_anulacion').update({
+    revisa_id:SESION.id||null,revisa_nom:SESION.nombre,revisado_el:new Date().toISOString()
+  }).eq('id',id).then(function(r){
+    if(r.error){alert('No se pudo marcar: '+r.error.message);return}
+    conex('Marcada como revisada');
+    cargarAnulaciones();
+  },function(){alert('Sin conexión.')});
+}
+function chipEstadoAnul(e){
+  return e==='ANULADA'  ? '<span class="eti e4">ANULADA</span>'
+       : e==='RECHAZADA'? '<span class="eti e1">RECHAZADA</span>'
+       :                  '<span class="eti e3">PENDIENTE</span>';
+}
+function pintarAnulaciones(){
+  var z=document.getElementById('anulLista');
+  if(!ANUL.length){
+    z.innerHTML='<div class="vacio"><b>Nada por acá</b>'+
+      (ANUL_TAB==='PENDIENTE'?'No hay anulaciones por revisar.':'Todavía no has marcado ninguna como revisada.')+'</div>';
+    return;
+  }
+  z.innerHTML=ANUL.map(function(s){
+    var ab=(ANUL_ABIERTA===s.id),f=new Date(s.creado);
+    var mins=Math.round((Date.now()-f)/60000);
+    return '<div class="fichaA'+(ab?' on':'')+'" onclick="toggleAnul('+s.id+')">'+
+      '<div class="cab">'+
+        '<span class="ot">'+otCorto(s.orden_numero)+'</span>'+
+        '<span class="pl">'+esc(s.placa||'—')+'</span>'+
+        chipEstadoAnul(s.estado)+
+        '<span class="hora">'+(mins<1440?'hace '+tiempo(mins):f.toLocaleDateString('es-PE'))+'</span>'+
+      '</div>'+
+      '<div class="sub">'+esc(s.cliente||'')+(s.vehiculo?' · '+esc(s.vehiculo):'')+'</div>'+
+      '<div class="qu">'+(s.tipo==='ORDEN'
+         ? '<b style="color:var(--rojo)">Orden completa</b>'
+         : '🗑 <b>'+esc(s.linea_desc||'Línea')+'</b>'+(s.linea_importe?' · '+S(s.linea_importe):''))+'</div>'+
+      (ab?'<div class="det">'+
+        '<div class="motivo">'+esc(s.motivo||'')+'</div>'+
+        '<div class="quien">Pidió <b>'+esc(s.pide_nom||'—')+'</b>'+
+          (s.resuelve_nom?' · '+(s.estado==='ANULADA'?'Anuló':'Rechazó')+' <b>'+esc(s.resuelve_nom)+'</b>':'')+
+          ' · '+f.toLocaleDateString('es-PE')+' '+f.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+'</div>'+
+        (s.nota_resuelve?'<div class="quien">Nota: '+esc(s.nota_resuelve)+'</div>':'')+
+        (s.despachado?'<div class="quien" style="color:var(--rojo)">El repuesto ya estaba despachado.</div>':'')+
+        (s.revisado_el
+          ? '<div class="rev">✓ Revisado por <b>'+esc(s.revisa_nom||'')+'</b> · '+
+            new Date(s.revisado_el).toLocaleDateString('es-PE')+'</div>'
+          : (s.estado!=='PENDIENTE'
+             ? '<button class="btn chico sec full" style="margin-top:9px" onclick="marcarRevisada('+s.id+')">Marcar como revisada</button>'
+             : '<div class="quien" style="color:var(--rojo)">Ventanilla todavía no la resuelve.</div>'))+
+      '</div>':'<div class="masA">▼ ver el motivo</div>')+
+    '</div>';
+  }).join('');
+}
+
 function pintarAuditoria(){
-  var txt=($('audTxt').value||'').toLowerCase();
+  var txt=($('audTxt').value||'').toLowerCase(),
+      area=(document.getElementById('audArea')||{}).value||'',
+      tipo=(document.getElementById('audTipo')||{}).value||'';
+  var acc=null;
+  if(tipo)acc=[tipo];
+  else if(area){
+    var a=AREAS_AUD.filter(function(x){return x.k===area})[0];
+    acc=a?a.a:null;
+  }
   var lista=AUD.filter(function(a){
+    if(acc&&acc.indexOf(a.accion)===-1)return false;
     if(!txt)return true;
-    return ((a.usuario_nom||'')+(a.accion||'')+(a.referencia||'')+(a.detalle||'')).toLowerCase().indexOf(txt)>-1;
+    return ((a.usuario_nom||'')+(a.accion||'')+nombreAccion(a.accion)+
+            (a.referencia||'')+(a.detalle||'')).toLowerCase().indexOf(txt)>-1;
   });
   var usuarios={},cobros=0;
-  AUD.forEach(function(a){usuarios[a.usuario_nom]=1;if(a.accion==='COBRA')cobros+=Number(a.monto||0)});
+  lista.forEach(function(a){usuarios[a.usuario_nom]=1;if(a.accion==='COBRA')cobros+=Number(a.monto||0)});
   $('audKpis').innerHTML=
-    kpi(AUD.length,'Movimientos','tinta')+
-    kpi(Object.keys(usuarios).length,'Usuarios activos','tinta')+
-    kpi(AUD.filter(function(a){return a.accion==='COBRA'}).length,'Cobros')+
+    kpi(lista.length,'Movimientos','tinta')+
+    kpi(Object.keys(usuarios).length,'Personas','tinta')+
+    kpi(lista.filter(function(a){return a.accion==='COBRA'}).length,'Cobros')+
     kpi(S(cobros),'Monto cobrado','verde');
-  $('audTabla').innerHTML='<tr><th>Hora</th><th>Usuario</th><th>Perfil</th><th>Acción</th>'+
-    '<th>Referencia</th><th>Detalle</th><th class="der">Monto</th></tr>'+
-    (lista.length?lista.map(function(a){
-      var f=new Date(a.creado);
-      return '<tr><td class="num">'+f.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+
-        '<div style="font-size:10px;color:var(--mudo)">'+f.toLocaleDateString('es-PE')+'</div></td>'+
-        '<td>'+(a.usuario_nom||'—')+'</td><td style="font-size:12px;color:var(--mudo)">'+((ROLES[a.rol]||{}).t||a.rol||'')+'</td>'+
-        '<td><b>'+a.accion+'</b></td><td class="num">'+(a.referencia||'—')+'</td>'+
-        '<td style="font-size:13px">'+(a.detalle||'')+'</td>'+
-        '<td class="num der">'+(a.monto?S(a.monto):'')+'</td></tr>';
-    }).join('')
-    :'<tr><td colspan="7" class="vacio"><b>Sin movimientos</b>No hay actividad en el periodo elegido.</td></tr>');
+  $('audTabla').innerHTML=lista.length
+    ? lista.map(function(a){
+        var f=new Date(a.creado);
+        return '<div class="movA">'+
+          '<div class="l1"><b>'+nombreAccion(a.accion)+'</b>'+
+            (a.referencia?'<span class="rf">'+esc(a.referencia)+'</span>':'')+
+            '<span class="hr">'+f.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'})+' '+
+            f.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+'</span></div>'+
+          '<div class="l2">'+esc(a.usuario_nom||'—')+
+            '<span class="rl">'+((ROLES[a.rol]||{}).t||a.rol||'')+'</span>'+
+            (a.monto?'<span class="mt">'+S(a.monto)+'</span>':'')+'</div>'+
+          (a.detalle?'<div class="l3">'+esc(a.detalle)+'</div>':'')+
+        '</div>';
+      }).join('')
+    : '<div class="vacio"><b>Sin movimientos</b>Prueba con otro periodo, área o filtro.</div>';
 }
 
 /* ============================================================
@@ -3879,6 +4119,9 @@ setInterval(function(){
      }
    },function(){});
 },4000);
+
+/* Ventanilla y administradores: revisar si hay anulaciones pedidas. */
+setInterval(function(){ try{ revisarSolicitudes() }catch(e){} },20000);
 
 setInterval(function(){
   if(!OT_NUM||!OT_EST)return;
@@ -5354,6 +5597,12 @@ function renderAcciones(){
       : '<span class="hint" style="align-self:center">No se entrega hasta que la OT esté pagada.</span>';
   }
 
+  /* Anular o pedir que anulen, según el perfil. Pagada no se toca. */
+  if(puedeAnularDirecto(EST_OT_ACT,EST_TALLER))
+    botones+=' <button class="btn chico sec" style="color:var(--rojo)" onclick="anularOrden()">Anular la orden</button>';
+  else if(puedeSolicitar(EST_OT_ACT,EST_TALLER))
+    botones+=' <button class="btn chico sec" style="color:var(--rojo)" onclick="solicitarAnulacionOrden()">Solicitar anulación</button>';
+
   $('gAvisos').innerHTML=avisos;
   $('gBotones').innerHTML='';
   var acc=document.getElementById('gAccPanel');
@@ -5946,6 +6195,172 @@ function fichaOrden(mod,o,todos,campos,criterio,acciones){
       return '<div class="dt"><span>'+c[0]+'</span><b>'+c[1]+'</b></div>' }).join('')+
       (acciones||'')+'</div>':'')+
   '</div>';
+}
+
+/* ============ ANULACIONES ============
+   Reglas acordadas:
+   · administrador general y de local anulan directo, salvo orden pagada
+   · jefe de taller solicita, no anula
+   · ventanilla ejecuta la solicitud, esté despachado el repuesto o no
+   La solicitud puede ser de la orden entera o de una línea suelta. */
+var SOLIC_PEND=[],SOLIC_VISTAS={};
+
+function rolEs(){ return (SESION&&SESION.rol)||'' }
+function esAdminTaller(){ return rolEs()==='admin_general'||rolEs()==='admin_local' }
+function esVentanilla(){ return rolEs()==='ventanilla' }
+function esJefeTaller(){ return rolEs()==='jefe_taller' }
+/* Pagada es el único estado que no se puede anular. */
+function ordenPagada(est_ot,est_taller){
+  return est_ot==='PAGADA'||est_taller==='CANCELADO';
+}
+function puedeAnularDirecto(est_ot,est_taller){
+  return esAdminTaller()&&!ordenPagada(est_ot,est_taller);
+}
+function puedeSolicitar(est_ot,est_taller){
+  return (esJefeTaller()||esVentanilla())&&!ordenPagada(est_ot,est_taller);
+}
+
+/* ---- crear una solicitud ---- */
+function nuevaSolicitud(datos,cb){
+  if(!sb||!SESION){alert('Sin conexión.');return}
+  var reg={
+    sede_id:SEDE_ACTIVA,orden_numero:datos.ot,placa:datos.placa||null,
+    cliente:datos.cliente||null,vehiculo:datos.veh||null,
+    tipo:datos.tipo,linea_id:datos.linea_id||null,linea_desc:datos.linea_desc||null,
+    linea_importe:(datos.importe===undefined?null:datos.importe),
+    despachado:!!datos.despachado,motivo:datos.motivo,
+    pide_id:SESION.id||null,pide_nom:SESION.nombre,pide_rol:SESION.rol,estado:'PENDIENTE'
+  };
+  sb.from('solicitudes_anulacion').insert(reg).select('id').then(function(r){
+    if(r.error){alert('No se pudo registrar la solicitud: '+r.error.message);return}
+    auditar('SOLICITA_ANULACION','orden',datos.ot,
+      (datos.tipo==='ORDEN'?'Orden completa':'Línea: '+(datos.linea_desc||''))+' · '+datos.motivo);
+    conex('Solicitud enviada a ventanilla');
+    cb&&cb();
+  },function(){alert('Sin conexión al registrar la solicitud.')});
+}
+function pedirMotivoAnulacion(titulo){
+  var m=prompt(titulo+'\n\nMotivo (obligatorio, mínimo 5 caracteres):');
+  if(m===null)return null;
+  if(!m||m.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return null}
+  return m.trim();
+}
+
+/* ---- solicitar la anulación de la orden abierta ---- */
+function solicitarAnulacionOrden(){
+  if(!OT_NUM)return;
+  var m=pedirMotivoAnulacion('Solicitar la anulación de la orden '+OT_NUM);
+  if(!m)return;
+  nuevaSolicitud({ot:OT_NUM,tipo:'ORDEN',motivo:m,
+    placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
+    function(){ renderGestion() });
+}
+/* ---- solicitar quitar una línea del presupuesto ---- */
+function solicitarAnulacionLinea(tipo,i){
+  var l=(tipo==='MO'?LINEAS_SERV:LINEAS_REP)[i];
+  if(!l||!OT_NUM)return;
+  var m=pedirMotivoAnulacion('Solicitar que ventanilla quite: '+l.desc);
+  if(!m)return;
+  nuevaSolicitud({ot:OT_NUM,tipo:'LINEA',linea_id:l.id_bd||null,linea_desc:l.desc,
+    importe:Number(l.precio||0)*Number(l.cant||1),motivo:m,
+    placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
+    function(){ pintarPresupuestoLista() });
+}
+
+/* ---- ventanilla: traer lo pendiente de su local ---- */
+function cargarSolicitudes(cb){
+  if(!sb){cb&&cb([]);return}
+  sb.from('solicitudes_anulacion').select('*')
+    .eq('sede_id',SEDE_ACTIVA).eq('estado','PENDIENTE')
+    .order('creado',{ascending:false}).limit(50)
+    .then(function(r){
+      SOLIC_PEND=(r.error?[]:(r.data||[]));
+      cb&&cb(SOLIC_PEND);
+    },function(){ cb&&cb([]) });
+}
+/* Aviso flotante: solo para quien puede ejecutar la anulación. */
+function revisarSolicitudes(){
+  if(!sb||!SESION)return;
+  if(!(esVentanilla()||esAdminTaller()))return;
+  cargarSolicitudes(function(lista){
+    pintarAvisoSolicitudes(lista);
+    try{ if(VENT_TAB==='ordenes'&&!document.getElementById('ventHome').classList.contains('oculto'))ventLista() }catch(e){}
+  });
+}
+function pintarAvisoSolicitudes(lista){
+  var z=document.getElementById('avisoSolic');
+  if(!z)return;
+  var nuevas=lista.filter(function(s){return !SOLIC_VISTAS[s.id]});
+  if(!lista.length){z.innerHTML='';z.classList.add('oculto');return}
+  z.classList.remove('oculto');
+  z.innerHTML='<div class="popSolic'+(nuevas.length?' nueva':'')+'">'+
+    '<div class="cab"><b>'+lista.length+(lista.length===1?' anulación pedida':' anulaciones pedidas')+'</b>'+
+    '<button class="x" onclick="cerrarAvisoSolic()">✕</button></div>'+
+    lista.slice(0,4).map(function(s){
+      return '<div class="it">'+
+        '<div class="t">'+(s.tipo==='ORDEN'?'<b style="color:var(--rojo)">Orden completa</b>':esc(s.linea_desc||'Línea'))+
+          ' · '+otCorto(s.orden_numero)+'</div>'+
+        '<div class="m">'+esc(s.motivo||'')+'</div>'+
+        '<div class="q">Pidió '+esc(s.pide_nom||'')+'</div>'+
+        '<div class="b">'+
+          '<button class="btn chico" onclick="resolverSolicitud('+s.id+',true)">Anular</button>'+
+          '<button class="btn chico sec" onclick="resolverSolicitud('+s.id+',false)">Rechazar</button>'+
+        '</div></div>';
+    }).join('')+
+    (lista.length>4?'<div class="hint" style="margin:6px 0 0">y '+(lista.length-4)+' más en la bitácora</div>':'')+
+  '</div>';
+}
+function cerrarAvisoSolic(){
+  SOLIC_PEND.forEach(function(s){SOLIC_VISTAS[s.id]=1});
+  var z=document.getElementById('avisoSolic');
+  if(z){z.innerHTML='';z.classList.add('oculto')}
+}
+/* ---- ejecutar o rechazar ---- */
+function resolverSolicitud(id,anula){
+  var s=null;
+  SOLIC_PEND.forEach(function(x){if(x.id===id)s=x});
+  if(!s)return;
+  if(!(esVentanilla()||esAdminTaller())){alert('Solo ventanilla o un administrador resuelven una anulación.');return}
+  var nota='';
+  if(!anula){
+    nota=prompt('¿Por qué no se anula? (obligatorio)');
+    if(nota===null)return;
+    if(!nota||nota.trim().length<5){alert('Escribe el motivo del rechazo.');return}
+    nota=nota.trim();
+  } else if(!confirm((s.tipo==='ORDEN'
+      ? 'Se anulará la orden '+s.orden_numero+' completa.'
+      : 'Se quitará «'+(s.linea_desc||'la línea')+'» de la orden '+s.orden_numero+'.')+
+      '\n\nQueda registrado a tu nombre. ¿Continuar?')) return;
+
+  var upd={estado:anula?'ANULADA':'RECHAZADA',resuelve_id:SESION.id||null,
+           resuelve_nom:SESION.nombre,resuelto_el:new Date().toISOString(),
+           nota_resuelve:nota||null};
+  sb.from('solicitudes_anulacion').update(upd).eq('id',id).then(function(r){
+    if(r.error){alert('No se pudo guardar: '+r.error.message);return}
+    if(anula){
+      if(s.tipo==='ORDEN'){
+        sb.from('ordenes').update({estado:'ANULADO',estado_taller:'ANULADO',estado_ot:'ANULADA'})
+          .eq('numero',s.orden_numero).then(function(){},function(){});
+      } else if(s.linea_id){
+        sb.from('orden_detalle').update({anulada:true,anulada_el:new Date().toISOString(),
+          anulada_por:SESION.nombre,anulada_motivo:s.motivo,cobrado:false,stock_ok:false})
+          .eq('id',s.linea_id).then(function(){},function(){});
+      }
+    }
+    auditar(anula?'ANULA_PEDIDO':'RECHAZA_ANULACION','orden',s.orden_numero,
+      (s.tipo==='ORDEN'?'Orden completa':'Línea: '+(s.linea_desc||''))+
+      ' · pidió '+(s.pide_nom||'')+(nota?' · '+nota:''),
+      s.linea_importe||null);
+    conex(anula?'Anulación ejecutada':'Solicitud rechazada');
+    revisarSolicitudes();
+    try{ if(VENT_OT)ventAbrir(VENT_OT.id) }catch(e){}
+  },function(){alert('Sin conexión.')});
+}
+/* ¿esta orden tiene algo pendiente de anular? */
+function solicPendienteDe(numero){
+  var n=0;
+  SOLIC_PEND.forEach(function(s){ if(s.orden_numero===numero)n++ });
+  return n;
 }
 
 /* ============ LOCALES · selector, prefijos y leyenda ============
@@ -6837,6 +7252,7 @@ function ventTab(t){
   ventLista();
 }
 function pintarVentanilla(){
+  try{ revisarSolicitudes() }catch(e){}
   VENT_OT=null;
   $('ventDetalle').classList.add('oculto');
   $('ventHome').classList.remove('oculto');
@@ -6876,7 +7292,10 @@ function ventLista(){
                  (o.estado_taller==='EN_DIAGNOSTICO'?'En diagnóstico':'Recibido')+' · sin OT</span>'
                :o.estado_ot==='DEF_ENVIADA'?'<span class="eti e3">Final enviada</span>'
                :'<span class="eti e4">'+(o.estado_ot==='PRELIM2_APROBADA'?'Prelim. 2 aprobada':'Prelim. aprobada')+'</span>';
-        return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
+        var pend=solicPendienteDe(o.ot);
+        return '<tr'+(pend?' style="background:var(--rojo-cl)"':'')+'>'+
+        '<td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+
+          (pend?'<div style="font-size:10px;color:var(--rojo);font-weight:700">pendiente de anular</div>':'')+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
         '<td data-l="Cliente">'+o.cliente+'</td><td data-l="Estado">'+chip+'</td>'+
         '<td class="num der'+(o.mins>1440?' alto':'')+'" data-l="En taller" style="white-space:nowrap">'+tiempo(o.mins)+'</td>'+
@@ -7907,7 +8326,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=132;
+var APP_VER=133;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
