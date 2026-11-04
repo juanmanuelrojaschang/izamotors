@@ -1,4 +1,4 @@
-<!--IZAV:153-->
+<!--IZAV:154-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -390,6 +390,10 @@ body.sinScroll{overflow:hidden}
 .drawer .cerrar{background:transparent;font-size:20px;color:var(--mudo);margin-left:auto;padding:4px 8px}
 .mod-t{font-family:'Barlow Condensed',Impact,sans-serif;font-size:13px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--mudo);margin:14px 0 6px}
+.mod-i .cnt{float:right;min-width:19px;height:19px;line-height:19px;text-align:center;
+  background:var(--rojo);color:#fff;border-radius:10px;font-size:11px;font-weight:800;padding:0 5px}
+.mod-i.on .cnt{background:#fff;color:var(--rojo)}
+.mod-i .cnt:empty{display:none}
 .mod-i{display:block;width:100%;text-align:left;background:var(--gris);border:1px solid var(--borde);
   border-radius:10px;padding:12px 13px;margin-bottom:6px;font-weight:600;font-size:14px;color:var(--tinta)}
 .mod-i.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
@@ -513,6 +517,49 @@ body.sinScroll{overflow:hidden}
 .adicF .ln+.ln{margin-top:6px;padding-top:6px;border-top:1px dashed var(--borde)}
 .adicF .ln.ok2{color:#0B6E3F}
 .adicF .sb{display:block;font-size:11px;color:var(--mudo);margin-top:2px}
+/* La tabla del presupuesto en celular: el botón de quitar se salía del
+   bloque oscuro porque la tabla era más ancha que la pantalla. */
+.presT{width:100%;table-layout:fixed}
+.presT th:nth-child(2),.presT td:nth-child(2){width:62px}
+.presT th:nth-child(3),.presT td:nth-child(3){width:84px}
+.presT th:nth-child(4),.presT td:nth-child(4){width:76px}
+.presT th:nth-child(5),.presT td:nth-child(5){width:44px;text-align:right}
+.presT td{word-break:break-word}
+.presT input{max-width:100%}
+.presT .btn{padding:0 8px;min-height:34px;width:auto}
+@media(max-width:600px){
+  .presT,.presT tbody,.presT tr,.presT td,.presT th{display:block;width:auto}
+  .presT thead,.presT tr>th{display:none}
+  .presT tr{position:relative;padding:9px 46px 9px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+  .presT td{padding:2px 0}
+  .presT tr:not(.totalRow) td:nth-child(2),
+  .presT tr:not(.totalRow) td:nth-child(3){display:inline-block;width:auto;margin-right:9px;vertical-align:middle}
+  .presT tr:not(.totalRow) td:nth-child(2):before{content:'Cant ';font-size:10px;opacity:.6}
+  .presT tr:not(.totalRow) td:nth-child(3):before{content:'P. unit ';font-size:10px;opacity:.6}
+  .presT tr:not(.totalRow) td:nth-child(4){display:inline-block;width:auto;font-size:14px;
+    white-space:nowrap;vertical-align:middle}
+  .presT tr:not(.totalRow) td:nth-child(2) input{width:56px}
+  .presT tr:not(.totalRow) td:nth-child(3) input{width:76px}
+  .presT td:nth-child(5){position:absolute;right:0;top:10px;width:auto;padding:0}
+  .presT td:nth-child(5):empty{display:none}
+  .presT .btn{min-height:30px;padding:0 9px;font-size:12px}
+  .presT td[colspan]{padding-top:12px}
+  .presT tr.totalRow{padding:9px 0;display:flex;justify-content:space-between;align-items:center}
+  .presT tr.totalRow td{display:block;padding:0}
+  .presT tr.totalRow td:empty{display:none}
+  .presT tr:has(td[colspan="5"]){border-bottom:0;padding-right:0}
+}
+.tituloVig{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;
+  text-transform:uppercase;letter-spacing:.02em;color:#fff;margin:2px 0 10px;line-height:1.1}
+.tituloVig span{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;
+  text-transform:none;letter-spacing:0;color:#9AA3AE;margin-top:3px}
+.adicF .tog{cursor:pointer}
+.adicF .fl{display:block;margin-top:7px;font-size:11.5px;font-weight:700;color:var(--rojo)}
+.adicLista{margin-top:10px;padding-top:9px;border-top:1px solid var(--borde)}
+.adicLista .it{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+  padding:4px 0;color:var(--tinta)}
+.adicLista .it.ok{color:#0B6E3F}
+.adicLista .it.tot{margin-top:6px;padding-top:7px;border-top:1px dashed var(--borde);font-weight:700}
 .notaInt{display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#8A5A00;
   background:#FFF6E0;border-left:3px solid #E0A106;border-radius:0 5px 5px 0;padding:3px 7px;
   white-space:normal;max-width:320px}
@@ -843,7 +890,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 153</span>
+  <span class="demo-tag">versión 154</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1201,9 +1248,9 @@ tr.sel td{background:var(--rojo-cl)}
             <button class="btn chico" onclick="enviarPreliminar()">📤 Enviar PRELIMINAR</button>
           </div>
           <div class="via">
-            <label>B · Iniciar sin visto bueno</label>
-            <div class="hint" style="margin:0">Cuando el cliente no aprueba por el link.
-              Pide comentario obligatorio y registra quién autorizó.</div>
+            <label>B · Aprobar sin WhatsApp</label>
+            <div class="hint" style="margin:0">Cuando el cliente aprueba sin usar el link:
+              presencialmente, por teléfono o por flota. Preguntará cómo aprobó y lo deja registrado.</div>
             <button class="btn chico ok" onclick="continuarSinConfirmar()">✓ Aprobar OT</button>
           </div>
         </div>
@@ -1750,7 +1797,10 @@ var APP_URL='';
 var MODULOS={
   taller:{t:'Módulo Taller',vistas:[
     {v:'recepcion',t:'Clientes'},
-    {v:'ventanilla',t:'Ventanilla'},{v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
+    {v:'ventanilla',t:'Ventanilla'},
+    {v:'ventanilla',t:'Observaciones',tab:'observ'},
+    {v:'ventanilla',t:'Anulaciones',tab:'anul'},
+    {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
     {v:'taller',t:'Taller'},{v:'tienda',t:'Tienda'},{v:'productividad',t:'Productividad'},{v:'bitacora',t:'Bitácora y transacciones'}]},
   configuracion:{t:'Configuración',vistas:[
@@ -1778,16 +1828,21 @@ function pintarDrawer(){
     if(!subs.length)return;
     html+='<div class="mod-t">'+MODULOS[m].t+'</div>';
     subs.forEach(function(x){
-      html+='<button class="mod-i'+(VISTA_ACT===x.v?' on':'')+'" '+
-        'onclick="irDesdeMenu(\''+m+'\',\''+x.v+'\')">'+x.t+'</button>';
+      /* algunas entradas abren una bandeja dentro de su vista */
+      var on=(VISTA_ACT===x.v)&&(x.tab?VENT_TAB===x.tab:(x.v!=='ventanilla'||VENT_TAB==='ordenes'));
+      html+='<button class="mod-i'+(on?' on':'')+'" '+
+        'onclick="irDesdeMenu(\''+m+'\',\''+x.v+'\','+(x.tab?'\''+x.tab+'\'':'null')+')">'+x.t+
+        (x.tab==='observ'?'<span class="cnt" id="cntObsMenu"></span>':'')+
+        (x.tab==='anul'?'<span class="cnt" id="cntAnuMenu"></span>':'')+'</button>';
     });
   });
   document.getElementById('drawerMenu').innerHTML=html;
 }
-function irDesdeMenu(m,v){
+function irDesdeMenu(m,v,tab){
   MODULO_ACT=m;
   document.getElementById('drawer').classList.remove('on');
   ir(v);
+  if(tab)try{ ventTab(tab) }catch(e){}
 }
 function vistasPermitidas(){
   return (ROLES[SESION?SESION.rol:'']||{}).vistas||['recepcion'];
@@ -2460,6 +2515,9 @@ function cargarCatalogoV2(){
   },function(r){conex('No se pudo cargar el catálogo'+((r&&r.message)?': '+r.message:''),true)});
 }
 var LINEAS_SERV=[];
+/* ¿el detalle que hay en memoria es el completo de la base? Mientras
+   sea false, guardar NO borra: solo agrega lo nuevo. */
+var LINEAS_CARGADAS=false;
 function pintarPresupuesto(){
   /* el catálogo puede no haber llegado todavía: sin él no hay familias */
   if(!SERVICIOS.length)cargarCatalogoV2();
@@ -2833,9 +2891,10 @@ function pintarPresupuestoLista(){
     }).join('');
   }
   $('presLista').innerHTML=filas
-    ? '<table style="margin-top:8px"><tr><th>Concepto</th><th class="der">Cant</th>'+
+    ? (AGREGANDO?'<div class="tituloVig">Orden vigente<span>lo que ya está aprobado · lo nuevo se suma abajo</span></div>':'')+
+      '<table class="presT" style="margin-top:8px"><tr><th>Concepto</th><th class="der">Cant</th>'+
       '<th class="der">P. unit</th><th class="der">Subtotal</th><th></th></tr>'+filas+
-      '<tr style="background:var(--gris)"><td colspan="3"><b>Total con IGV</b></td>'+
+      '<tr class="totalRow" style="background:var(--gris)"><td colspan="3"><b>Total con IGV</b></td>'+
       '<td class="num der"><b id="presTotal" style="color:var(--rojo)">'+S(t.tot)+'</b></td><td></td></tr></table>'
     : '<div class="hint" style="margin-top:8px">Aún no hay nada en el presupuesto.</div>';
 }
@@ -4580,6 +4639,9 @@ function guardarOrden(){
 function abrirOrden(ot){
   var d=DB.get(ot);if(!d)return;
   SESION_ACT=true;
+  /* lo guardado en este equipo puede ser parcial: hasta confirmarlo
+     contra la base, el detalle no se considera completo */
+  LINEAS_CARGADAS=false;
   OT_NUM=d.ot;$('gOT').textContent=d.ot;
   ORD={num:d.ot,placa:d.placa,veh:d.veh,cliente:d.cliente,tel:d.tel,creada:d.creada,
        km:Number(d.km)||0};
@@ -4605,9 +4667,10 @@ function abrirOrden(ot){
 }
 /* La base es la fuente de verdad: al reabrir, se traen estado, mecánico
    y líneas, y se pisa lo que el navegador tenía guardado. */
-function cargarLineasOrden(ordenId){
+function cargarLineasOrden(ordenId,cb){
   cargarLineasBD(ordenId,function(lin){
-    if(!lin.length)return;
+    LINEAS_CARGADAS=true;
+    if(!lin.length){cb&&cb();return}
     LINEAS_SERV=[];LINEAS_REP=[];
     lin.forEach(function(l){
       /* Al recuperar no se pierden los códigos: si se borraran aquí,
@@ -4627,6 +4690,7 @@ function cargarLineasOrden(ordenId){
     try{var t=totalesV2();$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
     guardarOrden();
     conex('Detalle recuperado de la base');
+    cb&&cb();
   });
 }
 function sincronizarDesdeBase(){
@@ -5839,6 +5903,7 @@ function recibir(){
     });
   }
   BITACORA={};
+  LINEAS_CARGADAS=true;
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
   TIENE_P2=false;PRELIM_REV=0;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
   HITOS['T_REGISTRO']=selloHora();
@@ -6155,20 +6220,37 @@ function adicResumen(){
 function nAdic(n,m){ return n+' '+(n===1?'adicional':'adicionales')+' · '+S(Math.round(m)) }
 /* El texto cuelga del flujo de la OT: la preliminar aprobada sigue
    siendo la que es, y debajo se ve qué se sumó después. */
+var ADIC_ABIERTO=false;
+function adicToggle(){ ADIC_ABIERTO=!ADIC_ABIERTO; renderFlujos() }
+function adicDetalle(){
+  var l=LINEAS_SERV.concat(LINEAS_REP).filter(function(x){return x.adic});
+  if(!l.length)return '';
+  return '<div class="adicLista">'+l.map(function(x){
+    var m=(Number(x.precio)||0)*(Number(x.cant)||1);
+    return '<div class="it'+(x.adic==='OK'?' ok':'')+'">'+
+      '<span>'+(x.adic==='OK'?'✓':'•')+' '+esc(x.desc)+(x.cant>1?' ×'+x.cant:'')+'</span>'+
+      '<b>'+S(Math.round(m))+'</b></div>';
+  }).join('')+
+  '<div class="it tot"><span>Total de la orden · con adicionales</span><b>'+S(totalesV2().tot)+'</b></div>'+
+  '<div class="hint" style="margin:7px 0 0">La boleta sale consolidada: estos ítems van en la misma '+
+  'que lo ya aprobado, no en una aparte.</div></div>';
+}
 function bloqueAdicFlujo(){
   var r=adicResumen();
   if(!r.pend&&!r.ok)return '';
   var puede=puedeEjecutar('PRELIM_APROBADA');
-  var h='<div class="adicF'+(r.pend?' pend':'')+'">';
-  if(r.pend){
+  var h='<div class="adicF'+(r.pend?' pend':'')+'">'+
+    '<div class="tog" onclick="adicToggle()">';
+  if(r.pend)
     h+='<div class="ln"><b>Adicionales pendientes</b> · '+nAdic(r.pend,r.pendMonto)+
        '<span class="sb">sobre la '+(TIENE_P2?'preliminar 2':'preliminar')+' aprobada</span></div>';
-    if(puede&&!AGREGANDO)
-      h+='<button class="btn chico ok" style="margin-top:8px" onclick="vbAdicionales()">'+
-         'Registrar VB del cliente</button>';
-  }
   if(r.ok)
     h+='<div class="ln ok2"><b>Adicionales aprobados</b> · '+nAdic(r.ok,r.okMonto)+'</div>';
+  h+='<span class="fl">'+(ADIC_ABIERTO?'▲ ocultar el detalle':'▼ ver el detalle')+'</span></div>';
+  if(ADIC_ABIERTO)h+=adicDetalle();
+  if(r.pend&&puede&&!AGREGANDO)
+    h+='<button class="btn chico ok" style="margin-top:9px;width:100%" onclick="vbAdicionales()">'+
+       'Registrar VB del cliente</button>';
   return h+'</div>';
 }
 function vbAdicionales(){
@@ -6183,12 +6265,25 @@ function vbAdicionales(){
         HITOS['ADIC_VB']=selloHora();
         auditar('APRUEBA_ADICIONAL','orden',OT_NUM,nAdic(r.pend,r.pendMonto),r.pendMonto);
         guardarDetalleBD();guardarFlujos();guardarOrden();
+        snapshotPorNumero(OT_NUM,EST_OT_ACT||'PRELIM_APROBADA',
+          LINEAS_SERV.concat(LINEAS_REP),totalesV2().tot,
+          'Adicionales aprobados por el cliente · orden completa');
         renderFlujos();
         conex('Adicionales aprobados');
       }},
      {t:'Todavía no',cls:'sec'}]);
 }
 function agregarAOT(){
+  /* Sin el detalle completo a la vista, lo que se agregue se sumaría a
+     una orden que parece vacía. Primero se trae de la base. */
+  if(!LINEAS_CARGADAS&&sb&&OT_NUM){
+    conex('Trayendo el detalle de la orden…');
+    sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
+      if(!r.data){LINEAS_CARGADAS=true;agregarAOT();return}
+      cargarLineasOrden(r.data.id,function(){ pintarPresupuestoLista(); agregarAOT() });
+    },function(){ conex('Sin conexión: no se puede agregar ahora',true) });
+    return;
+  }
   pregunta('Agregar a la orden',
     'Se suman servicios o repuestos <b>encima de la '+(TIENE_P2?'preliminar 2':'preliminar')+
     ' aprobada</b>. El flujo de la OT no se mueve y no se crea una preliminar nueva: '+
@@ -6205,9 +6300,16 @@ function agregarAOT(){
 function terminarAdicionales(){
   AGREGANDO=false;
   guardarDetalleBD();guardarOrden();
+  var r=adicResumen(),t=totalesV2();
+  /* La etapa guarda la orden ENTERA, no solo lo que se acaba de sumar:
+     la boleta del cliente es una sola. */
+  if(r.pend||r.ok)
+    snapshotPorNumero(OT_NUM,EST_OT_ACT||'PRELIM_APROBADA',
+      LINEAS_SERV.concat(LINEAS_REP),t.tot,
+      'Orden con adicionales · '+r.ok+' aprobados · '+r.pend+' por aprobar');
   renderFlujos();
-  var r=adicResumen();
-  conex(r.pend?nAdic(r.pend,r.pendMonto)+' por aprobar':'Sin adicionales nuevos');
+  conex(r.pend?nAdic(r.pend,r.pendMonto)+' por aprobar · total S/ '+t.tot
+              :'Sin adicionales nuevos');
 }
 function avisoCruce(){
   if(EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO')
@@ -6827,6 +6929,7 @@ function irDiagnostico(){
 
 function reset(){
   BORR.borrar();
+  LINEAS_CARGADAS=false;
   MODO_REC='deja';
   apagarCamara();try{fotoCerrar()}catch(e){}
   clearInterval(tint);$('crono').classList.remove('on');
@@ -7372,8 +7475,9 @@ function revisarSolicitudes(){
   });
 }
 function pintarAvisoSolicitudes(lista){
-  var c=document.getElementById('cntAnu');
-  if(c)c.textContent=lista.length?String(lista.length):'';
+  ['cntAnu','cntAnuMenu'].forEach(function(i){
+    var e=document.getElementById(i);if(e)e.textContent=lista.length?String(lista.length):'';
+  });
   var z=document.getElementById('avisoSolic');
   if(!z)return;
   var nuevas=lista.filter(function(s){return !SOLIC_VISTAS[s.id]});
@@ -8276,6 +8380,9 @@ function guardarDetalleBD(){
   sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
     if(!r.data)return;
     var oid=r.data.id,t=totalesV2();
+    /* Sin la certeza de tener el detalle completo, se agrega sin borrar:
+       perder líneas ajenas es mucho peor que repetir una. */
+    if(!LINEAS_CARGADAS){ seguir(); return }
     /* Antes se borraba TODO el detalle y se reescribía con lo del taller.
        Con ventanilla cargando repuestos en diagnóstico eso los borraba,
        así que ahora se respeta lo que ella agregó y sigue en la lista. */
@@ -8583,8 +8690,10 @@ function ventPintarLista(res,lista){
 var OBS_TAB='pend',OBS=[];
 /* Los dos números de las pestañas, sin tener que entrar a cada bandeja. */
 function ventContadores(){
-  var a=document.getElementById('cntAnu');
-  if(a)a.textContent=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  var n=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  ['cntAnu','cntAnuMenu'].forEach(function(i){
+    var e=document.getElementById(i);if(e)e.textContent=n;
+  });
   var z=document.getElementById('cntObs');
   if(!z||!sb)return;
   sb.from('ordenes').select('nota_interna_el,nota_atendida_el')
@@ -8594,7 +8703,9 @@ function ventContadores(){
       var n=(r.data||[]).filter(function(o){
         return !o.nota_atendida_el || new Date(o.nota_interna_el||0)>new Date(o.nota_atendida_el);
       }).length;
-      z.textContent=n?String(n):'';
+      ['cntObs','cntObsMenu'].forEach(function(i){
+        var e=document.getElementById(i);if(e)e.textContent=n?String(n):'';
+      });
     },function(){});
 }
 function obsPend(o){
@@ -8628,7 +8739,9 @@ function obsPintar(){
   var res=$('ventLista');if(!res)return;
   var pend=OBS.filter(obsPend), hechas=OBS.filter(function(o){return !obsPend(o)});
   var lista=(OBS_TAB==='pend')?pend:hechas;
-  var c=document.getElementById('cntObs');if(c)c.textContent=pend.length?String(pend.length):'';
+  ['cntObs','cntObsMenu'].forEach(function(i){
+    var e=document.getElementById(i);if(e)e.textContent=pend.length?String(pend.length):'';
+  });
   res.innerHTML='<div class="bandeja">'+
     '<div class="sub">Lo que el jefe de taller dejó anotado para ventanilla. '+
       'Resuélvelo y márcalo como atendido.</div>'+
@@ -8713,8 +8826,9 @@ function anuVentTab(t){ ANU_TAB=t; anuVentPintar() }
 function anuVentPintar(){
   var res=$('ventLista');if(!res)return;
   var lista=(ANU_TAB==='pend')?SOLIC_PEND:ANU_HECHAS;
-  var c=document.getElementById('cntAnu');
-  if(c)c.textContent=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  ['cntAnu','cntAnuMenu'].forEach(function(i){
+    var e=document.getElementById(i);if(e)e.textContent=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  });
   res.innerHTML='<div class="bandeja">'+
     '<div class="sub">Lo que el jefe de taller pidió anular. Revisa el motivo, abre la OT si hace falta y anúlalo.</div>'+
     '<div class="modo" style="max-width:420px;margin-bottom:12px">'+
@@ -9493,10 +9607,12 @@ function aseFila(l,i){
           '<label>Código 2<input value="'+(l.cod2||'')+'" placeholder="cód. 2" style="'+mini+'" '+off+
             'oninput="aseCod2('+i+',this.value)"></label>'
         : '')+
+      '<label>Cantidad<input type="number" min="1" step="1" value="'+(l.cant||1)+'" style="'+mini+'" '+off+
+        'oninput="aseCant('+i+',this.value)"></label>'+
       '<label>Precio<input type="number" min="0" value="'+l.final+'" style="'+mini+'" '+off+
         'oninput="asePrecio('+i+',this.value)"></label>'+
       '<div class="ancho vl-pie">'+
-        '<span class="hint" style="margin:0">Cantidad '+l.cant+' · el subtotal se actualiza arriba</span>'+
+        '<span class="hint" style="margin:0">El subtotal se actualiza arriba</span>'+
         (l.incluir
           ? '<button class="btn chico sec" style="color:var(--rojo)" onclick="aseQuitar('+i+')">✕ Retirar</button>'
           : '<button class="btn chico sec" onclick="aseRestaurar('+i+')">↺ Restaurar</button>')+
@@ -9515,15 +9631,34 @@ function aseFilas(){
 function aseDesc(i,v){ASE_LIN[i].desc=v}
 function aseCod(i,v){ASE_LIN[i].cod_alm=v.trim()}
 function aseCod2(i,v){ASE_LIN[i].cod2=v.trim()}
+function aseCant(i,v){
+  ASE_LIN[i].cant=Math.max(1,Math.round(Number(v)||1));
+  var c=document.querySelectorAll('#asesorLista .vl-cant')[i];
+  if(c)c.textContent=ASE_LIN[i].cant+'×';
+  aseRefrescar();
+}
 function asePrecio(i,v){
   ASE_LIN[i].final=Number(v)||0;
+  aseRefrescar();
+}
+function aseRefrescar(){
   aseActualizarTotal();
+  var t=aseTotales();
   var subs=document.querySelectorAll('#asesorLista .asub');
   var orden=[];ASE_LIN.forEach(function(l,k){if(l.tipo==='MO')orden.push(k)});
   ASE_LIN.forEach(function(l,k){if(l.tipo!=='MO')orden.push(k)});
   orden.forEach(function(k,pos){
     var l=ASE_LIN[k];if(subs[pos])subs[pos].textContent=S(l.incluir?l.final*l.cant:0);
   });
+  /* la factura de abajo también: antes se quedaba con el monto viejo */
+  var k=document.querySelectorAll('#asesorLista .kpi-osc .v');
+  if(k.length>=3){k[0].textContent=S(t.sub);k[1].textContent=S(t.igv);k[2].textContent=S(t.tot)}
+  var fl=document.querySelectorAll('#asesorLista .fnl');
+  orden.forEach(function(kk,pos){
+    var l=ASE_LIN[kk];if(fl[pos])fl[pos].textContent=S(l.final*l.cant);
+  });
+  var bt=document.querySelector('#asesorLista .btn.ok');
+  if(bt&&/Cerrar como pagada/.test(bt.textContent))bt.textContent='Cerrar como pagada · '+S(t.tot);
 }
 function aseQuitar(i){
   var l=ASE_LIN[i];
@@ -9545,6 +9680,7 @@ function aseRestaurar(i){
   },function(){});
 }
 function aseActualizarTotal(){
+  if(!sb||!ASE_OT)return;
   var t=aseTotales();
   sb.from('ordenes').update({total_taller:t.tot}).eq('id',ASE_OT.id).then(function(){},function(){});
 }
@@ -9976,7 +10112,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=153;
+var APP_VER=154;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
