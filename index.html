@@ -1,4 +1,4 @@
-<!--IZAV:151-->
+<!--IZAV:153-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -148,6 +148,7 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .e2{color:#1A5FB4;background:#E4EEFB}
 .e3{color:#A8620A;background:#FCF0DA}
 .e4{color:var(--verde);background:#E3F4EB}
+.e5{color:#fff;background:var(--rojo)}
 
 .barra{height:9px;background:var(--gris2);border-radius:5px;overflow:hidden;margin-top:7px}
 .barra i{display:block;height:100%;background:var(--verde);border-radius:5px}
@@ -472,6 +473,34 @@ body.sinScroll{overflow:hidden}
   padding:9px 13px 11px;border-radius:0 0 10px 10px;border-top:1px solid var(--rojo)}
 .volverFi{display:block;width:100%;margin-top:8px;background:none;border:0;
   color:var(--rojo);font-weight:700;font-size:12.5px;text-align:left;padding:6px 0;min-height:36px}
+.modo.modo4{display:grid;grid-template-columns:repeat(4,1fr);max-width:620px}
+.modo.modo4 button{font-size:12.5px;padding:9px 4px}
+@media(max-width:600px){
+  .modo.modo4{grid-template-columns:1fr 1fr;gap:5px;background:none;padding:0}
+  .modo.modo4 button{border:1px solid var(--borde);border-radius:9px;background:#fff;min-height:44px}
+  .modo.modo4 button.on{border-color:var(--rojo);color:var(--rojo);font-weight:800;box-shadow:none}
+}
+.modo4 .cnt,.modo .cnt{display:inline-block;min-width:17px;height:17px;line-height:17px;margin-left:5px;
+  background:var(--rojo);color:#fff;border-radius:9px;font-size:10px;font-weight:800;padding:0 5px}
+.modo4 .cnt:empty{display:none}
+.bandeja .sub{color:var(--mudo);font-size:13px;margin:-2px 0 12px}
+.fichaB{border:1px solid var(--borde);border-radius:12px;padding:13px 15px;margin-bottom:11px;background:#fff}
+.fichaB.pend{border-color:var(--rojo);border-left-width:4px}
+.fichaB.lista{border-color:#BFE6CE}
+.fichaB .cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.fichaB .cab .ot{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px}
+.fichaB .cab .pl{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12.5px;color:var(--rojo)}
+.fichaB .cab .hr{margin-left:auto;font-size:11.5px;color:var(--mudo)}
+.fichaB .quien{font-size:12.5px;color:var(--mudo);margin-bottom:9px}
+.fichaB .cita{background:var(--gris);border-radius:8px;padding:9px 11px;font-size:13.5px;
+  line-height:1.45;color:var(--tinta);white-space:pre-wrap;word-break:break-word}
+.fichaB .cita.roja{background:var(--rojo-cl);color:var(--rojo-osc)}
+.fichaB .pie{font-size:11.5px;color:var(--mudo);margin-top:8px}
+.fichaB .hecho{font-size:12.5px;color:#0B6E3F;margin-top:9px;line-height:1.45}
+.fichaB .linea{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;margin:7px 0 2px}
+.fichaB .acc{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.fichaB .acc .btn{flex:1 1 130px;white-space:nowrap}
+@media(max-width:600px){ .fichaB .acc{display:grid;grid-template-columns:1fr} }
 .chipsPago{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .adicChip{display:inline-block;margin-top:0;font-size:10.5px;font-weight:700;color:var(--rojo-osc);
   background:var(--rojo-cl);border-radius:5px;padding:2px 7px;white-space:nowrap}
@@ -814,7 +843,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 151</span>
+  <span class="demo-tag">versión 153</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -829,12 +858,14 @@ tr.sel td{background:var(--rojo-cl)}
 </div>
 <div class="drawer" id="modalVB" onclick="if(event.target===this)cerrarMotivoVB()">
   <div class="panel" style="right:auto;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:360px;max-width:92vw;border-radius:14px">
-    <h3 class="sinbar" style="font-size:18px;margin-bottom:6px">Sin visto bueno del cliente</h3>
-    <div class="hint" style="margin:0 0 12px">Queda registrado quién autorizó y por qué.</div>
-    <label>Motivo</label>
+    <h3 class="sinbar" style="font-size:18px;margin-bottom:6px">Aprobar la OT</h3>
+    <div class="hint" style="margin:0 0 12px">Cómo aprobó el cliente. Queda registrado quién lo autorizó.</div>
+    <label>Tipo de aprobación</label>
     <select id="vbMotivo" onchange="document.getElementById('vbOtroZona').classList.toggle('oculto',this.value!=='Otro')">
       <option>Cliente acepta presencialmente</option>
+      <option>Cliente aprobó por WhatsApp</option>
       <option>Cliente de flota</option>
+      <option>Sin VB del cliente</option>
       <option>Otro</option>
     </select>
     <div id="vbOtroZona" class="oculto" style="margin-top:10px">
@@ -1173,7 +1204,7 @@ tr.sel td{background:var(--rojo-cl)}
             <label>B · Iniciar sin visto bueno</label>
             <div class="hint" style="margin:0">Cuando el cliente no aprueba por el link.
               Pide comentario obligatorio y registra quién autorizó.</div>
-            <button class="btn chico ok" onclick="continuarSinConfirmar()">Iniciar sin VB del cliente</button>
+            <button class="btn chico ok" onclick="continuarSinConfirmar()">✓ Aprobar OT</button>
           </div>
         </div>
 
@@ -1352,9 +1383,11 @@ tr.sel td{background:var(--rojo-cl)}
         <input type="date" id="ventHasta" onchange="ventLista()"></div>
       <div class="f-limpia"><button class="btn chico sec full" onclick="ventFechasLimpiar()">Limpiar</button></div>
     </div>
-    <div class="modo" style="max-width:360px;margin-bottom:12px">
-      <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes en curso</button>
-      <button id="ventTabC" onclick="ventTab('clientes')">Clientes recientes</button>
+    <div class="modo modo4" style="margin-bottom:12px">
+      <button id="ventTabO" class="on" onclick="ventTab('ordenes')">Órdenes</button>
+      <button id="ventTabB" onclick="ventTab('observ')">Observaciones<span class="cnt" id="cntObs"></span></button>
+      <button id="ventTabA" onclick="ventTab('anul')">Anulaciones<span class="cnt" id="cntAnu"></span></button>
+      <button id="ventTabC" onclick="ventTab('clientes')">Clientes</button>
     </div>
     <div id="ventLista"></div>
   </div>
@@ -3920,7 +3953,8 @@ function guardarCorreccion(){
   var antes=NOTA_INT;
   NOTA_INT=sint;
   if(sb&&OT_NUM)
-    sb.from('ordenes').update({nota_interna:sint||null}).eq('numero',OT_NUM)
+    sb.from('ordenes').update({nota_interna:sint||null,
+        nota_interna_el:sint?new Date().toISOString():null}).eq('numero',OT_NUM)
       .then(function(r){
         if(r&&r.error)$('editMsg').innerHTML='<div class="aviso rojo" style="margin:0">'+
           'No se pudo guardar: '+r.error.message+
@@ -4017,7 +4051,7 @@ var AREAS_AUD=[
     'EDITA_ORDEN','EDITA_OT','NOTA_INTERNA','AGREGA_ADICIONAL','APRUEBA_ADICIONAL','IMPRIME_PRESUPUESTO','ENVIA_DETALLE','AVANZA_SIN_CONFIRMAR',
     'SOLICITA_ANULACION']},
  {k:'ventanilla',t:'Ventanilla',a:['GUARDA_VENTANILLA','ENVIA_DEFINITIVO','DESPACHA','DEF_SIN_VB',
-    'ANULA_PEDIDO','RECHAZA_ANULACION']},
+    'ANULA_PEDIDO','RECHAZA_ANULACION','ATIENDE_OBSERVACION']},
  {k:'asesor',   t:'Asesor',     a:['GUARDA_ASESOR','COBRA_TARJETA','COBRA']},
  {k:'caja',     t:'Caja',       a:['COBRA','RECHAZA_VOUCHER']},
  {k:'config',   t:'Configuración',a:['IMPORTA_STOCK','IMPORTA_SERVICIOS','IMPORTA_USUARIOS',
@@ -4039,7 +4073,7 @@ var NOMBRE_ACC={
  GUARDA_ASESOR:'Asesor guardó',COBRA_TARJETA:'Cobro con tarjeta',COBRA:'Cobro',
  RECHAZA_VOUCHER:'Voucher rechazado',IMPORTA_STOCK:'Carga de inventario',IMPORTA_SERVICIOS:'Carga de servicios',
  IMPORTA_USUARIOS:'Carga de usuarios',IMPORTA_MECANICOS:'Carga de mecánicos',
- NOTA_INTERNA:'Nota interna del taller',AGREGA_ADICIONAL:'Adicionales abiertos',
+ NOTA_INTERNA:'Nota interna del taller',ATIENDE_OBSERVACION:'Observación atendida',AGREGA_ADICIONAL:'Adicionales abiertos',
  APRUEBA_ADICIONAL:'Adicionales aprobados',MARCA_PRUEBA:'Marcada como prueba',QUITA_PRUEBA:'Ya no es prueba',LOGIN:'Entrada al sistema',
  ANULA_ORDEN:'Orden anulada'
 };
@@ -5953,7 +5987,7 @@ function setTaller(k,nota){
 function setOT(k,nota){
   if(k.indexOf('PRELIM2')===0){TIENE_P2=true}
   armarFOT();
-  if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return}
+  if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return false}
   EST_OT_ACT=k;PANEL_SEL=null;EDITANDO_OT=false;AGREGANDO=false;
   HITOS['O_'+k]=selloHora();
   /* la aprobación preliminar (1 o 2) libera el trabajo en el taller */
@@ -5965,6 +5999,7 @@ function setOT(k,nota){
   guardarFlujos();
   auditar('OT_'+k,'orden',OT_NUM,nota||'');
   renderFlujos();renderGestion();
+  return true;
 }
 /* ¿este vehículo ya tiene una orden sin entregar? */
 function ordenAbiertaDe(vehId,cb){
@@ -6081,8 +6116,10 @@ function renderFlujos(){
         var cls = i<idx?'pasoi done':(i===idx?'pasoi act':'pasoi fut');
         if(PANEL_SEL&&PANEL_SEL.f===id&&PANEL_SEL.k===e.k)cls+=' sel';
         var hh=HITOS[pref+e.k]||((BITACORA[e.k]&&BITACORA[e.k].hora)||'');
-        var sinvb=HITOS['SINVB_'+e.k]?' <span class="eti e3" style="font-size:9px;padding:1px 6px">'+
-          etiquetaVBde(e.k).replace('aprobada ','').replace('sin VB del cliente','sin VB cliente')+'</span>':'';
+        var sinvb=(HITOS['SINVB_'+e.k]&&i<=idx)
+          ? ' <span class="eti e3" style="font-size:9px;padding:1px 6px">'+
+            etiquetaVBde(e.k).replace('aprobada ','').replace('sin VB del cliente','sin VB cliente')+'</span>'
+          : '';
         return '<div class="'+cls+'" onclick="verPaso(&quot;'+id+'&quot;,&quot;'+e.k+'&quot;)">'+
           '<span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
           '<span>'+e.ic+' '+e.t+sinvb+'</span>'+
@@ -6099,6 +6136,13 @@ function renderFlujos(){
 }
 /* Cuántos adicionales hay y en qué estado. Se cuenta sobre las líneas
    porque el lote puede crecer varias veces sobre la misma preliminar. */
+/* ¿el cliente ya aprobó alguna preliminar? Lo que habilita agregar
+   adicionales, aunque después se haya enviado una versión nueva. */
+function hayPrelimAprobada(){
+  if(HITOS['O_PRELIM_APROBADA']||HITOS['O_PRELIM2_APROBADA'])return true;
+  var i=idxOT(EST_OT_ACT);
+  return i>-1 && i>=idxOT('PRELIM_APROBADA');
+}
 function adicResumen(){
   var r={pend:0,pendMonto:0,ok:0,okMonto:0};
   LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
@@ -6233,10 +6277,11 @@ function renderPanel(){
   }
   if(iSel<iAct){ p.innerHTML=datosDelPaso(sel.f,sel.k,paso); return; }
   /* etapa futura */
+  var falta=lista[iAct+1]&&iSel>iAct+1 ? ' Antes viene <b>'+lista[iAct+1].t+'</b>.' : '';
   p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
-    '<div class="aviso info" style="margin:0">Todavía no corresponde. '+
-    'Ejecuta primero <b>'+((lista[iAct]||{}).t||'la etapa en curso')+'</b>'+
-    (puedeEjecutar(sel.k)?'.':' · esta etapa la realiza '+responsableDe(sel.k)+'.')+'</div></div>';
+    '<div class="aviso info" style="margin:0"><b>Todavía no ocurre.</b><br>'+
+    'La orden está en <b>'+((lista[iAct]||{}).t||'la etapa en curso')+'</b>.'+falta+
+    (puedeEjecutar(sel.k)?'':' Esta etapa la realiza '+responsableDe(sel.k)+'.')+'</div></div>';
 }
 
 /* El kilometraje que se muestra: el de la orden, y si todavía no se
@@ -6407,7 +6452,7 @@ function renderAcciones(){
     avisos='<div class="aviso info"><b>Preliminar enviada.</b> Esperando que el cliente apruebe desde su link.<br>'+
       'La aprobación es deseable pero no obligatoria: si el cliente no confirma y el taller decide avanzar, '+
       'queda registrado quién lo autorizó y por qué.</div>';
-    botones=EDITANDO_OT?'':'<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
+    botones=EDITANDO_OT?'':'<button class="btn chico ok" onclick="continuarSinConfirmar()">✓ Aprobar OT</button>';
   }
   if(EST_OT_ACT==='PRELIM_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar '+
@@ -6421,7 +6466,7 @@ function renderAcciones(){
   if(EST_OT_ACT==='PRELIM2_ENVIADA'){
     avisos='<div class="aviso info"><b>Preliminar 2 enviada.</b> Esperando que el cliente apruebe la versión actualizada. '+
       'El link de la primera versión ya no funciona.</div>';
-    botones=EDITANDO_OT?'':'<button class="btn chico sec" onclick="continuarSinConfirmar()">Continuar sin confirmación del cliente</button>';
+    botones=EDITANDO_OT?'':'<button class="btn chico ok" onclick="continuarSinConfirmar()">✓ Aprobar OT</button>';
   }
   if(EST_OT_ACT==='PRELIM2_APROBADA'){
     avisos='<div class="aviso ok"><b>Preliminar 2 aprobada.</b> El taller continúa con el alcance actualizado.</div>';
@@ -6435,7 +6480,7 @@ function renderAcciones(){
      No rehace la preliminar, le cuelga adicionales. */
   if(AGREGANDO){
     docBtn+='<button class="btn chico ok" onclick="terminarAdicionales()">✓ Terminar de agregar</button>';
-  }else if(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA'].indexOf(EST_OT_ACT)>-1&&
+  }else if(hayPrelimAprobada()&&EST_OT_ACT!=='PAGADA'&&
      !EDITANDO_OT&&OT_EST!=='ANULADO'){
     docBtn+='<button class="btn chico sec" onclick="agregarAOT()">+ Agregar</button>';
   }
@@ -6548,6 +6593,7 @@ function confirmarMotivoRet(){
 function etiquetaVB(motivo){
   var m=(motivo||'');
   if(/presencial/i.test(m))return 'aprobada presencialmente';
+  if(/whats|wasap|wsp/i.test(m))return 'aprobada por WhatsApp';
   if(/flota/i.test(m))return 'aprobada por flota';
   return 'sin VB del cliente';
 }
@@ -6585,19 +6631,27 @@ function continuarSinConfirmarCon(m){
   /* si la preliminar nunca se envió, el paso "enviada" queda cumplido con esta misma hora,
      sin un segundo cambio de estado que compita con el definitivo en la base */
   guardarDetalleBD();
-  if(!HITOS['O_'+kEnv])HITOS['O_'+kEnv]=selloHora();
+  var antesEnv=HITOS['O_'+kEnv];
+  if(!antesEnv)HITOS['O_'+kEnv]=selloHora();
+  var nota=etiquetaVB(m).toUpperCase()+' · '+m.trim()+' · registró '+(SESION?SESION.nombre:'');
+  /* La marca del tipo de aprobación se escribe DESPUÉS de que el flujo
+     avanzó: antes quedaba pegada en una etapa que nunca se cumplió. */
+  if(!setOT(kApr,nota)){
+    if(!antesEnv)delete HITOS['O_'+kEnv];
+    return;
+  }
   HITOS['SINVB_'+kApr]=true;
   HITOS['SINVBTXT_'+kApr]=m;
-  var nota='SIN CONFIRMACIÓN DEL CLIENTE · '+m.trim()+' · autorizó '+(SESION?SESION.nombre:'');
-  setOT(kApr,nota);
-  if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:true,sin_vb_motivo:m})
+  guardarFlujos();
+  renderFlujos();
+  if(sb&&OT_NUM)sb.from('ordenes').update({prelim_sin_vb:!/presencial|whats|wasap|flota/i.test(m),sin_vb_motivo:m})
     .eq('numero',OT_NUM).then(function(){},function(){});
   snapshotPorNumero(OT_NUM,kApr,
     LINEAS_SERV.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'MO'}})
       .concat(LINEAS_REP.map(function(l){return {desc:l.desc,cant:l.cant,precio:l.precio,tipo:'REP'}})),
     totalesV2().tot,nota);
   auditar('AVANZA_SIN_CONFIRMAR','orden',OT_NUM,nota,totalesV2().tot);
-  alert('Registrado. El trabajo queda liberado, y el historial muestra que no hubo confirmación del cliente.');
+  conex('OT '+etiquetaVB(m)+' · el taller queda liberado');
 }
 /* ============================================================
    MECÁNICOS Y LAVADORES
@@ -7318,6 +7372,8 @@ function revisarSolicitudes(){
   });
 }
 function pintarAvisoSolicitudes(lista){
+  var c=document.getElementById('cntAnu');
+  if(c)c.textContent=lista.length?String(lista.length):'';
   var z=document.getElementById('avisoSolic');
   if(!z)return;
   var nuevas=lista.filter(function(s){return !SOLIC_VISTAS[s.id]});
@@ -8453,11 +8509,17 @@ function enviarAVentanilla(){
 function ventTab(t){
   VENT_TAB=t;
   $('ventTabO').classList.toggle('on',t==='ordenes');
+  $('ventTabB').classList.toggle('on',t==='observ');
+  $('ventTabA').classList.toggle('on',t==='anul');
   $('ventTabC').classList.toggle('on',t==='clientes');
+  /* los filtros de arriba solo tienen sentido en el listado de órdenes */
+  var f=document.querySelector('#ventHome .filtros');
+  if(f)f.style.display=(t==='ordenes')?'':'none';
   ventLista();
 }
 function pintarVentanilla(){
   try{ revisarSolicitudes() }catch(e){}
+  try{ ventContadores() }catch(e){}
   VENT_OT=null;
   $('ventDetalle').classList.add('oculto');
   $('ventHome').classList.remove('oculto');
@@ -8482,6 +8544,8 @@ function ventEnRango(iso){
 function ventLista(){
   var res=$('ventLista'),txt=($('ventTxt').value||'').trim().toLowerCase().replace(/-/g,'');
   res.innerHTML='<div class="hint">Cargando…</div>';
+  if(VENT_TAB==='observ'){ obsCargar(); return }
+  if(VENT_TAB==='anul'){ anuVentCargar(); return }
   if(VENT_TAB==='clientes'){ ventListaClientes(txt); return }
   var fe=($('ventEstado')&&$('ventEstado').value)||'';
   cargarOrdenesBD(fe?[fe]:VENT_ESTADOS,function(lista){
@@ -8510,6 +8574,239 @@ function ventPintarLista(res,lista){
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado.</td></tr>')+
       '</table></div>';
 }
+/* ============================================================
+   VENTANILLA · BANDEJA DE OBSERVACIONES
+   La nota interna del jefe de taller va dirigida acá: ventanilla la
+   lee, la resuelve y la marca como atendida. Si el jefe la corrige
+   después, vuelve sola a pendientes (por eso las dos fechas).
+   ============================================================ */
+var OBS_TAB='pend',OBS=[];
+/* Los dos números de las pestañas, sin tener que entrar a cada bandeja. */
+function ventContadores(){
+  var a=document.getElementById('cntAnu');
+  if(a)a.textContent=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  var z=document.getElementById('cntObs');
+  if(!z||!sb)return;
+  sb.from('ordenes').select('nota_interna_el,nota_atendida_el')
+    .eq('sede_id',SEDE_ACTIVA).not('nota_interna','is',null).limit(300)
+    .then(function(r){
+      if(r.error){z.textContent='';return}
+      var n=(r.data||[]).filter(function(o){
+        return !o.nota_atendida_el || new Date(o.nota_interna_el||0)>new Date(o.nota_atendida_el);
+      }).length;
+      z.textContent=n?String(n):'';
+    },function(){});
+}
+function obsPend(o){
+  if(!o.nota_interna||!String(o.nota_interna).trim())return false;
+  if(!o.nota_atendida_el)return true;
+  return new Date(o.nota_interna_el||0) > new Date(o.nota_atendida_el);
+}
+function obsCargar(){
+  var res=$('ventLista');
+  if(!sb){res.innerHTML='<div class="hint">Sin conexión.</div>';return}
+  res.innerHTML='<div class="hint">Cargando observaciones…</div>';
+  sb.from('ordenes')
+    .select('id,numero,ingreso,estado_ot,estado_taller,nota_interna,nota_interna_el,'+
+            'nota_atendida_el,nota_atendida_por,nota_atendida_coment,'+
+            'vehiculos(placa,marca,modelo),clientes(nombre)')
+    .eq('sede_id',SEDE_ACTIVA).not('nota_interna','is',null)
+    .order('nota_interna_el',{ascending:false,nullsFirst:false}).limit(200)
+    .then(function(r){
+      if(r.error){
+        res.innerHTML='<div class="aviso rojo">No se pudo consultar: '+esc(r.error.message)+
+          (/column|does not exist/i.test(r.error.message||'')
+            ? '<br><b>Falta correr el paso 42 en Supabase.</b>':'')+'</div>';
+        return;
+      }
+      OBS=(r.data||[]).filter(function(o){return String(o.nota_interna||'').trim()});
+      obsPintar();
+    },function(){res.innerHTML='<div class="aviso rojo">Sin conexión.</div>'});
+}
+function obsTab(t){ OBS_TAB=t; obsPintar() }
+function obsPintar(){
+  var res=$('ventLista');if(!res)return;
+  var pend=OBS.filter(obsPend), hechas=OBS.filter(function(o){return !obsPend(o)});
+  var lista=(OBS_TAB==='pend')?pend:hechas;
+  var c=document.getElementById('cntObs');if(c)c.textContent=pend.length?String(pend.length):'';
+  res.innerHTML='<div class="bandeja">'+
+    '<div class="sub">Lo que el jefe de taller dejó anotado para ventanilla. '+
+      'Resuélvelo y márcalo como atendido.</div>'+
+    '<div class="modo" style="max-width:420px;margin-bottom:12px">'+
+      '<button class="'+(OBS_TAB==='pend'?'on':'')+'" onclick="obsTab(&quot;pend&quot;)">'+
+        'Por atender'+(pend.length?'<span class="cnt">'+pend.length+'</span>':'')+'</button>'+
+      '<button class="'+(OBS_TAB==='ok'?'on':'')+'" onclick="obsTab(&quot;ok&quot;)">Atendidas</button>'+
+    '</div>'+
+    (lista.length?lista.map(obsFicha).join('')
+      :'<div class="vacio" style="padding:26px"><b>'+
+       (OBS_TAB==='pend'?'Nada por atender':'Todavía ninguna atendida')+'</b>'+
+       (OBS_TAB==='pend'?'Cuando el taller deje una observación aparecerá acá.':'')+'</div>')+
+    '</div>';
+}
+function obsFicha(o){
+  var v=o.vehiculos||{},c=o.clientes||{},p=obsPend(o);
+  return '<div class="fichaB '+(p?'pend':'lista')+'">'+
+    '<div class="cab"><span class="ot">'+otCorto(o.numero)+'</span>'+
+      '<span class="pl">'+esc(v.placa||'—')+'</span>'+
+      chipAprob({estado_ot:o.estado_ot})+
+      '<span class="hr">'+(o.nota_interna_el?selloHora(o.nota_interna_el):'—')+'</span></div>'+
+    '<div class="quien">'+esc(c.nombre||'—')+
+      ([v.marca,v.modelo].filter(Boolean).length?' · '+esc([v.marca,v.modelo].filter(Boolean).join(' ')):'')+'</div>'+
+    '<div class="cita">'+esc(o.nota_interna)+'</div>'+
+    (!p&&o.nota_atendida_el
+      ? '<div class="hecho">✓ <b>'+esc(o.nota_atendida_por||'—')+'</b> · '+selloHora(o.nota_atendida_el)+
+        (o.nota_atendida_coment?' · '+esc(o.nota_atendida_coment):'')+'</div>'
+      : '')+
+    '<div class="acc">'+
+      (p?'<button class="btn chico ok" onclick="obsAtender('+o.id+')">✓ Marcar atendida</button>':'')+
+      '<button class="btn chico sec" onclick="ventAbrir('+o.id+')">Ver la OT</button>'+
+    '</div></div>';
+}
+function obsAtender(id){
+  var o=OBS.filter(function(x){return x.id===id})[0];if(!o)return;
+  pregunta('Marcar como atendida',
+    'Observación de la <b>'+esc(otCorto(o.numero))+'</b>. '+
+    'Puedes dejar una nota de lo que hiciste; es opcional.',
+    [{t:'Marcar atendida',fn:function(){
+        var t=((document.getElementById('obsComent')||{}).value||'').trim();
+        obsGuardarAtencion(o,t);
+      },cierra:false},
+     {t:'Cancelar',cls:'sec'}],
+    '<label>Qué hiciste · opcional</label>'+
+    '<textarea id="obsComent" rows="2" placeholder="Ej. se pidió el filtro al proveedor, llega mañana"></textarea>');
+}
+function obsGuardarAtencion(o,coment){
+  if(!sb||!SESION)return;
+  sb.from('ordenes').update({
+      nota_atendida_el:new Date().toISOString(),
+      nota_atendida_por:SESION.nombre,
+      nota_atendida_coment:coment||null
+    }).eq('id',o.id).then(function(r){
+      if(r&&r.error){pregAviso('No se pudo guardar: '+r.error.message);return}
+      pregCerrar();
+      auditar('ATIENDE_OBSERVACION','orden',o.numero,
+              'Observación del taller atendida'+(coment?' · '+coment:''));
+      conex('Observación de la '+otCorto(o.numero)+' marcada como atendida');
+      obsCargar();
+    },function(){pregAviso('Sin conexión.')});
+}
+
+/* ============================================================
+   VENTANILLA · BANDEJA DE ANULACIONES
+   Lo que el jefe de taller pidió anular. Ventanilla ejecuta, siempre
+   con un comentario: es el rastro de por qué se quitó algo cobrable.
+   ============================================================ */
+var ANU_TAB='pend',ANU_HECHAS=[];
+function anuVentCargar(){
+  var res=$('ventLista');
+  if(!sb){res.innerHTML='<div class="hint">Sin conexión.</div>';return}
+  res.innerHTML='<div class="hint">Cargando solicitudes…</div>';
+  cargarSolicitudes(function(){
+    sb.from('solicitudes_anulacion').select('*')
+      .eq('sede_id',SEDE_ACTIVA).neq('estado','PENDIENTE')
+      .order('resuelto_el',{ascending:false}).limit(60)
+      .then(function(r){ ANU_HECHAS=(r.error?[]:(r.data||[])); anuVentPintar() },
+            function(){ ANU_HECHAS=[]; anuVentPintar() });
+  });
+}
+function anuVentTab(t){ ANU_TAB=t; anuVentPintar() }
+function anuVentPintar(){
+  var res=$('ventLista');if(!res)return;
+  var lista=(ANU_TAB==='pend')?SOLIC_PEND:ANU_HECHAS;
+  var c=document.getElementById('cntAnu');
+  if(c)c.textContent=SOLIC_PEND.length?String(SOLIC_PEND.length):'';
+  res.innerHTML='<div class="bandeja">'+
+    '<div class="sub">Lo que el jefe de taller pidió anular. Revisa el motivo, abre la OT si hace falta y anúlalo.</div>'+
+    '<div class="modo" style="max-width:420px;margin-bottom:12px">'+
+      '<button class="'+(ANU_TAB==='pend'?'on':'')+'" onclick="anuVentTab(&quot;pend&quot;)">'+
+        'Por anular'+(SOLIC_PEND.length?'<span class="cnt">'+SOLIC_PEND.length+'</span>':'')+'</button>'+
+      '<button class="'+(ANU_TAB==='ok'?'on':'')+'" onclick="anuVentTab(&quot;ok&quot;)">Resueltas</button>'+
+    '</div>'+
+    (lista.length?lista.map(anuVentFicha).join('')
+      :'<div class="vacio" style="padding:26px"><b>'+
+       (ANU_TAB==='pend'?'Nada por anular':'Todavía ninguna resuelta')+'</b>'+
+       (ANU_TAB==='pend'?'Cuando el taller solicite una anulación aparecerá acá.':'')+'</div>')+
+    '</div>';
+}
+function anuVentFicha(s){
+  var p=(s.estado==='PENDIENTE');
+  var chip=p?'<span class="eti e5">Solicitud de anulación</span>'
+          :(s.estado==='ANULADA'?'<span class="eti e1">Anulada</span>'
+                                :'<span class="eti e2">Rechazada</span>');
+  return '<div class="fichaB '+(p?'pend':'')+'">'+
+    '<div class="cab"><span class="ot">'+otCorto(s.orden_numero)+'</span>'+
+      '<span class="pl">'+esc(s.placa||'—')+'</span>'+chip+
+      '<span class="hr">'+selloHora(s.creado)+'</span></div>'+
+    '<div class="quien">'+esc(s.cliente||'—')+(s.vehiculo?' · '+esc(s.vehiculo):'')+'</div>'+
+    '<div class="linea">🗑 '+(s.tipo==='ORDEN'
+        ? 'Anular la orden completa'
+        : esc(s.linea_desc||'una línea')+(s.linea_importe?' · '+S(s.linea_importe):''))+
+      (s.despachado?' <span class="eti e3" style="font-size:9.5px">ya despachado</span>':'')+'</div>'+
+    '<div class="cita roja">'+esc(s.motivo||'')+'</div>'+
+    '<div class="pie">Pidió <b>'+esc(s.pide_nom||'—')+'</b> · '+selloHora(s.creado)+'</div>'+
+    (!p&&s.resuelto_el
+      ? '<div class="hecho">✓ <b>'+esc(s.resuelve_nom||'—')+'</b> · '+selloHora(s.resuelto_el)+
+        (s.nota_resuelve?' · '+esc(s.nota_resuelve):'')+'</div>'
+      : '')+
+    (p?'<div class="acc">'+
+        '<button class="btn chico" style="background:var(--rojo)" onclick="anuVentResolver('+s.id+',true)">🗑 Anular</button>'+
+        (s.orden_id?'<button class="btn chico sec" onclick="ventAbrir('+s.orden_id+')">Ver la OT</button>':'')+
+        '<button class="btn chico sec" onclick="anuVentResolver('+s.id+',false)">No anular</button>'+
+      '</div>':'')+
+    '</div>';
+}
+/* El comentario es obligatorio en los dos sentidos: anular algo
+   cobrable sin explicación es lo que después nadie puede auditar. */
+function anuVentResolver(id,anula){
+  var s=null;SOLIC_PEND.forEach(function(x){if(x.id===id)s=x});
+  if(!s)return;
+  if(!(esVentanilla()||esAdminTaller())){
+    alert('Solo ventanilla o un administrador resuelven una anulación.');return;
+  }
+  pregunta(anula?'Anular':'No anular',
+    (anula
+      ? (s.tipo==='ORDEN'
+          ? 'Se anula la <b>'+esc(s.orden_numero)+'</b> completa.'
+          : 'Se quita <b>'+esc(s.linea_desc||'la línea')+'</b> de la '+esc(otCorto(s.orden_numero))+'.')
+      : 'La solicitud queda rechazada y la '+esc(otCorto(s.orden_numero))+' sigue igual.')+
+    '<br>Queda a tu nombre en la bitácora.',
+    [{t:anula?'Confirmar anulación':'Confirmar rechazo',cls:anula?'':'ok',fn:function(){
+        var t=((document.getElementById('anuComent')||{}).value||'').trim();
+        if(t.length<5){pregAviso('Escribe el comentario: es obligatorio.');return}
+        anuVentGuardar(s,anula,t);
+      },cierra:false},
+     {t:'Cancelar',cls:'sec'}],
+    '<label>Comentario · obligatorio</label>'+
+    '<textarea id="anuComent" rows="2" placeholder="'+
+      (anula?'Ej. el cliente desistió, no se despachó nada':'Ej. el repuesto ya salió de almacén')+
+      '"></textarea>');
+}
+function anuVentGuardar(s,anula,nota){
+  sb.from('solicitudes_anulacion').update({
+      estado:anula?'ANULADA':'RECHAZADA',
+      resuelve_id:SESION.id||null,resuelve_nom:SESION.nombre,
+      resuelto_el:new Date().toISOString(),nota_resuelve:nota
+    }).eq('id',s.id).then(function(r){
+      if(r.error){pregAviso('No se pudo guardar: '+r.error.message);return}
+      if(anula){
+        if(s.tipo==='ORDEN')
+          sb.from('ordenes').update({estado:'ANULADO',estado_taller:'ANULADO',estado_ot:'ANULADA'})
+            .eq('numero',s.orden_numero).then(function(){},function(){});
+        else if(s.linea_id)
+          sb.from('orden_detalle').update({anulada:true,anulada_el:new Date().toISOString(),
+            anulada_por:SESION.nombre,anulada_motivo:s.motivo,cobrado:false,stock_ok:false})
+            .eq('id',s.linea_id).then(function(){},function(){});
+      }
+      auditar(anula?'ANULA_PEDIDO':'RECHAZA_ANULACION','orden',s.orden_numero,
+        (s.tipo==='ORDEN'?'Orden completa':'Línea: '+(s.linea_desc||''))+
+        ' · pidió '+(s.pide_nom||'')+' · '+nota, s.linea_importe||null);
+      pregCerrar();
+      conex(anula?'Anulación ejecutada':'Solicitud rechazada');
+      revisarSolicitudes();
+      if(VENT_TAB==='anul')anuVentCargar();
+    },function(){pregAviso('Sin conexión.')});
+}
+
 /* Clientes recientes: una fila por atención, no por cliente.
    El mismo cliente puede haber venido cinco veces y cada visita
    tiene su fecha y su OT. */
@@ -9679,7 +9976,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=151;
+var APP_VER=153;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
