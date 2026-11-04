@@ -1,4 +1,4 @@
-<!--IZAV:148-->
+<!--IZAV:149-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -462,6 +462,12 @@ body.sinScroll{overflow:hidden}
 .dobleeti{display:flex;gap:5px;flex-wrap:wrap}
 .pfSede{display:inline-block;background:var(--tinta);color:#fff;border-radius:4px;
   font:700 10.5px/1.6 ui-monospace,monospace;padding:0 5px;letter-spacing:.5px;vertical-align:middle;margin-right:5px}
+.adicF{margin:10px 0 0;border:1px solid var(--borde);border-radius:11px;padding:11px 13px;background:#fff}
+.adicF.pend{border-color:#E0A106;background:#FFFBF0}
+.adicF .ln{font-size:13px;line-height:1.45;color:var(--tinta)}
+.adicF .ln+.ln{margin-top:6px;padding-top:6px;border-top:1px dashed var(--borde)}
+.adicF .ln.ok2{color:#0B6E3F}
+.adicF .sb{display:block;font-size:11px;color:var(--mudo);margin-top:2px}
 .notaInt{display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#8A5A00;
   background:#FFF6E0;border-left:3px solid #E0A106;border-radius:0 5px 5px 0;padding:3px 7px;
   white-space:normal;max-width:320px}
@@ -792,7 +798,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 148</span>
+  <span class="demo-tag">versión 149</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -823,6 +829,14 @@ tr.sel td{background:var(--rojo-cl)}
       <button class="btn chico ok" onclick="confirmarMotivoVB()">Autorizar</button>
       <button class="btn chico sec" onclick="cerrarMotivoVB()">Cancelar</button>
     </div>
+  </div>
+</div>
+<div class="drawer" id="modalPreg" onclick="if(event.target===this)pregCerrar()">
+  <div class="panel" style="right:auto;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:420px;max-width:94vw;border-radius:14px">
+    <h3 class="sinbar" style="font-size:18px;margin-bottom:8px" id="pregTit">—</h3>
+    <div id="pregTxt" style="font-size:14px;line-height:1.5;color:var(--tinta)"></div>
+    <div id="pregExtra" style="margin-top:12px"></div>
+    <div id="pregBtns" style="display:flex;flex-direction:column;gap:9px;margin-top:16px"></div>
   </div>
 </div>
 <div class="drawer" id="modalRet" onclick="if(event.target===this)cerrarMotivoRet()">
@@ -2713,6 +2727,9 @@ function botonLinea(tipo,i){
   return '';
 }
 function pintarPresupuestoLista(){
+  if(AGREGANDO)LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
+    if(!l.adic&&!l.id_bd)l.adic='PEND';
+  });
   var za=document.getElementById('zonaAceite');
   if(za)za.innerHTML=bloqueAceite();
   var zd=document.getElementById('zonaAdic');
@@ -3959,7 +3976,7 @@ var AREAS_AUD=[
     'CAMBIA_VEHICULO','EDITA_EN_CHECKIN','MODO_RECEPCION','ENVIA_CONSTANCIA','CLIENTE_EXISTENTE',
     'CREA_FLOTA','VALIDA_FLOTA']},
  {k:'taller',   t:'Taller',     a:['CAMBIA_MECANICO','ASIGNA_LAVADOR','AGREGA_ITEM','QUITA_ITEM',
-    'EDITA_ORDEN','EDITA_OT','NOTA_INTERNA','IMPRIME_PRESUPUESTO','ENVIA_DETALLE','AVANZA_SIN_CONFIRMAR',
+    'EDITA_ORDEN','EDITA_OT','NOTA_INTERNA','AGREGA_ADICIONAL','APRUEBA_ADICIONAL','IMPRIME_PRESUPUESTO','ENVIA_DETALLE','AVANZA_SIN_CONFIRMAR',
     'SOLICITA_ANULACION']},
  {k:'ventanilla',t:'Ventanilla',a:['GUARDA_VENTANILLA','ENVIA_DEFINITIVO','DESPACHA','DEF_SIN_VB',
     'ANULA_PEDIDO','RECHAZA_ANULACION']},
@@ -3984,7 +4001,8 @@ var NOMBRE_ACC={
  GUARDA_ASESOR:'Asesor guardó',COBRA_TARJETA:'Cobro con tarjeta',COBRA:'Cobro',
  RECHAZA_VOUCHER:'Voucher rechazado',IMPORTA_STOCK:'Carga de inventario',IMPORTA_SERVICIOS:'Carga de servicios',
  IMPORTA_USUARIOS:'Carga de usuarios',IMPORTA_MECANICOS:'Carga de mecánicos',
- NOTA_INTERNA:'Nota interna del taller',MARCA_PRUEBA:'Marcada como prueba',QUITA_PRUEBA:'Ya no es prueba',LOGIN:'Entrada al sistema',
+ NOTA_INTERNA:'Nota interna del taller',AGREGA_ADICIONAL:'Adicionales abiertos',
+ APRUEBA_ADICIONAL:'Adicionales aprobados',MARCA_PRUEBA:'Marcada como prueba',QUITA_PRUEBA:'Ya no es prueba',LOGIN:'Entrada al sistema',
  ANULA_ORDEN:'Orden anulada'
 };
 function nombreAccion(a){
@@ -4496,7 +4514,7 @@ function abrirOrden(ot){
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
-  PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;armarFOT();
+  PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
   LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];
   PANEL_SEL=null;ACC_ABIERTO=carrilPorDefecto();
   clearInterval(tint);$('crono').classList.remove('on');
@@ -4526,12 +4544,12 @@ function cargarLineasOrden(ordenId){
       if(l.tipo==='MO')
         LINEAS_SERV.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
-          id_bd:l.id,de_vent:dv});
+          adic:l.adic||'',id_bd:l.id,de_vent:dv});
       else if(l.incluir)
         LINEAS_REP.push({codigo:l.cod_alm||'',codigo2:l.cod2||'',
           desc:l.desc,precio:l.final||l.precio,cant:l.cant||1,
           marca:l.marca||'',modelo:l.modelo||'',ubicacion:l.ubic||'',
-          id_bd:l.id,de_vent:dv});
+          adic:l.adic||'',id_bd:l.id,de_vent:dv});
     });
     try{pintarPresupuestoLista()}catch(e){}
     try{var t=totalesV2();$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
@@ -5625,24 +5643,30 @@ function recibir(){
   if(sb&&v._id){
     OT_CREANDO=true;
     ordenAbiertaDe(v._id,function(abierta){
-      if(abierta&&!confirm('La placa '+v.placa+' ya tiene la '+abierta.numero+' abierta ('+
-          (NOMBRE_EST[abierta.estado_taller]||abierta.estado_taller)+').\n\n'+
-          'Aceptar: seguir trabajando en esa orden.\nCancelar: crear una orden nueva igual.')){
+      function nueva(){
+        sb.rpc('nuevo_numero_ot').then(function(rn){
+          if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
+          crearOrdenBD(v,kmIng);
+        },function(){ crearOrdenBD(v,kmIng); });
+      }
+      function seguir(){
         OT_NUM=abierta.numero;$('gOT').textContent=OT_NUM;if(ORD)ORD.num=OT_NUM;
         OT_CREANDO=false;
         conex('Se continúa la orden '+OT_NUM);
         guardarOrden();
-        return;
+        sincronizarDesdeBase();
       }
-      sb.rpc('nuevo_numero_ot').then(function(rn){
-        if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
-        crearOrdenBD(v,kmIng);
-      },function(){ crearOrdenBD(v,kmIng); });
+      if(!abierta){ nueva(); return }
+      pregunta('Esta placa ya tiene una orden abierta',
+        'La placa <b>'+esc(v.placa)+'</b> está en la <b>'+esc(abierta.numero)+'</b>, '+
+        'en estado <b>'+esc(NOMBRE_EST[abierta.estado_taller]||abierta.estado_taller)+'</b>.',
+        [{t:'Seguir en la '+otCorto(abierta.numero),fn:seguir},
+         {t:'Crear una orden nueva igual',cls:'sec',fn:nueva}]);
     });
   }
   BITACORA={};
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
-  TIENE_P2=false;PRELIM_REV=0;EDITANDO_OT=false;armarFOT();
+  TIENE_P2=false;PRELIM_REV=0;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
   HITOS['T_REGISTRO']=selloHora();
   HITOS['T_RECIBIDO']=selloHora();
   setEstado('RECIBIDO','Vehículo recibido'+(esExpress()?' · cliente espera':' · constancia por WhatsApp'));
@@ -5683,6 +5707,10 @@ var F_OT_P2=[
 ];
 var F_OT=F_OT_BASE.slice();
 var TIENE_P2=false,PRELIM_REV=0,EDITANDO_OT=false,ENVIANDO=false;
+/* Agregar NO es editar: editar rehace la preliminar y obliga a una
+   aprobación nueva; agregar cuelga trabajo extra de la preliminar que
+   ya está aprobada, sin mover el flujo. */
+var AGREGANDO=false;
 /* Solo si se creó una segunda preliminar aparecen sus dos pasos */
 function armarFOT(){
   F_OT=TIENE_P2 ? F_OT_BASE.slice(0,2).concat(F_OT_P2,F_OT_BASE.slice(2)) : F_OT_BASE.slice();
@@ -5695,8 +5723,8 @@ var RESP={
   REGISTRO:['jefe_taller','recepcion'], RECIBIDO:['jefe_taller'],
   EN_DIAGNOSTICO:['jefe_taller','mecanico'], EN_PROCESO:['jefe_taller','mecanico'],
   LISTO:['jefe_taller'], ENTREGADO:['jefe_taller'],
-  PRELIM_ENVIADA:['jefe_taller'], PRELIM_APROBADA:['cliente'],
-  PRELIM2_ENVIADA:['jefe_taller'], PRELIM2_APROBADA:['cliente'],
+  PRELIM_ENVIADA:['jefe_taller'], PRELIM_APROBADA:['cliente','jefe_taller'],
+  PRELIM2_ENVIADA:['jefe_taller'], PRELIM2_APROBADA:['cliente','jefe_taller'],
   DEF_ENVIADA:['ventanilla'], DEF_APROBADA:['cliente','asesor'], PAGADA:['caja']
 };
 var RESP_NOMBRE={jefe_taller:'el jefe de taller',recepcion:'recepción',mecanico:'el mecánico',
@@ -5718,21 +5746,62 @@ function selloHora(d){
 function idxTaller(k){for(var i=0;i<F_TALLER.length;i++)if(F_TALLER[i].k===k)return i;return -1}
 function idxOT(k){for(var i=0;i<F_OT.length;i++)if(F_OT[i].k===k)return i;return -1}
 
+/* El dato que falta se pide acá mismo: mandarlo a buscar el bloque de
+   arriba era perder el hilo de lo que estaba haciendo. */
+function pedirResponsables(faltaMec,faltaLav,k,nota){
+  var cuerpo='';
+  if(faltaMec)
+    cuerpo+='<label>Mecánico que atendió</label>'+
+      '<select id="pregMec">'+mecOpciones('MECANICO',MECANICO_OT||'')+'</select>';
+  if(faltaLav)
+    cuerpo+='<div style="margin-top:10px"><label>Quién hizo el lavado</label>'+
+      '<select id="pregLav">'+mecOpciones('LAVADOR',LAVADOR_OT||'')+'</select></div>';
+  pregunta('Falta el responsable',
+    'Antes de marcar el vehículo listo hay que dejar registrado '+
+    [faltaMec?'quién lo atendió':'',faltaLav?'quién lo lavó':'']
+      .filter(Boolean).join(' y ')+'.',
+    [{t:'Asignar y marcar listo',fn:function(){
+        var m=faltaMec?((document.getElementById('pregMec')||{}).value||'').trim():'',
+            l=faltaLav?((document.getElementById('pregLav')||{}).value||'').trim():'';
+        if(faltaMec&&!m){ pregAviso('Elige el mecánico de la lista.'); return }
+        if(faltaLav&&!l){ pregAviso('Elige quién hizo el lavado.'); return }
+        if(m)asignarMecanicoAhora(m);
+        if(l)asignarLavadorAhora(l);
+        pregCerrar();
+        setTaller(k,nota);
+      },cierra:false},
+     {t:'Ahora no',cls:'sec'}],
+    cuerpo);
+}
+function pregAviso(t){
+  var z=document.getElementById('pregExtra');if(!z)return;
+  var a=document.getElementById('pregErr');
+  if(!a){ a=document.createElement('div'); a.id='pregErr'; z.appendChild(a) }
+  a.className='aviso rojo';a.style.margin='10px 0 0';a.textContent=t;
+}
+/* Guarda el mecánico sin tocar el estado del taller: lo usa el aviso de
+   arriba y cualquier asignación tardía. */
+function asignarMecanicoAhora(mec){
+  var antes=MECANICO_OT;
+  MECANICO_OT=mec;
+  var sm=$('gMec'); if(sm)sm.value=mec;
+  if(sb&&OT_NUM){
+    var pm=mec.split(' · ');
+    sb.from('ordenes').update({mecanico_nombre:pm[1]||mec,mecanico_codigo:pm[0]||null})
+      .eq('numero',OT_NUM).then(function(){},function(){});
+  }
+  auditar(antes?'CAMBIA_MECANICO':'ASIGNA_MECANICO','orden',OT_NUM,
+          (antes?'Antes: '+antes+' · ahora: ':'Mecánico: ')+mec);
+  guardarOrden();
+}
 function setTaller(k,nota){
   if(idxTaller(k)<idxTaller(EST_TALLER)){alert('El flujo del taller solo avanza.');return}
   /* Antes de dar el auto por listo tiene que haber responsable. El
      lavador solo si el trabajo incluyó lavado. */
   if(idxTaller(k)>=idxTaller('LISTO')&&idxTaller(EST_TALLER)<idxTaller('LISTO')){
-    var falta=[];
-    if(!MECANICO_OT&&!(($('gMec')&&$('gMec').value)||'').trim())falta.push('el mecánico que atendió');
-    if(faltaLavador())falta.push('quién hizo el lavado');
-    if(falta.length){
-      alert('Antes de marcar el vehículo listo falta asignar '+
-            falta.join(' y ')+'.\n\nEstá en el bloque del mecánico, más arriba.');
-      var foco=document.getElementById(falta[0].indexOf('lavado')>-1?'gLavador':'gMec');
-      if(foco){foco.focus();foco.scrollIntoView({behavior:'smooth',block:'center'})}
-      return;
-    }
+    var faltaMec=!MECANICO_OT&&!(($('gMec')&&$('gMec').value)||'').trim(),
+        faltaLav=faltaLavador();
+    if(faltaMec||faltaLav){ pedirResponsables(faltaMec,faltaLav,k,nota); return }
   }
   EST_TALLER=k;PANEL_SEL=null;
   HITOS['T_'+k]=selloHora();
@@ -5745,7 +5814,7 @@ function setOT(k,nota){
   if(k.indexOf('PRELIM2')===0){TIENE_P2=true}
   armarFOT();
   if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return}
-  EST_OT_ACT=k;PANEL_SEL=null;EDITANDO_OT=false;
+  EST_OT_ACT=k;PANEL_SEL=null;EDITANDO_OT=false;AGREGANDO=false;
   HITOS['O_'+k]=selloHora();
   /* la aprobación preliminar (1 o 2) libera el trabajo en el taller */
   if((k==='PRELIM_APROBADA'||k==='PRELIM2_APROBADA')&&idxTaller(EST_TALLER)<idxTaller('EN_PROCESO')){
@@ -5883,9 +5952,77 @@ function renderFlujos(){
   c.innerHTML=
     menu('taller','Vehículo · taller','🔧',F_TALLER,tallerAct,'T_')+
     menu('ot','Orden de trabajo','📄',F_OT,otAct,'O_')+
-    '';
+    bloqueAdicFlujo();
   if(!PANEL_SEL)PANEL_SEL=pasoPendiente();
   renderPanel();
+}
+/* Cuántos adicionales hay y en qué estado. Se cuenta sobre las líneas
+   porque el lote puede crecer varias veces sobre la misma preliminar. */
+function adicResumen(){
+  var r={pend:0,pendMonto:0,ok:0,okMonto:0};
+  LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
+    var m=(Number(l.precio)||0)*(Number(l.cant)||1);
+    if(l.adic==='PEND'){r.pend++;r.pendMonto+=m}
+    else if(l.adic==='OK'){r.ok++;r.okMonto+=m}
+  });
+  return r;
+}
+function nAdic(n,m){ return n+' '+(n===1?'adicional':'adicionales')+' · '+S(Math.round(m)) }
+/* El texto cuelga del flujo de la OT: la preliminar aprobada sigue
+   siendo la que es, y debajo se ve qué se sumó después. */
+function bloqueAdicFlujo(){
+  var r=adicResumen();
+  if(!r.pend&&!r.ok)return '';
+  var puede=puedeEjecutar('PRELIM_APROBADA');
+  var h='<div class="adicF'+(r.pend?' pend':'')+'">';
+  if(r.pend){
+    h+='<div class="ln"><b>Adicionales pendientes</b> · '+nAdic(r.pend,r.pendMonto)+
+       '<span class="sb">sobre la '+(TIENE_P2?'preliminar 2':'preliminar')+' aprobada</span></div>';
+    if(puede&&!AGREGANDO)
+      h+='<button class="btn chico ok" style="margin-top:8px" onclick="vbAdicionales()">'+
+         'Registrar VB del cliente</button>';
+  }
+  if(r.ok)
+    h+='<div class="ln ok2"><b>Adicionales aprobados</b> · '+nAdic(r.ok,r.okMonto)+'</div>';
+  return h+'</div>';
+}
+function vbAdicionales(){
+  var r=adicResumen();
+  if(!r.pend)return;
+  pregunta('Aprobar los adicionales',
+    'Son <b>'+nAdic(r.pend,r.pendMonto)+'</b> sumados a la '+
+    (TIENE_P2?'preliminar 2':'preliminar')+' aprobada. '+
+    'El flujo de la OT no cambia: queda registrado que el cliente los autorizó.',
+    [{t:'El cliente los aprobó',fn:function(){
+        LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){ if(l.adic==='PEND')l.adic='OK' });
+        HITOS['ADIC_VB']=selloHora();
+        auditar('APRUEBA_ADICIONAL','orden',OT_NUM,nAdic(r.pend,r.pendMonto),r.pendMonto);
+        guardarDetalleBD();guardarFlujos();guardarOrden();
+        renderFlujos();
+        conex('Adicionales aprobados');
+      }},
+     {t:'Todavía no',cls:'sec'}]);
+}
+function agregarAOT(){
+  pregunta('Agregar a la orden',
+    'Se suman servicios o repuestos <b>encima de la '+(TIENE_P2?'preliminar 2':'preliminar')+
+    ' aprobada</b>. El flujo de la OT no se mueve y no se crea una preliminar nueva: '+
+    'quedan como adicionales pendientes hasta que el cliente los apruebe.',
+    [{t:'Agregar adicionales',fn:function(){
+        AGREGANDO=true;
+        auditar('AGREGA_ADICIONAL','orden',OT_NUM,'Abre el bloque de adicionales');
+        PANEL_SEL={f:'ot',k:EST_OT_ACT};
+        renderFlujos();
+        setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
+      }},
+     {t:'Cancelar',cls:'sec'}]);
+}
+function terminarAdicionales(){
+  AGREGANDO=false;
+  guardarDetalleBD();guardarOrden();
+  renderFlujos();
+  var r=adicResumen();
+  conex(r.pend?nAdic(r.pend,r.pendMonto)+' por aprobar':'Sin adicionales nuevos');
 }
 function avisoCruce(){
   if(EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO')
@@ -5908,7 +6045,7 @@ function renderPanel(){
   var paso=lista[iSel]||{t:'',ic:''};
 
   /* las tarjetas de acción solo salen en la etapa que toca */
-  var esAccion=(iSel===iAct)||EDITANDO_OT||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
+  var esAccion=(iSel===iAct)||EDITANDO_OT||AGREGANDO||(sel.f==='ot'&&!EST_OT_ACT&&sel.k==='PRELIM_ENVIADA')||
                (sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO'&&EST_TALLER==='EN_DIAGNOSTICO');
   /* estando en una etapa de la OT, el responsable puede no ser quien mira:
      igual se muestran las acciones disponibles para su rol */
@@ -5932,7 +6069,7 @@ function renderPanel(){
   }
   var tocaPres = (!EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
                  ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO')))
-                 || EDITANDO_OT;
+                 || EDITANDO_OT || AGREGANDO;
   $('gPres').style.display=(tocaPres&&puede)?'block':'none';
   if(tocaPres&&puede&&!SERVICIOS.length)cargarCatalogoV2();
   if(tocaPres&&puede)setTimeout(pintarPresupuesto,60);
@@ -6112,7 +6249,7 @@ function renderBitacora(){
 }
 function renderGestion(){ renderFlujos(); }
 function renderAcciones(){
-  var avisos='',botones='';
+  var avisos='',botones='',docBtn='';
   if(EST_TALLER==='RECIBIDO'){
     avisos='<div class="aviso info"><b>Mecánico pendiente de asignar.</b><br>'+
       'Se puede avanzar al diagnóstico y armar el presupuesto, pero hay que asignarlo '+
@@ -6150,8 +6287,16 @@ function renderAcciones(){
   }
   /* Editar la OT: mientras el vehículo no esté listo y no se haya aprobado la segunda versión */
   if(['PRELIM_ENVIADA','PRELIM_APROBADA','PRELIM2_ENVIADA'].indexOf(EST_OT_ACT)>-1&&
-     idxTaller(EST_TALLER)<idxTaller('LISTO')&&!EDITANDO_OT){
-    botones+=' <button class="btn chico sec" onclick="editarOT()">✎ Editar OT</button>';
+     idxTaller(EST_TALLER)<idxTaller('LISTO')&&!EDITANDO_OT&&!AGREGANDO){
+    docBtn+='<button class="btn chico sec" onclick="editarOT()">✎ Editar OT</button>';
+  }
+  /* Agregar: cuantas veces haga falta, mientras la OT no esté cobrada.
+     No rehace la preliminar, le cuelga adicionales. */
+  if(AGREGANDO){
+    docBtn+='<button class="btn chico ok" onclick="terminarAdicionales()">✓ Terminar de agregar</button>';
+  }else if(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA'].indexOf(EST_OT_ACT)>-1&&
+     !EDITANDO_OT&&OT_EST!=='ANULADO'){
+    docBtn+='<button class="btn chico sec" onclick="agregarAOT()">+ Agregar</button>';
   }
   if(EST_OT_ACT==='DEF_ENVIADA'){
     avisos='<div class="aviso info"><b>Definitiva enviada.</b> Esperando la aprobación del monto final.</div>';
@@ -6188,8 +6333,12 @@ function renderAcciones(){
   $('gAvisos').innerHTML=avisos;
   $('gBotones').innerHTML='';
   var acc=document.getElementById('gAccPanel');
-  if(acc)acc.innerHTML=botones?'<div class="card" style="margin:0 0 12px"><h3 style="font-size:15px">Acciones</h3>'+
-    '<div class="fila">'+botones+'</div></div>':'';
+  if(acc)acc.innerHTML=(docBtn||botones)
+    ? '<div class="card" style="margin:0 0 12px"><h3 style="font-size:15px">Acciones</h3>'+
+      (docBtn?'<div class="fila">'+docBtn+'</div>':'')+
+      (botones?'<div class="fila"'+(docBtn?' style="margin-top:9px"':'')+'>'+botones+'</div>':'')+
+      '</div>'
+    : '';
   renderEditar();
 }
 function editarOT(){
@@ -6204,6 +6353,35 @@ function editarOT(){
   PANEL_SEL={f:'ot',k:creaP2?'PRELIM2_ENVIADA':EST_OT_ACT};
   renderFlujos();
   setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
+}
+/* Reemplaza a confirm(): los botones del navegador dicen "OK" y
+   "Cancelar", que no explican nada cuando la pregunta tiene dos
+   caminos distintos. Acá cada botón dice lo que va a hacer. */
+var PREG_OPC=[];
+function pregunta(titulo,texto,opciones,extraHTML){
+  PREG_OPC=opciones;
+  document.getElementById('pregTit').textContent=titulo;
+  document.getElementById('pregTxt').innerHTML=texto;
+  document.getElementById('pregExtra').innerHTML=extraHTML||'';
+  document.getElementById('pregBtns').innerHTML=opciones.map(function(o,i){
+    return '<button class="btn'+(o.cls?' '+o.cls:'')+'" style="width:100%" '+
+      'onclick="pregElegir('+i+')">'+o.t+'</button>';
+  }).join('');
+  document.getElementById('modalPreg').classList.add('on');
+}
+function pregCerrar(){
+  document.getElementById('modalPreg').classList.remove('on');
+  document.getElementById('pregExtra').innerHTML='';
+  PREG_OPC=[];
+}
+function pregElegir(i){
+  var o=PREG_OPC[i];
+  if(!o)return;
+  /* La acción corre después de cerrar para que pueda abrir otro
+     diálogo sin que este se lo coma. */
+  if(o.cierra===false){ if(o.fn)o.fn(); return }
+  pregCerrar();
+  if(o.fn)o.fn();
 }
 var VB_CB=null,RET_CB=null;
 function pedirMotivoRet(nombre,cb){
@@ -6389,13 +6567,23 @@ function faltaLavador(){
 }
 function guardarLavador(){
   var s=document.getElementById('gLavador');if(!s)return;
-  LAVADOR_OT=s.value||'';
-  if(sb&&OT_NUM&&LAVADOR_OT){
+  asignarLavadorAhora(s.value||'');
+}
+function asignarLavadorAhora(lav){
+  LAVADOR_OT=lav||'';
+  if(!LAVADOR_OT)return;
+  var s=document.getElementById('gLavador');
+  if(s){
+    /* el combo puede estar sin opciones si el bloque nunca se pintó */
+    if(!s.options.length)s.innerHTML=mecOpciones('LAVADOR',LAVADOR_OT);
+    s.value=LAVADOR_OT;
+  }
+  if(sb&&OT_NUM){
     var p=LAVADOR_OT.split(' · ');
     sb.from('ordenes').update({lavador_codigo:p[0]||null,lavador_nombre:p[1]||LAVADOR_OT})
       .eq('numero',OT_NUM).then(function(){},function(){});
-    auditar('ASIGNA_LAVADOR','orden',OT_NUM,LAVADOR_OT);
   }
+  auditar('ASIGNA_LAVADOR','orden',OT_NUM,LAVADOR_OT);
 }
 
 function irDiagnostico(){
@@ -7912,12 +8100,14 @@ function guardarDetalleBD(){
         if(l.de_vent&&l.id_bd)return;
         filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
                     precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
+                    adicional:l.adic||null,
                     codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
       });
       LINEAS_REP.forEach(function(l){
         if(l.de_vent&&l.id_bd)return;
         filas.push({orden_id:oid,tipo:'REP',descripcion:l.desc,cantidad:l.cant,
                     precio_taller:l.precio,stock_ok:null,agregado_por:'taller',
+                    adicional:l.adic||null,
                     codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
                     ubicacion:l.ubicacion||null,marca:l.marca||null,modelo:l.modelo||null});
       });
@@ -8038,7 +8228,7 @@ function cargarLineasBD(ordenId,cb){
                 stock:l.stock_ok,cod_alm:l.codigo_almacen||'',
                 incluir:(l.cobrado!==false),cambio:l.cambio||'',orig:l.descripcion_original||'',
                 nota:l.nota_cambio||'',desp:l.despachado_el||null,desp_por:l.despachado_por||'',
-                por:l.agregado_por||'',sub:l.sub_desc||'',
+                por:l.agregado_por||'',sub:l.sub_desc||'',adic:l.adicional||'',
                 cod2:l.codigo2||'',ubic:l.ubicacion||'',marca:l.marca||'',modelo:l.modelo||''};
       }));
     },function(){cb([])});
@@ -9154,7 +9344,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=148;
+var APP_VER=149;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
