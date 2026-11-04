@@ -1,4 +1,4 @@
-<!--IZAV:150-->
+<!--IZAV:151-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -247,6 +247,7 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 @media(max-width:700px){
   table.lista, table.lista tbody, table.lista tr, table.lista td{display:block;width:100%}
   table.lista thead, table.lista tr>th{display:none}
+  table.lista tr:has(> th){display:none}
   table.lista tr{border:1px solid var(--borde);border-radius:11px;padding:9px 11px;
     margin-bottom:9px;background:#fff}
   table.lista td{border:0;padding:3px 0;text-align:left !important;
@@ -469,7 +470,10 @@ body.sinScroll{overflow:hidden}
 .aprobB .l.ok2{color:#0B6E3F}
 .aprobB .l.pend{color:var(--rojo-osc);background:var(--rojo-cl);margin:8px -13px -11px;
   padding:9px 13px 11px;border-radius:0 0 10px 10px;border-top:1px solid var(--rojo)}
-.adicChip{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--rojo-osc);
+.volverFi{display:block;width:100%;margin-top:8px;background:none;border:0;
+  color:var(--rojo);font-weight:700;font-size:12.5px;text-align:left;padding:6px 0;min-height:36px}
+.chipsPago{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.adicChip{display:inline-block;margin-top:0;font-size:10.5px;font-weight:700;color:var(--rojo-osc);
   background:var(--rojo-cl);border-radius:5px;padding:2px 7px;white-space:nowrap}
 .borrC{border:1px solid #E0A106;background:#FFFBF0;border-radius:12px;padding:14px 16px;margin-bottom:12px}
 .borrC .t{font-weight:700;font-size:15px;color:#8A5A00;margin-bottom:5px}
@@ -810,7 +814,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 150</span>
+  <span class="demo-tag">versión 151</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1361,7 +1365,16 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-asesor">
   <div class="card">
     <h3>🤝 Asesor de servicio</h3>
-    <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">Recibe la OT final aprobada, ajusta ítems con el cliente y cobra con tarjeta.</p>
+    <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">Recibe la OT final aprobada, ajusta ítems con el cliente y cierra el cobro.</p>
+    <div class="filtros">
+      <div class="f-busca"><label>Buscar por placa, cliente u OT</label>
+        <input id="aseTxt" placeholder="Placa, cliente u OT" oninput="pintarAsesor()"></div>
+      <div class="f-desde"><label>Desde</label>
+        <input type="date" id="aseDesde" onchange="pintarAsesor()"></div>
+      <div class="f-hasta"><label>Hasta</label>
+        <input type="date" id="aseHasta" onchange="pintarAsesor()"></div>
+      <div class="f-limpia"><button class="btn chico sec full" onclick="aseLimpiar()">Limpiar</button></div>
+    </div>
     <div id="asesorLista"></div>
   </div>
 </section>
@@ -1371,6 +1384,16 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <h3>💳 Caja</h3>
     <p style="color:var(--mudo);font-size:14px;margin:0 0 12px">Cobra en efectivo o con tarjeta, y valida los cobros con tarjeta que registró el asesor.</p>
+    <div class="filtros">
+      <div class="f-busca"><label>Buscar por placa, cliente u OT</label>
+        <input id="cajaTxt" placeholder="Placa, cliente u OT" oninput="pintarCaja()"></div>
+      <div class="f-desde"><label>Desde</label>
+        <input type="date" id="cajaDesde" onchange="pintarCaja()"></div>
+      <div class="f-hasta"><label>Hasta</label>
+        <input type="date" id="cajaHasta" onchange="pintarCaja()"></div>
+      <div class="f-limpia"><button class="btn chico sec full" onclick="cajaLimpiar()">Limpiar</button></div>
+    </div>
+
     <div id="cajaZona"></div>
   </div>
 </section>
@@ -3069,7 +3092,8 @@ function invAbrir(cont,i){
       '<button class="btn chico" onclick="invAgregar(&quot;'+cont+'&quot;,'+i+')">Agregar</button>'+
       (it.categoria?'<button class="fam" onclick="invFamilia(&quot;'+cont+'&quot;,&quot;'+it.categoria+'&quot;)">'+
         'ver toda la familia '+it.categoria+'</button>':'')+
-    '</div>';
+    '</div>'+
+    '<button class="volverFi" onclick="invAbrir(&quot;'+cont+'&quot;,'+i+')">← Volver a los resultados</button>';
 }
 function invCambiaSede(cont,i,k){
   var it=(INV_CACHE[cont]||[])[i];if(!it)return;
@@ -3090,7 +3114,10 @@ function invAgregar(cont,i){
   var ctx=INV_CTX[cont];if(!ctx)return;
   var it=(INV_CACHE[cont]||[])[i];if(!it)return;
   var s=(it.catalogo_stock||[])[it._sel||0]||{};
-  /* se cierra apenas se agrega */
+  /* El precio se lee ANTES de cerrar la ficha: el campo vive dentro de
+     ella y al vaciarla se perdía lo que el usuario había escrito. */
+  var e=document.getElementById(cont+'-pr'+i);
+  var precio=(e&&e.value!=='')?Number(e.value):Number(it.prec1||it.precio||0);
   var z=document.getElementById(cont+'-fi'+i);
   if(z)z.innerHTML='';
   invCerrarYa(cont);
@@ -3098,10 +3125,7 @@ function invAgregar(cont,i){
   if(inp)inp.value='';
   ctx.onAdd({codigo:it.codigo,codigo2:it.codigo2||'',desc:it.descripcion,
     marca:it.marca||'',modelo:it.modelo||'',categoria:it.categoria||'',
-    precio:(function(){
-      var e=document.getElementById(cont+'-pr'+i);
-      return (e&&e.value!=='')?Number(e.value):Number(it.prec1||it.precio||0);
-    })(),
+    precio:precio,
     ubicacion:s.ubicacion||'',stock:Number(s.stock||0)});
 }
 /* Volver al campo con algo escrito reabre la lista. */
@@ -8473,7 +8497,7 @@ function ventPintarLista(res,lista){
     res.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Estado</th><th class="der">En taller</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var chip=chipAprob(o)+avisoAdicLista(o);
+        var chip='<span class="chipsPago">'+chipAprob(o)+avisoAdicLista(o)+'</span>';
         var pend=solicPendienteDe(o.ot);
         return '<tr'+(pend?' style="background:var(--rojo-cl)"':'')+'>'+
         '<td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+
@@ -9002,19 +9026,51 @@ function ordenarPorCola(lista){
     return new Date(fechaCola(b)||0)-new Date(fechaCola(a)||0);
   });
 }
+/* Mismo filtro que ventanilla: por placa, cliente u OT, y por fechas. */
+function filtrarCola(lista,pre){
+  var t=((document.getElementById(pre+'Txt')||{}).value||'').trim().toLowerCase().replace(/-/g,''),
+      d=((document.getElementById(pre+'Desde')||{}).value||''),
+      hh=((document.getElementById(pre+'Hasta')||{}).value||'');
+  return lista.filter(function(o){
+    if(d||hh){
+      var f=String(o.ingreso||'').slice(0,10);
+      if(!f)return false;
+      if(d&&f<d)return false;
+      if(hh&&f>hh)return false;
+    }
+    if(!t)return true;
+    return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(t)>-1;
+  });
+}
+function aseLimpiar(){
+  ['aseTxt','aseDesde','aseHasta'].forEach(function(i){var e=document.getElementById(i);if(e)e.value=''});
+  pintarAsesor();
+}
+function cajaLimpiar(){
+  ['cajaTxt','cajaDesde','cajaHasta'].forEach(function(i){var e=document.getElementById(i);if(e)e.value=''});
+  pintarCaja();
+}
+function vacioFiltrado(pre,col,txt){
+  var hay=((document.getElementById(pre+'Txt')||{}).value||'')||
+          ((document.getElementById(pre+'Desde')||{}).value||'')||
+          ((document.getElementById(pre+'Hasta')||{}).value||'');
+  return '<tr><td colspan="'+col+'" class="vacio"><b>'+(hay?'Sin coincidencias':'Sin pendientes')+'</b>'+
+         (hay?'Prueba con otra placa, cliente o fecha.':txt)+'</td></tr>';
+}
 function pintarAsesor(){
   ASE_OT=null;
   $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
-    lista=ordenarPorCola(lista);
+    lista=filtrarCola(ordenarPorCola(lista),'ase');
     cargarAdicPend(lista,function(){
     $('asesorLista').innerHTML=
       '<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
       '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=chipAprob(o)+avisoAdicLista(o)+'<br>'+
-          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>');
+        var pago='<span class="chipsPago">'+chipAprob(o)+
+          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>')+
+          avisoAdicLista(o)+'</span>';
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
         '<td data-l="Cliente">'+o.cliente+notaFila(o)+'</td>'+
@@ -9023,7 +9079,7 @@ function pintarAsesor(){
         '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico" style="min-height:36px;padding:0 10px" onclick="aseAbrir('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="7" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
+      :vacioFiltrado('ase',7,'No hay OT finales aprobadas por atender.'))+
       '</table></div>';
     });
   });
@@ -9420,14 +9476,15 @@ function pintarCaja(){
   var z=$('cajaZona');z.innerHTML='<div class="hint">Cargando…</div>';
   if(!CAJEROS.length){cargarCajeros(pintarCaja);return}
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
-    lista=ordenarPorCola(lista);
+    lista=filtrarCola(ordenarPorCola(lista),'caja');
     cargarAdicPend(lista,function(){
     z.innerHTML='<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
       '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=chipAprob(o)+avisoAdicLista(o)+'<br>'+
-          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>');
+        var pago='<span class="chipsPago">'+chipAprob(o)+
+          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>')+
+          avisoAdicLista(o)+'</span>';
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
         '<td data-l="Cliente">'+o.cliente+notaFila(o)+'</td>'+
@@ -9436,7 +9493,7 @@ function pintarCaja(){
         '<td class="num der" data-l="Total">'+S(o.total)+'</td>'+
         '<td><button class="btn chico oscuro" style="min-height:36px;padding:0 10px" onclick="abrirCobro('+o.id+')">Abrir</button></td></tr>';
       }).join('')
-      :'<tr><td colspan="7" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
+      :vacioFiltrado('caja',7,'No hay órdenes con la OT final aprobada.'))+
       '</table></div>';
     });
   });
@@ -9622,7 +9679,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=150;
+var APP_VER=151;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
