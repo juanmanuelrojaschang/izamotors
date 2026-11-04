@@ -1,4 +1,4 @@
-<!--IZAV:149-->
+<!--IZAV:150-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -462,6 +462,18 @@ body.sinScroll{overflow:hidden}
 .dobleeti{display:flex;gap:5px;flex-wrap:wrap}
 .pfSede{display:inline-block;background:var(--tinta);color:#fff;border-radius:4px;
   font:700 10.5px/1.6 ui-monospace,monospace;padding:0 5px;letter-spacing:.5px;vertical-align:middle;margin-right:5px}
+.aprobB{border:1px solid var(--borde);border-radius:11px;padding:11px 13px;margin:0 0 13px;background:#fff}
+.aprobB .e{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.aprobB .e .f{font-size:11.5px;color:var(--mudo)}
+.aprobB .l{font-size:12.5px;line-height:1.45;margin-top:8px;padding-top:8px;border-top:1px dashed var(--borde)}
+.aprobB .l.ok2{color:#0B6E3F}
+.aprobB .l.pend{color:var(--rojo-osc);background:var(--rojo-cl);margin:8px -13px -11px;
+  padding:9px 13px 11px;border-radius:0 0 10px 10px;border-top:1px solid var(--rojo)}
+.adicChip{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--rojo-osc);
+  background:var(--rojo-cl);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.borrC{border:1px solid #E0A106;background:#FFFBF0;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.borrC .t{font-weight:700;font-size:15px;color:#8A5A00;margin-bottom:5px}
+.borrC .d{font-size:13px;line-height:1.5;color:var(--tinta)}
 .adicF{margin:10px 0 0;border:1px solid var(--borde);border-radius:11px;padding:11px 13px;background:#fff}
 .adicF.pend{border-color:#E0A106;background:#FFFBF0}
 .adicF .ln{font-size:13px;line-height:1.45;color:var(--tinta)}
@@ -798,7 +810,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 149</span>
+  <span class="demo-tag">versión 150</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -873,6 +885,7 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= RECEPCIÓN ================= -->
 <section class="vista on" id="v-recepcion">
   <div id="segHome">
+    <div id="borrAviso"></div>
     <div class="card" id="menuEntrada" style="text-align:center;padding:30px 20px">
       <h3 class="sinbar" style="justify-content:center;font-size:24px">Atender un vehículo</h3>
       <p style="color:var(--mudo);margin:10px auto 20px;max-width:440px">
@@ -1845,6 +1858,7 @@ function cargarOrdenesTaller(cb){
     },function(e){cb([],(e&&e.message)||'no se pudo consultar')});
 }
 function segLista(){
+  try{pintarBorrador()}catch(e){}
   if(TAB_LISTADO==='clientes'){ listaClientes(); return; }
   var selE=$('segEtapa');
   if(selE&&!selE.options.length){
@@ -3980,7 +3994,7 @@ var AREAS_AUD=[
     'SOLICITA_ANULACION']},
  {k:'ventanilla',t:'Ventanilla',a:['GUARDA_VENTANILLA','ENVIA_DEFINITIVO','DESPACHA','DEF_SIN_VB',
     'ANULA_PEDIDO','RECHAZA_ANULACION']},
- {k:'asesor',   t:'Asesor',     a:['GUARDA_ASESOR','COBRA_TARJETA']},
+ {k:'asesor',   t:'Asesor',     a:['GUARDA_ASESOR','COBRA_TARJETA','COBRA']},
  {k:'caja',     t:'Caja',       a:['COBRA','RECHAZA_VOUCHER']},
  {k:'config',   t:'Configuración',a:['IMPORTA_STOCK','IMPORTA_SERVICIOS','IMPORTA_USUARIOS',
     'IMPORTA_MECANICOS','MARCA_PRUEBA','QUITA_PRUEBA']},
@@ -4676,6 +4690,7 @@ function atras(){
 }
 function paso(n){
   PASO_ACTUAL=n;
+  try{guardarBorrador()}catch(e){}
   apagarCamara();
   try{fotoCerrar()}catch(e){}
   for(var i=1;i<=5;i++){var e=$('s'+i);if(e)e.style.display=(i===n?'block':'none')}
@@ -4767,13 +4782,95 @@ var PLACAS_DEMO=['CTS-009','ABC-123','XYZ-789'],ocrIdx=0;
 
 /* ============ BÚSQUEDA + RECURRENCIA ============ */
 var ACTUAL=null;
+var BORR={
+  K:'iza_recepcion_borrador',
+  HORAS:12,
+  leer:function(){
+    try{
+      var b=JSON.parse(localStorage.getItem(this.K)||'null');
+      if(!b||!b.ts)return null;
+      if(Date.now()-b.ts > this.HORAS*3600*1000){this.borrar();return null}
+      if(!b.placa)return null;
+      return b;
+    }catch(e){return null}
+  },
+  guardar:function(b){try{localStorage.setItem(this.K,JSON.stringify(b))}catch(e){}},
+  borrar:function(){try{localStorage.removeItem(this.K)}catch(e){}}
+};
+/* Se llama en cada paso y cada vez que la app pasa a segundo plano.
+   Las fotos no entran: no caben en el almacenamiento del navegador. */
+function guardarBorrador(){
+  if(!SESION_ACT||OT_EST)return;           /* ya hay orden: la guarda DB */
+  var pl=($('placa')&&$('placa').value||'').trim();
+  if(!pl)return;
+  BORR.guardar({
+    ts:Date.now(), paso:PASO_ACTUAL, placa:pl, modo:MODO_REC,
+    sede:SEDE_ACTIVA, usuario:(SESION&&SESION.usuario)||'',
+    nombre:(ACTUAL&&ACTUAL.cliente)||'', veh:ACTUAL?[ACTUAL.marca,ACTUAL.modelo,ACTUAL.anio].filter(Boolean).join(' '):'',
+    km:($('kmIngreso')&&$('kmIngreso').value)||'',
+    zonas:estadoZ, accs:accesoriosLista(),
+    cmb:($('cmb')&&$('cmb').textContent)||'',
+    sel:Object.keys(SEL).filter(function(k){return SEL[k]}),
+    fotos:FOTOS.length
+  });
+}
+function descartarBorrador(){
+  BORR.borrar();
+  var z=document.getElementById('borrAviso');if(z)z.innerHTML='';
+  try{segLista()}catch(e){}
+}
+/* La tarjeta que ofrece retomar. Sale arriba del listado de recepción. */
+function pintarBorrador(){
+  var z=document.getElementById('borrAviso');if(!z)return;
+  var b=(SESION_ACT?null:BORR.leer());
+  if(!b||(SESION&&b.usuario&&b.usuario!==SESION.usuario)){z.innerHTML='';return}
+  var min=Math.round((Date.now()-b.ts)/60000);
+  z.innerHTML='<div class="borrC">'+
+    '<div class="t">Recepción sin terminar</div>'+
+    '<div class="d"><b class="num">'+esc(b.placa)+'</b>'+
+      (b.nombre?' · '+esc(b.nombre):'')+(b.veh?' · '+esc(b.veh):'')+
+      '<br>Paso '+(b.paso||1)+' de 4 · hace '+(min<60?min+' min':Math.round(min/60)+' h')+
+      (b.fotos?' · '+b.fotos+(b.fotos===1?' foto tomada':' fotos tomadas')+' que habrá que repetir':'')+
+      '</div>'+
+    '<div class="fila" style="margin-top:10px">'+
+      '<button class="btn chico" onclick="retomarBorrador()">Retomar esta recepción</button>'+
+      '<button class="btn chico sec" onclick="descartarBorrador()">Descartar</button>'+
+    '</div></div>';
+}
+function retomarBorrador(){
+  var b=BORR.leer();if(!b)return;
+  iniciar();
+  modoDigitar();
+  $('placa').value=b.placa;
+  MODO_REC=b.modo||'deja';
+  estadoZ=b.zonas||{};
+  SEL={};(b.sel||[]).forEach(function(i){SEL[parseInt(i,10)]=true});
+  if(b.cmb&&$('cmb'))$('cmb').textContent=b.cmb;
+  if(b.km&&$('kmIngreso'))$('kmIngreso').value=b.km;
+  var ac=$('accs');
+  if(ac&&(b.accs||[]).length){
+    ac.innerHTML='';
+    b.accs.forEach(function(t){
+      var bt=document.createElement('button');bt.className='chip on';bt.textContent=t;
+      bt.onclick=function(){bt.classList.toggle('on')};ac.appendChild(bt);
+    });
+  }
+  document.querySelectorAll('.punto').forEach(function(d,i){
+    d.className='punto'+(estadoZ[i]===2?' malo':(estadoZ[i]===1?' ok':''));
+  });
+  buscar();
+  /* el paso se fija ya: esperar a la consulta dejaba la pantalla en el
+     paso 1 cuando la red iba lenta */
+  paso(Math.min(Number(b.paso)||1,4));
+  conex('Recepción retomada · revisa las fotos y los daños');
+}
 function buscar(){
   var k=$('placa').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
   if(k.length<5){$('ficha').innerHTML='<div class="aviso info" style="margin:0">Escanea o digita la placa para traer el cliente, su historial y su recurrencia.</div>';return}
   $('ficha').innerHTML='<div class="hint">Consultando la base…</div>';
   if(sb){
     buscarBD(k).then(function(v){
-      if(v){ACTUAL=v;pintarFicha(v);}
+      if(v){ACTUAL=v;pintarFicha(v);avisarOrdenAbierta(v);}
       else altaPlacaNueva(k);
     }).catch(function(e){
       $('ficha').innerHTML='<div class="aviso rojo">No se pudo consultar: '+e.message+'</div>';
@@ -4786,6 +4883,24 @@ function buscar(){
 }
 
 
+/* Si el auto ya está en el taller se dice acá, antes de volver a
+   tomarle fotos y daños. */
+function avisarOrdenAbierta(v){
+  var z=document.getElementById('fichaOT');
+  if(!z||!v||!v._id)return;
+  ordenAbiertaDe(v._id,function(a){
+    var zz=document.getElementById('fichaOT');
+    if(!zz||!a)return;
+    zz.innerHTML='<div class="aviso rojo" style="margin:0 0 12px">'+
+      '<b>Esta placa ya está en el taller.</b><br>'+
+      'La <b>'+esc(a.numero)+'</b> sigue abierta, en '+
+      esc((NOMBRE_EST[a.estado_taller]||a.estado_taller).toLowerCase())+'. '+
+      'Si es la misma visita, continúa en esa orden en vez de crear otra.'+
+      '<div class="fila" style="margin-top:9px">'+
+        '<button class="btn chico" onclick="abrirOrdenBD(&quot;'+esc(a.numero)+'&quot;)">'+
+        'Continuar en la '+otCorto(a.numero)+'</button></div></div>';
+  });
+}
 function elegirPlaca(p){
   var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
   if($('flujo').style.display==='none')iniciar();
@@ -4809,6 +4924,7 @@ function actualizarContacto(){
 function pintarFicha(v){
   var gasto=v.hist.reduce(function(a,x){return a+x.m},0);
   $('ficha').innerHTML=
+   '<div id="fichaOT"></div>'+
    '<div class="recu">'+
      '<div class="top"><div class="nombre">'+v.cliente+'</div>'+
        '<div class="nivel '+claseNivel(v.nivel)+'" style="'+
@@ -5848,6 +5964,7 @@ function crearOrdenBD(v,kmIng){
       conex('No se pudo crear la orden: '+r.error.message,true);
       return;
     }
+    BORR.borrar();
     conex('Orden '+OT_NUM+' registrada');
     auditar('CREA_OT','orden',OT_NUM,v.placa+' · '+kmIng.toLocaleString('es-PE')+' km');
     guardarOrden();
@@ -6631,6 +6748,7 @@ function irDiagnostico(){
 }
 
 function reset(){
+  BORR.borrar();
   MODO_REC='deja';
   apagarCamara();try{fotoCerrar()}catch(e){}
   clearInterval(tint);$('crono').classList.remove('on');
@@ -8198,6 +8316,65 @@ function cargarOrdenesBD(estadosOT,cb,sedeOpt){
 }
 /* La nota del jefe de taller acompaña a la orden en ventanilla,
    asesor y caja: ahí es donde hace falta saber qué pasó. */
+/* Quién aprobó qué, en una línea. Ventanilla, el asesor y caja cobran
+   sobre esto: tienen que verlo sin abrir la orden. */
+var ADIC_PEND={};
+function chipAprob(o){
+  var e=o.estado_ot||'';
+  if(!e)return '<span class="eti e2">Sin OT · en diagnóstico</span>';
+  if(e==='PRELIM_ENVIADA'||e==='PRELIM2_ENVIADA')
+    return '<span class="eti e3">Preliminar sin aprobar</span>';
+  if(e==='DEF_ENVIADA')return '<span class="eti e3">Final sin aprobar</span>';
+  if(e==='PRELIM_APROBADA')return '<span class="eti e4">✓ Preliminar aprobada</span>';
+  if(e==='PRELIM2_APROBADA')return '<span class="eti e4">✓ Preliminar 2 aprobada</span>';
+  if(e==='DEF_APROBADA')return '<span class="eti e4">✓ Final aprobada</span>';
+  if(e==='PAGADA')return '<span class="eti e4">✓ Pagada</span>';
+  if(e==='ANULADA')return '<span class="eti e1">Anulada</span>';
+  return '<span class="eti e1">'+esc(e)+'</span>';
+}
+function avisoAdicLista(o){
+  var a=ADIC_PEND[o.id];
+  if(!a||!a.n)return '';
+  return '<span class="adicChip">⚠ '+a.n+(a.n===1?' adicional':' adicionales')+
+         ' sin aprobar · '+S(Math.round(a.monto))+'</span>';
+}
+/* Una sola consulta para toda la lista. */
+function cargarAdicPend(lista,cb){
+  ADIC_PEND={};
+  var ids=lista.map(function(o){return o.id}).filter(Boolean);
+  if(!sb||!ids.length){cb();return}
+  sb.from('orden_detalle').select('orden_id,cantidad,precio_taller,precio_caja')
+    .in('orden_id',ids).eq('adicional','PEND')
+    .then(function(r){
+      (r.data||[]).forEach(function(l){
+        var a=ADIC_PEND[l.orden_id]||(ADIC_PEND[l.orden_id]={n:0,monto:0});
+        var p=(l.precio_caja!==null&&l.precio_caja!==undefined)?l.precio_caja:l.precio_taller;
+        a.n++;a.monto+=(Number(p)||0)*(Number(l.cantidad)||1);
+      });
+      cb();
+    },function(){cb()});
+}
+/* En el detalle: el estado de la OT y, si los hay, los adicionales que
+   el cliente todavía no autorizó. */
+function bloqueAprob(o,lineas){
+  var pend=(lineas||[]).filter(function(l){return l.adic==='PEND'}),
+      ok=(lineas||[]).filter(function(l){return l.adic==='OK'}),
+      mp=pend.reduce(function(a,l){return a+(Number(l.final||l.precio)||0)*(Number(l.cant)||1)},0),
+      mo=ok.reduce(function(a,l){return a+(Number(l.final||l.precio)||0)*(Number(l.cant)||1)},0);
+  var h='<div class="aprobB"><div class="e">'+chipAprob(o)+
+    (o.aprob?'<span class="f">'+fechaCorta(o.aprob)+'</span>':'')+'</div>';
+  if(ok.length)
+    h+='<div class="l ok2">✓ '+ok.length+(ok.length===1?' adicional aprobado':' adicionales aprobados')+
+       ' · '+S(Math.round(mo))+'</div>';
+  if(pend.length)
+    h+='<div class="l pend"><b>⚠ '+pend.length+(pend.length===1?' adicional sin aprobar':' adicionales sin aprobar')+
+       ' · '+S(Math.round(mp))+'</b><br>'+
+       'El cliente no ha autorizado estas líneas. Confírmalo antes de cobrarlas.'+
+       '<ul style="margin:6px 0 0 16px;padding:0">'+
+       pend.map(function(l){return '<li>'+esc(l.desc)+' · '+S(Math.round((Number(l.final||l.precio)||0)*(Number(l.cant)||1)))+'</li>'}).join('')+
+       '</ul></div>';
+  return h+'</div>';
+}
 function notaFila(o){
   return o&&o.nota ? '<span class="notaInt">📝 '+esc(o.nota)+'</span>' : '';
 }
@@ -8289,13 +8466,14 @@ function ventLista(){
       if(!txt)return true;
       return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
     });
+    cargarAdicPend(lista,function(){ ventPintarLista(res,lista) });
+  });
+}
+function ventPintarLista(res,lista){
     res.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Estado</th><th class="der">En taller</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var chip=!o.estado_ot?'<span class="eti e2">'+
-                 (o.estado_taller==='EN_DIAGNOSTICO'?'En diagnóstico':'Recibido')+' · sin OT</span>'
-               :o.estado_ot==='DEF_ENVIADA'?'<span class="eti e3">Final enviada</span>'
-               :'<span class="eti e4">'+(o.estado_ot==='PRELIM2_APROBADA'?'Prelim. 2 aprobada':'Prelim. aprobada')+'</span>';
+        var chip=chipAprob(o)+avisoAdicLista(o);
         var pend=solicPendienteDe(o.ot);
         return '<tr'+(pend?' style="background:var(--rojo-cl)"':'')+'>'+
         '<td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+
@@ -8307,7 +8485,6 @@ function ventLista(){
       }).join('')
       :'<tr><td colspan="6" class="vacio"><b>Sin pendientes</b>No hay órdenes con servicio aprobado.</td></tr>')+
       '</table></div>';
-  });
 }
 /* Clientes recientes: una fila por atención, no por cliente.
    El mismo cliente puede haber venido cinco veces y cada visita
@@ -8394,6 +8571,7 @@ function ventRender(){
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
     '<h3>Orden de trabajo · '+otCorto(o.ot)+'</h3>'+
+    bloqueAprob(o,VENT_LIN)+
     '<div class="hint" style="margin:-4px 0 12px">Repuestos: código de stock y precio. Servicios: solo precio. '+
       'Si algo no hay, retíralo (✕) y agrega el sustituto.</div>'+
     (!o.estado_ot
@@ -8829,12 +9007,14 @@ function pintarAsesor(){
   $('asesorLista').innerHTML='<div class="hint">Cargando órdenes…</div>';
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     lista=ordenarPorCola(lista);
+    cargarAdicPend(lista,function(){
     $('asesorLista').innerHTML=
       '<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
       '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
+        var pago=chipAprob(o)+avisoAdicLista(o)+'<br>'+
+          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>');
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
         '<td data-l="Cliente">'+o.cliente+notaFila(o)+'</td>'+
@@ -8845,6 +9025,7 @@ function pintarAsesor(){
       }).join('')
       :'<tr><td colspan="7" class="vacio"><b>Sin pendientes</b>No hay OT finales aprobadas por atender.</td></tr>')+
       '</table></div>';
+    });
   });
 }
 function aseAbrir(id){
@@ -8868,6 +9049,7 @@ function aseRender(){
   $('asesorLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarAsesor()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    bloqueAprob(o,ASE_LIN)+
     (bloqueado?'':
       aseFilas()+
       '<div class="fila" style="margin-top:12px;align-items:center">'+
@@ -8908,6 +9090,7 @@ function aseRender(){
             '<button class="btn chico ok" onclick="aseCobrarTarjeta()">Registrar cobro con tarjeta · '+S(t.tot)+'</button>'+
           '</div>'+
         '</div>')+
+    bloqueCierreAsesor(o,t)+
     '<div id="aseMsg" style="margin-top:10px"></div>';
   if(ASE_ADD&&!bloqueado){
     invMontar('aseRes',function(it){
@@ -9079,7 +9262,12 @@ function aseVoucherCargado(inp){
       c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
       ASE_VOUCHER=c.toDataURL('image/jpeg',0.8);
-      document.getElementById('aseVoucherPrev').innerHTML='<img src="'+ASE_VOUCHER+'" style="max-width:220px;border-radius:8px;border:1px solid var(--borde)">';
+      /* hay dos previsualizaciones: la del registro para caja y la del
+         cierre propio del asesor */
+      ['aseVoucherPrev','aseVoucherPrev2'].forEach(function(id){
+        var z=document.getElementById(id);
+        if(z)z.innerHTML='<img src="'+ASE_VOUCHER+'" style="max-width:220px;border-radius:8px;border:1px solid var(--borde)">';
+      });
     };
     img.src=e.target.result;
   };
@@ -9109,6 +9297,92 @@ function aseCobrarTarjeta(){
         setTimeout(pintarAsesor,1500);
       },function(){});
    },function(){msg.innerHTML='<div class="aviso rojo">Sin conexión al subir.</div>'});
+}
+
+/* El asesor cierra el cobro sin pasar por caja: mismo efecto que el
+   cierre de caja, con su propio PIN como autorización. */
+var ASE_CIERRE='';
+function aseModo(m){ ASE_CIERRE=(ASE_CIERRE===m)?'':m; aseRender(); }
+function bloqueCierreAsesor(o,t){
+  if(o.estado_ot==='PAGADA')return '';
+  var cuerpo='';
+  if(ASE_CIERRE){
+    cuerpo='<div class="card" style="margin:12px 0 0;border-color:var(--verde)">'+
+      '<h3 style="font-size:15px">'+(ASE_CIERRE==='efectivo'?'💵 Cerrar cobro en efectivo':'💳 Cerrar cobro con tarjeta')+'</h3>'+
+      '<div class="hint" style="margin:-4px 0 10px">Deja la OT <b>pagada</b>. '+
+        'Queda a tu nombre en la bitácora y en el arqueo de caja.</div>'+
+      (ASE_CIERRE==='tarjeta'
+        ? '<label>Voucher</label>'+
+          '<input type="file" id="aseVoucher2" accept="image/*" capture="environment" '+
+            'onchange="aseVoucherCargado(this)" style="padding:8px">'+
+          '<div id="aseVoucherPrev2" style="margin:8px 0">'+
+            (ASE_VOUCHER?'<img src="'+ASE_VOUCHER+'" style="max-width:150px;border-radius:8px">':'')+'</div>'
+        : '')+
+      '<div class="fila" style="align-items:flex-end">'+
+        '<div style="min-width:170px"><label>N° de comprobante</label>'+
+          '<input id="aseFact" placeholder="'+(o.comp==='factura'?'F001-004512':'B001-004512')+'"></div>'+
+        '<div style="min-width:120px"><label>Tu PIN</label>'+
+          '<input id="aseClave" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>'+
+      '</div>'+
+      '<div class="fila" style="margin-top:12px">'+
+        '<button class="btn chico ok" onclick="aseCerrarCobro()">Cerrar como pagada · '+S(t.tot)+'</button>'+
+        '<button class="btn chico sec" onclick="aseModo(&quot;&quot;)">Cancelar</button>'+
+      '</div></div>';
+  }
+  return '<div class="card" style="margin:14px 0 0">'+
+    '<h3 style="font-size:15px">Cerrar el ciclo</h3>'+
+    '<div class="hint" style="margin:-4px 0 10px">Si cobras tú, la OT queda pagada acá y no pasa por caja.</div>'+
+    '<div class="fila">'+
+      '<button class="btn chico'+(ASE_CIERRE==='efectivo'?'':' sec')+'" onclick="aseModo(&quot;efectivo&quot;)">💵 Cobro en efectivo</button>'+
+      '<button class="btn chico'+(ASE_CIERRE==='tarjeta'?'':' sec')+'" onclick="aseModo(&quot;tarjeta&quot;)">💳 Cobro con tarjeta</button>'+
+    '</div>'+cuerpo+'</div>';
+}
+function aseCerrarCobro(){
+  var msg=$('aseMsg'),o=ASE_OT,t=aseTotales();
+  var fact=($('aseFact')&&$('aseFact').value||'').trim(),
+      pin=($('aseClave')&&$('aseClave').value||'').trim();
+  if(fact.length<5){msg.innerHTML='<div class="aviso rojo" style="margin:0">Ingresa el comprobante emitido.</div>';return}
+  if(pin.length<4){msg.innerHTML='<div class="aviso rojo" style="margin:0">Falta tu PIN.</div>';return}
+  if(ASE_CIERRE==='tarjeta'&&!ASE_VOUCHER&&!o.voucher){
+    msg.innerHTML='<div class="aviso rojo" style="margin:0">Falta la foto del voucher.</div>';return;
+  }
+  var pend=(ASE_LIN||[]).filter(function(l){return l.adic==='PEND'});
+  if(pend.length&&!confirm('Hay '+pend.length+' adicional(es) que el cliente no aprobó.\n\n¿Cobrar igual?'))return;
+  msg.innerHTML='<div class="hint">Validando tu PIN…</div>';
+  if(!sb||!SESION){msg.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión.</div>';return}
+  sb.rpc('validar_pin',{p_usuario:SESION.usuario,p_pin:pin}).then(function(r){
+    if(r.error||!r.data||!r.data.length){
+      msg.innerHTML='<div class="aviso rojo" style="margin:0">PIN incorrecto. El cobro no se registró.</div>';
+      if($('aseClave'))$('aseClave').value='';return;
+    }
+    function cerrar(url){
+      var patch={estado_ot:'PAGADA',total_cobrado:t.tot,comprobante:fact,
+        forma_pago:ASE_CIERRE,pago_validado_por:SESION.nombre,asesor_id:SESION.id,
+        est_asesor:new Date().toISOString(),est_caja:new Date().toISOString(),
+        ot_pagada:new Date().toISOString()};
+      if(url)patch.voucher_url=url;
+      sb.from('ordenes').update(patch).eq('id',o.id).then(function(r2){
+        if(r2.error){msg.innerHTML='<div class="aviso rojo" style="margin:0">'+r2.error.message+'</div>';return}
+        auditar('COBRA','orden',o.ot,'Comprobante '+fact+' · '+ASE_CIERRE+
+                ' · cerrado por el asesor '+SESION.nombre+
+                (pend.length?' · con '+pend.length+' adicional(es) sin aprobar':''),t.tot);
+        guardarSnapshot(o.id,'PAGADA',ASE_LIN,t.tot,ASE_CIERRE+' · comprobante '+fact+' · '+SESION.nombre);
+        $('asesorLista').innerHTML='<div class="aviso ok"><b>Pago registrado · '+otCorto(o.ot)+'</b><br>'+
+          'Comprobante <b>'+esc(fact)+'</b> · '+ASE_CIERRE+' · '+esc(SESION.nombre)+' · '+S(t.tot)+'<br>'+
+          'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>'+
+          '<button class="btn chico sec" style="margin-top:12px" onclick="pintarAsesor()">← Volver a la lista</button>';
+        ASE_CIERRE='';ASE_VOUCHER=null;
+      },function(){msg.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión al guardar.</div>'});
+    }
+    if(ASE_CIERRE==='tarjeta'&&ASE_VOUCHER){
+      var nombre='vouchers/'+o.ot+'-asesor-'+Date.now()+'.jpg';
+      var bin=atob(ASE_VOUCHER.split(',')[1]);var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      sb.storage.from('fotos').upload(nombre,new Blob([arr],{type:'image/jpeg'}),{contentType:'image/jpeg'})
+        .then(function(up){ cerrar(up.error?null:sb.storage.from('fotos').getPublicUrl(nombre).data.publicUrl) },
+              function(){ cerrar(null) });
+    } else cerrar(null);
+  },function(){msg.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión con la base.</div>'});
 }
 
 /* ============================================================
@@ -9147,11 +9421,13 @@ function pintarCaja(){
   if(!CAJEROS.length){cargarCajeros(pintarCaja);return}
   cargarOrdenesBD(['DEF_APROBADA'],function(lista){
     lista=ordenarPorCola(lista);
+    cargarAdicPend(lista,function(){
     z.innerHTML='<div class="hint" style="margin:-4px 0 10px">Las más recientes primero.</div>'+
       '<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Aprobada</th><th>Pago</th><th class="der">Total</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var pago=o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>';
+        var pago=chipAprob(o)+avisoAdicLista(o)+'<br>'+
+          (o.voucher?'<span class="eti e3">tarjeta · por validar</span>':'<span class="eti e2">sin cobrar</span>');
         return '<tr><td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+'</td>'+
         '<td class="num" data-l="Placa"><b>'+o.placa+'</b></td>'+
         '<td data-l="Cliente">'+o.cliente+notaFila(o)+'</td>'+
@@ -9162,6 +9438,7 @@ function pintarCaja(){
       }).join('')
       :'<tr><td colspan="7" class="vacio"><b>Nada por cobrar</b>No hay órdenes con la OT final aprobada.</td></tr>')+
       '</table></div>';
+    });
   });
 }
 function abrirCobro(id){
@@ -9230,6 +9507,7 @@ function renderCobro(){
   $('cajaZona').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarCaja()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    bloqueAprob(o,CAJA_LIN)+
     '<div class="hint">Comprobante: <b>'+o.comp+'</b>'+(o.ruc?' · RUC '+o.ruc:'')+
       (o.estado_taller!=='LISTO'&&o.estado_taller!=='ENTREGADO'?' · <span class="eti e3">vehículo aún en taller</span>':'')+'</div>'+
     facturaNegra(snap,'OT a cobrar')+cajaAlmacen()+cuerpo+
@@ -9344,7 +9622,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=149;
+var APP_VER=150;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
@@ -9424,6 +9702,18 @@ try{ setTimeout(revisarVersion,1500) }catch(e){}
       segLista();
     }
   }catch(e){}
+})();
+
+/* El celular que se bloquea a mitad de una recepción es el caso que
+   duplicaba órdenes: acá se guarda el avance antes de que el navegador
+   descarte la página. */
+(function(){
+  function salvar(){ try{ guardarBorrador() }catch(e){} }
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='hidden')salvar();
+  });
+  window.addEventListener('pagehide',salvar);
+  window.addEventListener('blur',salvar);
 })();
 
 /* ============ RESTAURACIÓN DE SESIÓN ============
