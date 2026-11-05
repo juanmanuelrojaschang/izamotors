@@ -1,4 +1,4 @@
-<!--IZAV:154-->
+<!--IZAV:155-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -553,6 +553,8 @@ body.sinScroll{overflow:hidden}
   text-transform:uppercase;letter-spacing:.02em;color:#fff;margin:2px 0 10px;line-height:1.1}
 .tituloVig span{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;
   text-transform:none;letter-spacing:0;color:#9AA3AE;margin-top:3px}
+/* el diálogo propio va por encima de la pantalla de entrada */
+#modalPreg{z-index:120}
 .adicF .tog{cursor:pointer}
 .adicF .fl{display:block;margin-top:7px;font-size:11.5px;font-weight:700;color:var(--rojo)}
 .adicLista{margin-top:10px;padding-top:9px;border-top:1px solid var(--borde)}
@@ -890,7 +892,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 154</span>
+  <span class="demo-tag">versión 155</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1854,10 +1856,12 @@ function abrirModulo(m){
   if(subs.length)ir(subs[0].v);
 }
 function limpiarHistorial(){
-  if(!confirm('¿Borrar las órdenes registradas en este dispositivo? Las de ejemplo del piso se mantienen.'))return;
-  try{localStorage.removeItem(DB.K);localStorage.removeItem('iza_corr')}catch(e){}
-  OT_EST='';OT_NUM='';ORD=null;SESION_ACT=false;BITACORA={};
-  segLista();
+  confirmar('¿Borrar las órdenes registradas en este dispositivo? Las de ejemplo del piso se mantienen.',
+   function(){
+    try{localStorage.removeItem(DB.K);localStorage.removeItem('iza_corr')}catch(e){}
+    OT_EST='';OT_NUM='';ORD=null;SESION_ACT=false;BITACORA={};
+    segLista();
+   },'Borrar');
 }
 var TAB_LISTADO='ordenes';
 function abrirListado(){
@@ -1869,7 +1873,7 @@ function abrirListado(){
 }
 function abrirCrearCliente(){
   if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'||SESION.rol==='jefe_taller'))){
-    alert('La edición de clientes es de administradores y jefe de taller.');return;
+    aviso('La edición de clientes es de administradores y jefe de taller.');return;
   }
   document.getElementById('panelListado').classList.add('oculto');
   /* el menú estorba: para volver está el botón de arriba del panel */
@@ -1884,7 +1888,7 @@ function abrirCrearCliente(){
 /* Entra al panel directamente en modo creación. */
 function abrirNuevoCliente(){
   if(!(SESION&&(SESION.rol==='admin_local'||SESION.rol==='admin_general'||SESION.rol==='jefe_taller'))){
-    alert('La creación de clientes es de administradores y jefe de taller.');return;
+    aviso('La creación de clientes es de administradores y jefe de taller.');return;
   }
   document.getElementById('panelListado').classList.add('oculto');
   var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
@@ -2051,7 +2055,7 @@ function abrirOrdenBD(ot){
   if(DB.get(ot)){abrirOrden(ot);return}
   var o=null;
   SEG_BD.forEach(function(x){if(x.ot===ot)o=x});
-  if(!o){alert('No se encontró la orden '+ot+' en la base.');return}
+  if(!o){aviso('No se encontró la orden '+ot+' en la base.');return}
   DB.set({ot:o.ot,placa:o.placa,veh:o.veh,cliente:o.cliente,tel:o.tel||'',
     estado:o.estado,estado_taller:o.estado,estado_ot:o.estado_ot||'',
     mec:o.mec||'',sel:[],hitos:{},bit:{},lineas_serv:[],lineas_rep:[],minis:[],
@@ -2706,10 +2710,10 @@ function lineaAceitePendiente(){
 function aceMarca(i){ ACE_MARCA=(ACE_MARCA===i)?null:i; pintarPresupuestoLista() }
 function aceElegir(mi,li,col){
   var m=ACEITES[mi],a=m.l[li],pr=a[col+1];
-  if(pr===null||pr===undefined){alert('Esa medida no está disponible para este aceite.');return}
+  if(pr===null||pr===undefined){aviso('Esa medida no está disponible para este aceite.');return}
   var nom=nombreAceite(m.m,a[0],col);
   if(LINEAS_REP.filter(function(l){return l.desc===nom}).length){
-    alert('Ese aceite ya está en el presupuesto.');return;
+    aviso('Ese aceite ya está en el presupuesto.');return;
   }
   LINEAS_REP.push({codigo:'',codigo2:'',desc:nom,precio:Number(pr),cant:1,
                    marca:m.m,modelo:'',ubicacion:'',es_aceite:true});
@@ -2757,14 +2761,14 @@ function bloqueAceite(){
 var ADIC_SEL='';
 function adicAgregar(){
   var v=document.getElementById('adicSel').value;
-  if(v===''){alert('Elige un servicio adicional.');return}
+  if(v===''){aviso('Elige un servicio adicional.');return}
   var a=ADICIONALES[Number(v)];
   if(!a)return;
   if(a.t==='MO'){
-    if(LINEAS_SERV.filter(function(l){return l.desc===a.d}).length){alert('Ya está en el presupuesto.');return}
+    if(LINEAS_SERV.filter(function(l){return l.desc===a.d}).length){aviso('Ya está en el presupuesto.');return}
     LINEAS_SERV.push({codigo:'',codigo2:'',desc:a.d,precio:a.p,cant:1,categoria:'Adicionales'});
   } else {
-    if(LINEAS_REP.filter(function(l){return l.desc===a.d}).length){alert('Ya está en el presupuesto.');return}
+    if(LINEAS_REP.filter(function(l){return l.desc===a.d}).length){aviso('Ya está en el presupuesto.');return}
     LINEAS_REP.push({codigo:'',codigo2:'',desc:a.d,precio:a.p,cant:1,marca:'',modelo:'',ubicacion:''});
   }
   auditar('AGREGA_ITEM','orden',OT_NUM,'Adicional: '+a.d+' · '+S(a.p),a.p);
@@ -2792,12 +2796,12 @@ function agregarServicio(){
   var s=SRV_SEL;
   if(!s){
     var v=($('servDesc')&&$('servDesc').value||'').trim();
-    alert(v?('No encuentro el servicio "'+v+'". Elige uno de la lista.')
+    aviso(v?('No encuentro el servicio "'+v+'". Elige uno de la lista.')
            :'Escribe o elige un servicio.');
     return;
   }
   if(LINEAS_SERV.filter(function(l){return l.codigo===s.codigo}).length){
-    alert('Ese servicio ya está en el presupuesto.');return;
+    aviso('Ese servicio ya está en el presupuesto.');return;
   }
   var pe=$('servPrecio'),pr=pe&&pe.value!==''?Number(pe.value):Number(s.prec1||s.precio||0);
   LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:s.descripcion,
@@ -3375,7 +3379,7 @@ function imprimirTicket(titulo,cuerpo){
   doc.open();doc.write(html);doc.close();
   setTimeout(function(){
     try{f.contentWindow.focus();f.contentWindow.print()}
-    catch(e){alert('No se pudo abrir la impresión: '+e.message)}
+    catch(e){aviso('No se pudo abrir la impresión: '+e.message)}
   },350);
 }
 function imprimirPresupuesto(){
@@ -3412,7 +3416,7 @@ function imprimirPresupuesto(){
 function editarEnProceso(){
   var z=$('editProceso');
   if(z.style.display==='block'){z.style.display='none';return}
-  if(!ACTUAL){alert('Primero identifica el vehículo.');return}
+  if(!ACTUAL){aviso('Primero identifica el vehículo.');return}
   var v=ACTUAL;
   z.style.display='block';
   z.innerHTML='<div class="card" style="border-color:var(--rojo)">'+
@@ -3498,10 +3502,12 @@ function guardarEdicionProceso(){
   });
 }
 function cambiarVehiculo(){
-  if(!confirm('Cambiar de vehículo reinicia el check-in: se pierden las fotos y el inventario ya marcados. ¿Continuar?'))return;
-  auditar('CAMBIA_VEHICULO','orden',OT_NUM||'(sin orden)','Reinicio del check-in en curso');
-  reset();
-  iniciar();
+  confirmar('Cambiar de vehículo reinicia el check-in: se pierden las fotos y el inventario ya marcados.',
+   function(){
+    auditar('CAMBIA_VEHICULO','orden',OT_NUM||'(sin orden)','Reinicio del check-in en curso');
+    reset();
+    iniciar();
+   },'Cambiar de vehículo');
 }
 
 /* ============================================================
@@ -3600,7 +3606,7 @@ function FLOTAS_elegir(id){
 }
 function flotaAbrirCam(){
   var box=document.getElementById('flotaCam');
-  if(!box){alert('Abre primero la ficha del cliente.');return}
+  if(!box){aviso('Abre primero la ficha del cliente.');return}
   box.style.display='flex';
   if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){
     box.className='ocr vacio';box.textContent='Cámara no disponible en este equipo.';return;
@@ -4028,8 +4034,10 @@ function guardarCorreccion(){
 /* La copia local hace que una orden borrada de la base reaparezca
    marcada como "solo en este equipo". Esto la borra del navegador. */
 function olvidarLocal(ot){
-  if(!confirm('La orden '+ot+' no está en la base: solo quedó guardada en este equipo.\n\n'+
-     '¿Quitarla de esta lista? No afecta a nadie más.'))return;
+  confirmar('La orden '+ot+' no está en la base: solo quedó guardada en este equipo.\n\n'+
+     '¿Quitarla de esta lista? No afecta a nadie más.',function(){ olvidarLocalYa(ot) },'Quitar de la lista');
+}
+function olvidarLocalYa(ot){
   try{
     var o=DB.leer();delete o[ot];DB.guardar(o);
   }catch(e){}
@@ -4039,17 +4047,18 @@ function olvidarLocal(ot){
 }
 function anularDesdeLista(ot){
   if(!esAdminTaller()){
-    alert('La anulación es exclusiva del administrador del taller. '+
+    aviso('La anulación es exclusiva del administrador del taller. '+
           'El jefe de taller puede solicitarla desde la orden.');return;
   }
   var o=null;SEG_BD.forEach(function(x){if(x.ot===ot)o=x});
   if(o&&ordenPagada(o.estado_ot,o.estado)){
-    alert('La orden '+ot+' ya está pagada: no se puede anular.');return;
+    aviso('La orden '+ot+' ya está pagada: no se puede anular.');return;
   }
-  var motivo=prompt('Motivo de la anulación de '+ot+' (obligatorio):');
-  if(motivo===null)return;
-  if(!motivo||motivo.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return}
-  if(!confirm('La orden '+ot+' quedará ANULADA. No se borra: queda con tu nombre y el motivo. ¿Continuar?'))return;
+  pedirTexto('Anular la '+otCorto(ot),
+    'La orden quedará <b>anulada</b>. No se borra: queda con tu nombre y el motivo.',
+    function(motivo){ anularDesdeListaYa(ot,motivo) },{ok:'Anular la orden',ph:'Ej. el cliente desistió'});
+}
+function anularDesdeListaYa(ot,motivo){
   if(sb)sb.from('ordenes').update({estado:'ANULADO',estado_taller:'ANULADO',estado_ot:'ANULADA'})
     .eq('numero',ot).then(function(){},function(){});
   try{
@@ -4062,11 +4071,12 @@ function anularDesdeLista(ot){
   segLista();
 }
 function anularOrden(){
-  if(!puedeAnular()){alert('Solo el administrador del taller puede anular una orden.');return}
-  var motivo=prompt('Motivo de la anulación (obligatorio):');
-  if(motivo===null)return;
-  if(!motivo||motivo.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return}
-  if(!confirm('La orden '+OT_NUM+' quedará ANULADA. No se borra: queda registrada con tu nombre y el motivo. ¿Continuar?'))return;
+  if(!puedeAnular()){aviso('Solo el administrador del taller puede anular una orden.');return}
+  pedirTexto('Anular la '+otCorto(OT_NUM),
+    'La orden quedará <b>anulada</b>. No se borra: queda registrada con tu nombre y el motivo.',
+    function(motivo){ anularOrdenYa(motivo) },{ok:'Anular la orden',ph:'Ej. el cliente desistió'});
+}
+function anularOrdenYa(motivo){
   if(sb&&OT_NUM){
     sb.from('ordenes').update({estado:'ANULADO'}).eq('numero',OT_NUM).then(function(){},function(){});
   }
@@ -4083,7 +4093,7 @@ function anularOrden(){
   BITACORA['ANULADO']={hora:new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}),
     nota:'Anulada por '+SESION.nombre+' · '+motivo.trim()};
   renderBitacora();renderGestion();renderEditar();
-  alert('Orden anulada. Puedes crear una nueva desde Clientes.');
+  aviso('Orden anulada. Puedes crear una nueva desde Clientes.');
 }
 
 /* ============================================================
@@ -4204,10 +4214,10 @@ function marcarRevisada(id){
   sb.from('solicitudes_anulacion').update({
     revisa_id:SESION.id||null,revisa_nom:SESION.nombre,revisado_el:new Date().toISOString()
   }).eq('id',id).then(function(r){
-    if(r.error){alert('No se pudo marcar: '+r.error.message);return}
+    if(r.error){aviso('No se pudo marcar: '+r.error.message);return}
     conex('Marcada como revisada');
     cargarAnulaciones();
-  },function(){alert('Sin conexión.')});
+  },function(){aviso('Sin conexión.')});
 }
 function chipEstadoAnul(e){
   return e==='ANULADA'  ? '<span class="eti e4">ANULADA</span>'
@@ -4478,6 +4488,40 @@ function formVehiculo(pref){
     '<div><label>Kilometraje</label><input id="nvKm" inputmode="numeric" placeholder="opcional · 24,000" oninput="fmtKm(this)"></div>'+
   '</div>';
 }
+/* En el taller la señal se va a cada rato. Una petición que falla por
+   red no es un error del usuario: se reintenta sola antes de rendirse,
+   y pase lo que pase el mensaje deja de decir "Guardando…". */
+function esFalloDeRed(e){
+  var m=String((e&&(e.message||e.msg))||e||'');
+  return /failed to fetch|networkerror|network request failed|load failed|timeout|abort/i.test(m);
+}
+function conRed(hacer,ok,fallo,msg,intentos){
+  intentos=intentos||0;
+  var MAX=3;
+  function reintentaOFalla(e){
+    if(esFalloDeRed(e)&&intentos<MAX-1){
+      if(msg)msg.innerHTML='<div class="hint">Sin señal. Reintentando… ('+(intentos+2)+' de '+MAX+')</div>';
+      setTimeout(function(){ conRed(hacer,ok,fallo,msg,intentos+1) },900*(intentos+1));
+      return true;
+    }
+    return false;
+  }
+  var p;
+  try{ p=hacer() }catch(e){ if(!reintentaOFalla(e))fallo(e); return }
+  p.then(function(r){
+    /* supabase-js también devuelve el fallo de red dentro de r.error */
+    if(r&&r.error&&esFalloDeRed(r.error)){ if(!reintentaOFalla(r.error))fallo(r.error); return }
+    ok(r);
+  },function(e){ if(!reintentaOFalla(e))fallo(e); });
+}
+function msgRed(msg,e,que){
+  var red=esFalloDeRed(e);
+  msg.innerHTML='<div class="aviso rojo">'+
+    (red
+      ? '<b>Sin conexión.</b><br>No se pudo '+que+'. Revisa la señal y vuelve a tocar el botón; '+
+        'nada se guardó a medias.'
+      : esc((e&&e.message)||'No se pudo '+que+'.'))+'</div>';
+}
 function guardarClienteNuevo(volverA){
   var doc=$('nvDoc').value.trim(),tipo=$('nvTipo').value,
       nom=nombreCompleto('nv'),placa=$('nvPlaca').value.trim().toUpperCase();
@@ -4500,7 +4544,9 @@ function guardarClienteNuevo(volverA){
   }
   /* Un documento es un cliente. Antes se insertaba sin mirar, así que
      recibir dos veces al mismo cliente lo duplicaba en la lista. */
-  sb.from('clientes').select('id,nombre').eq('num_doc',doc).maybeSingle().then(function(ya){
+  conRed(function(){ return sb.from('clientes').select('id,nombre').eq('num_doc',doc).maybeSingle() },
+   function(ya){
+    if(ya.error){ msgRed(msg,ya.error,'verificar el documento'); return }
     if(ya.data){
       if(!placa){
         msg.innerHTML='<div class="aviso rojo">El documento <b>'+doc+'</b> ya está registrado a nombre de '+
@@ -4513,16 +4559,18 @@ function guardarClienteNuevo(volverA){
       guardarVehiculo(ya.data.id,volverA,msg);
       return;
     }
-    sb.from('clientes').insert(reg).select().single().then(function(r){
-      if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+    conRed(function(){ return sb.from('clientes').insert(reg).select().single() },
+     function(r){
+      if(r.error){ msgRed(msg,r.error,'crear el cliente'); return }
       var cli=r.data;
       auditar('CREA_CLIENTE','cliente',doc,nom);
       if(cli.flota_id&&FLOTA_FOTO)subirFotoFlota(cli.id);
       if(!placa){msg.innerHTML='<div class="aviso ok">Cliente creado.</div>';bdBuscar();return}
       guardarVehiculo(cli.id,volverA,msg);
-    });
-  },function(e){msg.innerHTML='<div class="aviso rojo">No se pudo verificar el documento: '+
-    ((e&&e.message)||'sin conexión')+'</div>'});
+     },
+     function(e){ msgRed(msg,e,'crear el cliente') },msg);
+   },
+   function(e){ msgRed(msg,e,'verificar el documento') },msg);
 }
 function guardarVehiculo(clienteId,volverA,msg){
   msg=msg||document.getElementById('altaMsg')||document.getElementById('bdMsg');
@@ -4543,25 +4591,30 @@ function guardarVehiculo(clienteId,volverA,msg){
   if(placa.length>=6&&placa.indexOf('-')===-1)placa=placa.slice(0,3)+'-'+placa.slice(3);
   msg.innerHTML='<div class="hint">Guardando…</div>';
   /* Una placa es un vehículo: si ya existe, no se crea otro. */
-  sb.from('vehiculos').select('id,cliente_id,clientes(nombre)').eq('placa',placa).maybeSingle()
-   .then(function(ya){
+  conRed(function(){ return sb.from('vehiculos').select('id,cliente_id,clientes(nombre)')
+      .eq('placa',placa).maybeSingle() },
+   function(ya){
+    if(ya.error){ msgRed(msg,ya.error,'verificar la placa'); return }
     if(ya.data){
       var de=(ya.data.clientes&&ya.data.clientes.nombre)||'otro cliente';
       msg.innerHTML='<div class="aviso rojo">La placa <b>'+placa+'</b> ya está registrada'+
         (ya.data.cliente_id===clienteId?' en este cliente.':' a nombre de <b>'+de+'</b>.')+'</div>';
       return;
     }
-    sb.from('vehiculos').insert({
-      placa:placa,cliente_id:clienteId,marca:marca,modelo:modelo,
-      anio:Number($('nvAnio').value)||null,color:$('nvColor').value,km_ultimo:kmNum('nvKm')
-    }).then(function(r2){
-    if(r2.error){msg.innerHTML='<div class="aviso rojo">'+r2.error.message+'</div>';return}
-    auditar('CREA_VEHICULO','vehiculo',placa,'Vinculado al cliente');
-    msg.innerHTML='<div class="aviso ok">Registrado: '+placa+'</div>';
-    if(volverA==='recepcion'){ $('placa').value=placa; setTimeout(function(){buscar()},600); }
-    else bdBuscar();
-    });
-  },function(){msg.innerHTML='<div class="aviso rojo">No se pudo verificar la placa.</div>'});
+    conRed(function(){ return sb.from('vehiculos').insert({
+        placa:placa,cliente_id:clienteId,marca:marca,modelo:modelo,
+        anio:Number($('nvAnio').value)||null,color:$('nvColor').value,km_ultimo:kmNum('nvKm')
+      }) },
+     function(r2){
+      if(r2.error){ msgRed(msg,r2.error,'guardar el vehículo'); return }
+      auditar('CREA_VEHICULO','vehiculo',placa,'Vinculado al cliente');
+      msg.innerHTML='<div class="aviso ok">Registrado: '+placa+'</div>';
+      if(volverA==='recepcion'){ $('placa').value=placa; setTimeout(function(){buscar()},600); }
+      else bdBuscar();
+     },
+     function(e){ msgRed(msg,e,'guardar el vehículo') },msg);
+   },
+   function(e){ msgRed(msg,e,'verificar la placa') },msg);
 }
 function bdAgregarAuto(clienteId){
   $('bdDetalle').innerHTML='<h3>Agregar vehículo al cliente</h3>'+formVehiculo({})+
@@ -4808,7 +4861,8 @@ function atras(){
   /* desde la gestión se vuelve al listado; dentro del check-in, al paso previo */
   if(PASO_ACTUAL>=5||OT_EST){ segEntrada(); return; }
   if(PASO_ACTUAL>1){ paso(PASO_ACTUAL-1); return; }
-  if(confirm('¿Salir de esta recepción? Lo registrado hasta ahora no se guarda.')){ reset(); }
+  confirmar('¿Salir de esta recepción? Queda guardada como borrador y la puedes retomar desde el listado.',
+    function(){ try{guardarBorrador()}catch(e){} reset(); },'Salir');
 }
 function paso(n){
   PASO_ACTUAL=n;
@@ -5459,7 +5513,9 @@ function impSubir(){
   var qué=(IMP.tipo==='stock')?'repuestos'
          :(IMP.tipo==='usuarios'?'usuarios'
          :(IMP.tipo==='mecanicos'?'mecánicos y lavadores':'servicios'));
-  if(!confirm('¿Cargar '+IMP.items.length+' '+qué+' a la base?'))return;
+  confirmar('¿Cargar '+IMP.items.length+' '+qué+' a la base?',function(){ impSubirYa() },'Cargar');
+}
+function impSubirYa(){
   $('impAcc').innerHTML='';
   if(IMP.tipo==='usuarios'){impUsuariosSubir();return}
   if(IMP.tipo==='mecanicos'){impMecanicosSubir();return}
@@ -6034,7 +6090,7 @@ function asignarMecanicoAhora(mec){
   guardarOrden();
 }
 function setTaller(k,nota){
-  if(idxTaller(k)<idxTaller(EST_TALLER)){alert('El flujo del taller solo avanza.');return}
+  if(idxTaller(k)<idxTaller(EST_TALLER)){aviso('El flujo del taller solo avanza.');return}
   /* Antes de dar el auto por listo tiene que haber responsable. El
      lavador solo si el trabajo incluyó lavado. */
   if(idxTaller(k)>=idxTaller('LISTO')&&idxTaller(EST_TALLER)<idxTaller('LISTO')){
@@ -6052,7 +6108,7 @@ function setTaller(k,nota){
 function setOT(k,nota){
   if(k.indexOf('PRELIM2')===0){TIENE_P2=true}
   armarFOT();
-  if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){alert('El flujo de la OT solo avanza.');return false}
+  if(EST_OT_ACT&&idxOT(k)<idxOT(EST_OT_ACT)){aviso('El flujo de la OT solo avanza.');return false}
   EST_OT_ACT=k;PANEL_SEL=null;EDITANDO_OT=false;AGREGANDO=false;
   HITOS['O_'+k]=selloHora();
   /* la aprobación preliminar (1 o 2) libera el trabajo en el taller */
@@ -6634,19 +6690,28 @@ function editarOT(){
   var msg=creaP2
     ? 'La preliminar ya fue aprobada. Al editarla se crea la PRELIMINAR 2, que el cliente deberá aprobar de nuevo. ¿Continuar?'
     : 'Vas a modificar la preliminar. Si el cliente tiene un link para aprobar, ese link dejará de funcionar. ¿Continuar?';
-  if(!confirm(msg))return;
-  if(creaP2){TIENE_P2=true;armarFOT();guardarFlujos()}
-  EDITANDO_OT=true;
-  auditar('EDITA_OT','orden',OT_NUM,creaP2?'Abre preliminar 2':'Modifica preliminar antes de aprobación');
-  PANEL_SEL={f:'ot',k:creaP2?'PRELIM2_ENVIADA':EST_OT_ACT};
-  renderFlujos();
-  setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
+  confirmar(msg,function(){
+    if(creaP2){TIENE_P2=true;armarFOT();guardarFlujos()}
+    EDITANDO_OT=true;
+    auditar('EDITA_OT','orden',OT_NUM,creaP2?'Abre preliminar 2':'Modifica preliminar antes de aprobación');
+    PANEL_SEL={f:'ot',k:creaP2?'PRELIM2_ENVIADA':EST_OT_ACT};
+    renderFlujos();
+    setTimeout(function(){var g=$('gPres');if(g)g.scrollIntoView({behavior:'smooth',block:'start'})},150);
+  },'Editar la OT');
 }
 /* Reemplaza a confirm(): los botones del navegador dicen "OK" y
    "Cancelar", que no explican nada cuando la pregunta tiene dos
    caminos distintos. Acá cada botón dice lo que va a hacer. */
 var PREG_OPC=[];
 function pregunta(titulo,texto,opciones,extraHTML){
+  /* Si por lo que sea el diálogo no está en la página, mejor el del
+     navegador que quedarse sin avisar. */
+  if(!document.getElementById('pregTit')){
+    var t=String(texto||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    if(opciones&&opciones.length>1){ if(window.confirm(t)&&opciones[0].fn)opciones[0].fn() }
+    else { window.alert(t); if(opciones&&opciones[0]&&opciones[0].fn)opciones[0].fn() }
+    return;
+  }
   PREG_OPC=opciones;
   document.getElementById('pregTit').textContent=titulo;
   document.getElementById('pregTxt').innerHTML=texto;
@@ -6656,6 +6721,32 @@ function pregunta(titulo,texto,opciones,extraHTML){
       'onclick="pregElegir('+i+')">'+o.t+'</button>';
   }).join('');
   document.getElementById('modalPreg').classList.add('on');
+}
+/* Los diálogos del navegador llevan el dominio del sitio en el título.
+   Estos son propios: dicen IZA Motors y nada más. */
+function aviso(txt,titulo){
+  pregunta(titulo||'IZA Motors',String(txt).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>'),
+           [{t:'Entendido'}]);
+}
+/* prompt() también lleva el dominio en el título; este pide el texto
+   dentro del mismo diálogo y valida sin soltar la ventana. */
+function pedirTexto(titulo,texto,cb,opts){
+  opts=opts||{};
+  pregunta(titulo,texto,
+    [{t:opts.ok||'Confirmar',cls:opts.cls||'',fn:function(){
+        var t=((document.getElementById('pregTexto')||{}).value||'').trim();
+        if(t.length<(opts.min===undefined?5:opts.min)){
+          pregAviso(opts.err||'Escribe el motivo: es obligatorio y debe ser específico.');return;
+        }
+        pregCerrar();cb(t);
+      },cierra:false},
+     {t:'Cancelar',cls:'sec'}],
+    '<label>'+(opts.label||'Motivo · obligatorio')+'</label>'+
+    '<textarea id="pregTexto" rows="2" placeholder="'+(opts.ph||'')+'"></textarea>');
+}
+function confirmar(txt,cb,si,no){
+  pregunta('IZA Motors',String(txt).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>'),
+           [{t:si||'Continuar',fn:cb},{t:no||'Cancelar',cls:'sec'}]);
 }
 function pregCerrar(){
   document.getElementById('modalPreg').classList.remove('on');
@@ -6685,7 +6776,7 @@ function confirmarMotivoRet(){
   var m=document.getElementById('retMotivo').value;
   if(m==='Otros'){
     var o=(document.getElementById('retOtro').value||'').trim();
-    if(o.length<3){alert('Indica el motivo.');return}
+    if(o.length<3){aviso('Indica el motivo.');return}
     m='Otros: '+o;
   }
   var cb=RET_CB;cerrarMotivoRet();
@@ -6712,10 +6803,10 @@ function pedirMotivoVB(cb){
 function cerrarMotivoVB(){document.getElementById('modalVB').classList.remove('on');VB_CB=null}
 function confirmarMotivoVB(){
   var m=document.getElementById('vbMotivo').value;
-  if(!m){alert('Elige un motivo.');return}
+  if(!m){aviso('Elige un motivo.');return}
   if(m==='Otro'){
     var o=(document.getElementById('vbOtro').value||'').trim();
-    if(o.length<4){alert('Indica el motivo.');return}
+    if(o.length<4){aviso('Indica el motivo.');return}
     m='Otro: '+o;
   }
   var cb=VB_CB;cerrarMotivoVB();
@@ -6723,7 +6814,7 @@ function confirmarMotivoVB(){
 }
 function continuarSinConfirmar(){
   if(!LINEAS_SERV.length&&!LINEAS_REP.length){
-    alert('Arma primero el presupuesto: no se puede iniciar el trabajo sin detalle.');return;
+    aviso('Arma primero el presupuesto: no se puede iniciar el trabajo sin detalle.');return;
   }
   pedirMotivoVB(function(m){ continuarSinConfirmarCon(m) });
 }
@@ -6889,14 +6980,14 @@ function irDiagnostico(){
   var mec=($('gMec')&&$('gMec').value||'').trim();
   var km=kmNum('gKm');
   if(!km){
-    alert('Falta el kilometraje de ingreso.');
+    aviso('Falta el kilometraje de ingreso.');
     if($('gKm'))$('gKm').focus();
     return;
   }
   /* Fuera de la recepción el botón solo guarda al mecánico: sin nombre
      no hay nada que guardar. */
   if(EST_TALLER!=='RECIBIDO'&&!mec){
-    alert('Elige un mecánico de la lista para asignarlo.');
+    aviso('Elige un mecánico de la lista para asignarlo.');
     if($('gMec'))$('gMec').focus();
     return;
   }
@@ -7409,7 +7500,7 @@ function puedeSolicitar(est_ot,est_taller){
 
 /* ---- crear una solicitud ---- */
 function nuevaSolicitud(datos,cb){
-  if(!sb||!SESION){alert('Sin conexión.');return}
+  if(!sb||!SESION){aviso('Sin conexión.');return}
   var reg={
     sede_id:SEDE_ACTIVA,orden_numero:datos.ot,placa:datos.placa||null,
     cliente:datos.cliente||null,vehiculo:datos.veh||null,
@@ -7419,39 +7510,37 @@ function nuevaSolicitud(datos,cb){
     pide_id:SESION.id||null,pide_nom:SESION.nombre,pide_rol:SESION.rol,estado:'PENDIENTE'
   };
   sb.from('solicitudes_anulacion').insert(reg).select('id').then(function(r){
-    if(r.error){alert('No se pudo registrar la solicitud: '+r.error.message);return}
+    if(r.error){aviso('No se pudo registrar la solicitud: '+r.error.message);return}
     auditar('SOLICITA_ANULACION','orden',datos.ot,
       (datos.tipo==='ORDEN'?'Orden completa':'Línea: '+(datos.linea_desc||''))+' · '+datos.motivo);
     conex('Solicitud enviada a ventanilla');
     cb&&cb();
-  },function(){alert('Sin conexión al registrar la solicitud.')});
+  },function(){aviso('Sin conexión al registrar la solicitud.')});
 }
-function pedirMotivoAnulacion(titulo){
-  var m=prompt(titulo+'\n\nMotivo (obligatorio, mínimo 5 caracteres):');
-  if(m===null)return null;
-  if(!m||m.trim().length<5){alert('El motivo es obligatorio y debe ser específico.');return null}
-  return m.trim();
+function pedirMotivoAnulacion(titulo,cb){
+  pedirTexto(titulo,'Ventanilla la verá en su bandeja de anulaciones.',cb,
+    {ok:'Enviar la solicitud',ph:'Ej. el cliente ya no quiere el repuesto'});
 }
 
 /* ---- solicitar la anulación de la orden abierta ---- */
 function solicitarAnulacionOrden(){
   if(!OT_NUM)return;
-  var m=pedirMotivoAnulacion('Solicitar la anulación de la orden '+OT_NUM);
-  if(!m)return;
-  nuevaSolicitud({ot:OT_NUM,tipo:'ORDEN',motivo:m,
-    placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
-    function(){ renderGestion() });
+  pedirMotivoAnulacion('Solicitar la anulación de la '+otCorto(OT_NUM),function(m){
+    nuevaSolicitud({ot:OT_NUM,tipo:'ORDEN',motivo:m,
+      placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
+      function(){ renderGestion() });
+  });
 }
 /* ---- solicitar quitar una línea del presupuesto ---- */
 function solicitarAnulacionLinea(tipo,i){
   var l=(tipo==='MO'?LINEAS_SERV:LINEAS_REP)[i];
   if(!l||!OT_NUM)return;
-  var m=pedirMotivoAnulacion('Solicitar que ventanilla quite: '+l.desc);
-  if(!m)return;
-  nuevaSolicitud({ot:OT_NUM,tipo:'LINEA',linea_id:l.id_bd||null,linea_desc:l.desc,
-    importe:Number(l.precio||0)*Number(l.cant||1),motivo:m,
-    placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
-    function(){ pintarPresupuestoLista() });
+  pedirMotivoAnulacion('Solicitar que ventanilla quite: '+l.desc,function(m){
+    nuevaSolicitud({ot:OT_NUM,tipo:'LINEA',linea_id:l.id_bd||null,linea_desc:l.desc,
+      importe:Number(l.precio||0)*Number(l.cant||1),motivo:m,
+      placa:(ORD&&ORD.placa)||'',cliente:(ORD&&ORD.cliente)||'',veh:(ORD&&ORD.veh)||''},
+      function(){ pintarPresupuestoLista() });
+  });
 }
 
 /* ---- ventanilla: traer lo pendiente de su local ---- */
@@ -7510,23 +7599,26 @@ function resolverSolicitud(id,anula){
   var s=null;
   SOLIC_PEND.forEach(function(x){if(x.id===id)s=x});
   if(!s)return;
-  if(!(esVentanilla()||esAdminTaller())){alert('Solo ventanilla o un administrador resuelven una anulación.');return}
-  var nota='';
+  if(!(esVentanilla()||esAdminTaller())){aviso('Solo ventanilla o un administrador resuelven una anulación.');return}
   if(!anula){
-    nota=prompt('¿Por qué no se anula? (obligatorio)');
-    if(nota===null)return;
-    if(!nota||nota.trim().length<5){alert('Escribe el motivo del rechazo.');return}
-    nota=nota.trim();
-  } else if(!confirm((s.tipo==='ORDEN'
+    pedirTexto('No anular','La solicitud queda rechazada y la orden sigue igual.',
+      function(t){ resolverSolicitudYa(id,s,false,t) },
+      {ok:'Confirmar el rechazo',label:'Por qué no se anula · obligatorio'});
+    return;
+  }
+  pedirTexto('Anular',(s.tipo==='ORDEN'
       ? 'Se anulará la orden '+s.orden_numero+' completa.'
-      : 'Se quitará «'+(s.linea_desc||'la línea')+'» de la orden '+s.orden_numero+'.')+
-      '\n\nQueda registrado a tu nombre. ¿Continuar?')) return;
-
+      : 'Se quitará «'+esc(s.linea_desc||'la línea')+'» de la '+otCorto(s.orden_numero)+'.')+
+      '<br>Queda registrado a tu nombre.',
+    function(t){ resolverSolicitudYa(id,s,true,t) },
+    {ok:'Confirmar la anulación',label:'Comentario · obligatorio'});
+}
+function resolverSolicitudYa(id,s,anula,nota){
   var upd={estado:anula?'ANULADA':'RECHAZADA',resuelve_id:SESION.id||null,
            resuelve_nom:SESION.nombre,resuelto_el:new Date().toISOString(),
            nota_resuelve:nota||null};
   sb.from('solicitudes_anulacion').update(upd).eq('id',id).then(function(r){
-    if(r.error){alert('No se pudo guardar: '+r.error.message);return}
+    if(r.error){aviso('No se pudo guardar: '+r.error.message);return}
     if(anula){
       if(s.tipo==='ORDEN'){
         sb.from('ordenes').update({estado:'ANULADO',estado_taller:'ANULADO',estado_ot:'ANULADA'})
@@ -7544,7 +7636,7 @@ function resolverSolicitud(id,anula){
     conex(anula?'Anulación ejecutada':'Solicitud rechazada');
     revisarSolicitudes();
     try{ if(VENT_OT)ventAbrir(VENT_OT.id) }catch(e){}
-  },function(){alert('Sin conexión.')});
+  },function(){aviso('Sin conexión.')});
 }
 /* ¿esta orden tiene algo pendiente de anular? */
 function solicPendienteDe(numero){
@@ -7585,15 +7677,21 @@ function alternarVerPruebas(){ VER_PRUEBAS=!VER_PRUEBAS; pintarTaller() }
 function marcarPrueba(ot,valor){
   if(event&&event.stopPropagation)event.stopPropagation();
   if(!sb||!esAdminGeneral())return;
-  if(valor&&!confirm('La orden '+ot+' dejará de contar en taller, tienda y reportería. '+
-     'No se borra y puedes revertirlo. ¿Marcarla como prueba?'))return;
+  if(valor){
+    confirmar('La orden '+ot+' dejará de contar en taller, tienda y reportería. '+
+      'No se borra y puedes revertirlo.',function(){ marcarPruebaYa(ot,valor) },'Marcar como prueba');
+    return;
+  }
+  marcarPruebaYa(ot,valor);
+}
+function marcarPruebaYa(ot,valor){
   sb.from('ordenes').update({es_prueba:!!valor}).eq('numero',ot).select('id').then(function(r){
-    if(r.error){alert('No se pudo marcar: '+r.error.message);return}
-    if(!r.data||!r.data.length){alert('No se encontró la orden '+ot+' en la base.');return}
+    if(r.error){aviso('No se pudo marcar: '+r.error.message);return}
+    if(!r.data||!r.data.length){aviso('No se encontró la orden '+ot+' en la base.');return}
     auditar(valor?'MARCA_PRUEBA':'QUITA_PRUEBA','orden',ot,valor?'Excluida de la estadística':'Vuelve a contar');
     conex(valor?'Orden '+ot+' marcada como prueba':'Orden '+ot+' vuelve a contar');
     pintarTaller();
-  },function(){alert('Sin conexión con la base.')});
+  },function(){aviso('Sin conexión con la base.')});
 }
 function avisoPaso30(){
   return HAY_ES_PRUEBA===false
@@ -8170,7 +8268,7 @@ function abrirWhatsApp(num,texto){
 }
 function enviarWA(tipo){
   var num=$('waNum').value.replace(/\D/g,'');
-  if(num.length<9){alert('Ingresa un número de 9 dígitos.');return}
+  if(num.length<9){aviso('Ingresa un número de 9 dígitos.');return}
   var url='https://wa.me/51'+num+'?text='+encodeURIComponent(armarWA(tipo));
   if(tipo==='recepcion'){
     $('waHint').innerHTML='<b style="color:var(--verde)">Constancia marcada como enviada.</b> '+
@@ -8356,8 +8454,12 @@ function cliAprobar(){
     'Hora registrada: '+hora+'</div>';
 }
 function cliDevolver(){
-  var m=prompt('¿Qué deseas observar del servicio propuesto?');
-  if(m===null)return;
+  pedirTexto('Observar el servicio','Cuéntanos qué quieres cambiar y el taller se comunicará contigo.',
+    function(m){ cliDevolverYa(m) },{ok:'Enviar mi observación',min:3,
+      err:'Escribe brevemente qué quieres observar.',label:'Tu observación',
+      ph:'Ej. no quiero el cambio de filtro'});
+}
+function cliDevolverYa(m){
   $('cliAcciones').style.display='none';
   try{
     var ot2=FICHA?FICHA.ot:null,d2=ot2?DB.get(ot2):null;
@@ -8875,7 +8977,7 @@ function anuVentResolver(id,anula){
   var s=null;SOLIC_PEND.forEach(function(x){if(x.id===id)s=x});
   if(!s)return;
   if(!(esVentanilla()||esAdminTaller())){
-    alert('Solo ventanilla o un administrador resuelven una anulación.');return;
+    aviso('Solo ventanilla o un administrador resuelven una anulación.');return;
   }
   pregunta(anula?'Anular':'No anular',
     (anula
@@ -8975,7 +9077,7 @@ function fechaCorta(iso){
 function ventPorPlaca(placa){
   cargarOrdenesBD(VENT_ESTADOS,function(lista){
     var o=lista.filter(function(x){return x.placa===placa})[0];
-    if(!o){alert('Esa placa no tiene una orden pendiente en ventanilla.');return}
+    if(!o){aviso('Esa placa no tiene una orden pendiente en ventanilla.');return}
     ventAbrir(o.id);
   });
 }
@@ -9148,7 +9250,7 @@ function ventDespachar(todo){
     var cb=document.getElementById('desp'+i);
     if(todo||(cb&&cb.checked))sel.push(l);
   });
-  if(!sel.length){alert('Marca al menos un repuesto, o usa "Despachar todo".');return}
+  if(!sel.length){aviso('Marca al menos un repuesto, o usa "Despachar todo".');return}
   var msg=document.getElementById('despMsg');
   if(msg)msg.innerHTML='<div class="hint">Registrando…</div>';
   /* si la línea es nueva y aún no se guardó, primero se crea */
@@ -9327,7 +9429,7 @@ function ventRestaurar(i){
 
 function ventAgregarLibre(){
   var d=(document.getElementById('ventLibre').value||'').trim(),p=Number(document.getElementById('ventLibreP').value)||0;
-  if(!d){alert('Escribe la descripción.');return}
+  if(!d){aviso('Escribe la descripción.');return}
   VENT_LIN.push({id:null,tipo:'REP',desc:d,cant:1,precio:p,final:p,stock:true,cod_alm:'',incluir:true,
     cambio:'A',orig:'',nota:'agregado en ventanilla'});
   ventRender();
@@ -9362,7 +9464,15 @@ function ventEnviarFinal(){
   var num=(document.getElementById('ventWA').value||'').replace(/\D/g,''),msg=$('ventMsg');
   if(num.length<9){msg.innerHTML='<div class="aviso rojo" style="margin:0">Ingresa el celular del cliente.</div>';return}
   var sinCod=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
-  if(sinCod&&!confirm(sinCod+' repuesto(s) sin código de stock. ¿Enviar igual?'))return;
+  if(sinCod){
+    confirmar(sinCod+' repuesto(s) sin código de stock. ¿Enviar igual?',
+      function(){ ventEnviarDefinitivoYa() },'Enviar igual');
+    return;
+  }
+  ventEnviarDefinitivoYa();
+}
+function ventEnviarDefinitivoYa(){
+  var num=(document.getElementById('ventWA').value||'').replace(/\D/g,''),msg=$('ventMsg');
   var t=ventTotales(),o=VENT_OT;
   var incl=VENT_LIN.filter(function(l){return l.incluir});
   var cambios=VENT_LIN.filter(function(l){return l.cambio});
@@ -9561,7 +9671,7 @@ function aseRender(){
     '<div id="aseMsg" style="margin-top:10px"></div>';
   if(ASE_ADD&&!bloqueado){
     invMontar('aseRes',function(it){
-      if(!it.codigo){alert('Ese ítem no tiene código de stock.');return}
+      if(!it.codigo){aviso('Ese ítem no tiene código de stock.');return}
       aseInsertar(it.desc,it.precio,it.codigo,it.codigo2,it.ubicacion,it.marca,it.modelo);
     },'aseBusq');
   }
@@ -9686,7 +9796,7 @@ function aseActualizarTotal(){
 }
 function aseEnviarDetalle(){
   var num=(document.getElementById('aseWA').value||'').replace(/\D/g,'');
-  if(num.length<9){alert('Ingresa el celular del cliente.');return}
+  if(num.length<9){aviso('Ingresa el celular del cliente.');return}
   var o=ASE_OT,t=aseTotales();
   var incl=ASE_LIN.filter(function(l){return l.incluir});
   var texto='*IZA MOTORS* — Detalle de su orden '+o.ot+'\n'+
@@ -9790,7 +9900,7 @@ function aseCobrarTarjeta(){
 
 /* El asesor cierra el cobro sin pasar por caja: mismo efecto que el
    cierre de caja, con su propio PIN como autorización. */
-var ASE_CIERRE='';
+var ASE_CIERRE='',ASE_OK_PEND=false;
 function aseModo(m){ ASE_CIERRE=(ASE_CIERRE===m)?'':m; aseRender(); }
 function bloqueCierreAsesor(o,t){
   if(o.estado_ot==='PAGADA')return '';
@@ -9836,7 +9946,12 @@ function aseCerrarCobro(){
     msg.innerHTML='<div class="aviso rojo" style="margin:0">Falta la foto del voucher.</div>';return;
   }
   var pend=(ASE_LIN||[]).filter(function(l){return l.adic==='PEND'});
-  if(pend.length&&!confirm('Hay '+pend.length+' adicional(es) que el cliente no aprobó.\n\n¿Cobrar igual?'))return;
+  if(pend.length&&!ASE_OK_PEND){
+    confirmar('Hay '+pend.length+' adicional(es) que el cliente no aprobó.\n\n¿Cobrar igual?',
+      function(){ ASE_OK_PEND=true; aseCerrarCobro(); },'Cobrar igual');
+    return;
+  }
+  ASE_OK_PEND=false;
   msg.innerHTML='<div class="hint">Validando tu PIN…</div>';
   if(!sb||!SESION){msg.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión.</div>';return}
   sb.rpc('validar_pin',{p_usuario:SESION.usuario,p_pin:pin}).then(function(r){
@@ -9899,10 +10014,10 @@ function linkCaja(){
 }
 function copiarLinkCaja(){
   var l=linkCaja();
-  if(!l){alert('El link aparece cuando la app está publicada.');return}
+  if(!l){aviso('El link aparece cuando la app está publicada.');return}
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(l).then(function(){alert('Link de caja copiado:\n'+l)});
-  } else alert(l);
+    navigator.clipboard.writeText(l).then(function(){aviso('Link de caja copiado:\n'+l)});
+  } else aviso(l);
 }
 function pintarCaja(){
   CAJA_OT=null;CAJA_VOUCHER=null;CAJA_MODO='';
@@ -10037,12 +10152,15 @@ function cajaVoucherCargado(inp){
   fr.readAsDataURL(f);
 }
 function cajaRechazarVoucher(){
-  var m=prompt('¿Qué no coincide? (monto, fecha, tarjeta…)');
-  if(m===null)return;
+  pedirTexto('Rechazar el voucher','La orden vuelve a «por cobrar» y el asesor tendrá que revisarla.',
+    function(m){ cajaRechazarVoucherYa(m) },{ok:'Rechazar el voucher',
+      label:'Qué no coincide · obligatorio',ph:'Ej. el monto del voucher es S/ 50 menor'});
+}
+function cajaRechazarVoucherYa(m){
   sb.from('ordenes').update({voucher_url:null,forma_pago:null,pago_tarjeta_por:null,pago_tarjeta_el:null}).eq('id',CAJA_OT.id)
    .then(function(){
      auditar('RECHAZA_VOUCHER','orden',CAJA_OT.ot,m||'sin detalle');
-     alert('Voucher rechazado. La orden vuelve a "por cobrar"; el asesor debe revisar.');
+     aviso('Voucher rechazado. La orden vuelve a "por cobrar"; el asesor debe revisar.');
      pintarCaja();
    },function(){});
 }
@@ -10050,11 +10168,11 @@ function confirmarCobro(modo){
   var uid=($('cajaUser').value||''),clave=($('cajaClave').value||'').trim(),
       fact=($('cajaFact').value||'').trim(),msg=$('cajaMsg');
   var caj=CAJEROS.filter(function(c){return c.u===uid})[0];
-  if(!caj){alert('Selecciona el cajero que autoriza.');return}
+  if(!caj){aviso('Selecciona el cajero que autoriza.');return}
   var esEfectivo=(modo==='efectivo');
-  if(esEfectivo&&clave.length<4){alert('En efectivo se requiere la clave del cajero.');$('cajaClave').focus();return}
-  if(fact.length<5){alert('Ingresa el comprobante emitido.');$('cajaFact').focus();return}
-  if(modo==='tarjeta'&&!CAJA_VOUCHER){alert('Falta la foto del voucher.');return}
+  if(esEfectivo&&clave.length<4){aviso('En efectivo se requiere la clave del cajero.');$('cajaClave').focus();return}
+  if(fact.length<5){aviso('Ingresa el comprobante emitido.');$('cajaFact').focus();return}
+  if(modo==='tarjeta'&&!CAJA_VOUCHER){aviso('Falta la foto del voucher.');return}
   var tot=cajaTotal(),o=CAJA_OT;
   msg.innerHTML='<div class="hint">Validando…</div>';
   /* con tarjeta la evidencia es el voucher; la clave solo se exige en efectivo */
@@ -10112,7 +10230,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=154;
+var APP_VER=155;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
