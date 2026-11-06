@@ -1,4 +1,4 @@
-<!--IZAV:155-->
+<!--IZAV:156-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -475,6 +475,8 @@ body.sinScroll{overflow:hidden}
 .aprobB .l.ok2{color:#0B6E3F}
 .aprobB .l.pend{color:var(--rojo-osc);background:var(--rojo-cl);margin:8px -13px -11px;
   padding:9px 13px 11px;border-radius:0 0 10px 10px;border-top:1px solid var(--rojo)}
+.invCorte{background:#FFF6E0;border-left:3px solid #E0A106;color:#8A5A00;
+  font-size:11.5px;line-height:1.4;padding:7px 10px;border-radius:0 7px 7px 0;margin:0 0 8px}
 .volverFi{display:block;width:100%;margin-top:8px;background:none;border:0;
   color:var(--rojo);font-weight:700;font-size:12.5px;text-align:left;padding:6px 0;min-height:36px}
 .modo.modo4{display:grid;grid-template-columns:repeat(4,1fr);max-width:620px}
@@ -892,7 +894,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 155</span>
+  <span class="demo-tag">versión 156</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2954,22 +2956,29 @@ function invBuscar(ctx,texto,familia,dentroDe){
   invMsg(cont,'<div class="invVacio">Buscando…</div>');
   var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
              'catalogo_stock(sede_id,stock,ubicacion)';
-  var sel=sb.from('catalogo').select(campos).eq('tipo','REP').eq('activo',true);
+  var sel=sb.from('catalogo').select(campos,{count:'exact'}).eq('tipo','REP').eq('activo',true);
+  /* Una sola condición, con las palabras encadenadas por comodín:
+     "filtro de aire" -> %filtro%aire%. Así la BASE ya descarta lo que
+     no contiene todas, en vez de traer 250 alfabéticas y filtrarlas
+     después (que era lo que dejaba fuera a los FILTRO DE AIRE). */
+  function patron(ps){ return '%'+ps.join('%')+'%' }
+  function condFrase(ps,conCategoria){
+    var a=patron(ps), b=patron(ps.slice().reverse()),
+        c=['descripcion.ilike.'+a,'marca.ilike.'+a,'modelo.ilike.'+a,
+           'codigo.ilike.'+a,'codigo2.ilike.'+a];
+    if(conCategoria)c.push('categoria.ilike.'+a);
+    if(b!==a)c.push('descripcion.ilike.'+b);
+    return c.join(',');
+  }
+  var TOPE=familia?600:500;
   if(familia){
     sel=sel.eq('categoria',familia);
   }else if(dentroDe){
-    sel=sel.eq('categoria',dentroDe);
-    var p0=pal[0];
-    sel=sel.or('descripcion.ilike.%'+p0+'%,marca.ilike.%'+p0+'%,modelo.ilike.%'+p0+'%,'+
-               'codigo.ilike.%'+p0+'%,codigo2.ilike.%'+p0+'%');
+    sel=sel.eq('categoria',dentroDe).or(condFrase(pal,false));
   }else{
-    /* La base filtra por la primera palabra; el resto se afina aquí,
-       porque PostgREST no sabe buscar en varios campos a la vez. */
-    var p=pal[0];
-    sel=sel.or('descripcion.ilike.%'+p+'%,marca.ilike.%'+p+'%,modelo.ilike.%'+p+'%,'+
-               'codigo.ilike.%'+p+'%,codigo2.ilike.%'+p+'%,categoria.ilike.%'+p+'%');
+    sel=sel.or(condFrase(pal,true));
   }
-  sel.order('descripcion').limit(familia?400:250).then(function(r){
+  sel.order('descripcion').limit(TOPE).then(function(r){
     if(r.error){
       invMsg(cont,'<div class="aviso rojo" style="margin:0">'+r.error.message+
         (/column|relation|permission|schema/i.test(r.error.message)
@@ -2977,29 +2986,23 @@ function invBuscar(ctx,texto,familia,dentroDe){
       return;
     }
     var lista=r.data||[];
-    if(pal.length>1){
-      lista=lista.filter(function(it){
-        var t=invTexto(it);
-        return pal.every(function(p){return t.indexOf(p)>-1});
-      });
+    /* La frase exige las palabras en la misma celda. Si no hay nada y
+       son varias palabras, puede que estén repartidas (marca MANN +
+       descripción AIRE): se reintenta por la palabra más larga y se
+       cruza aquí. */
+    if(!lista.length&&!familia&&pal.length>1&&!r.error){
+      invBuscarSuelto(ctx,ctx.cont,texto,pal,dentroDe,TOPE);
+      return;
     }
+    lista=invOrdenarRelevancia(lista,texto,pal);
+    INV_TOTAL[ctx.cont]=(typeof r.count==='number')?r.count:lista.length;
+    INV_TOPE[ctx.cont]=TOPE;
     INV_CACHE[ctx.cont]=lista;
     INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';INV_SUB[ctx.cont]='';
     if(!lista.length){
       /* Distinguir "no coincide" de "no hay inventario cargado":
          sin este conteo, el usuario cree que el buscador está roto. */
-      sb.from('catalogo').select('id',{count:'exact',head:true})
-        .eq('tipo','REP').eq('activo',true).then(function(c){
-          var n=c.count||0;
-          invMsg(cont,'<div class="invVacio">'+
-            (n===0
-              ? 'No hay <b>ningún repuesto</b> cargado en el catálogo todavía.<br>'+
-                'Usa el campo <b>Otro (fuera de inventario)</b> mientras tanto.'
-              : 'Sin resultados'+(familia?' en '+familia:'')+' entre los <b>'+n+'</b> repuestos del catálogo.<br>'+
-                'Prueba con otra palabra, la marca o el código.')+'</div>');
-        },function(){
-          invMsg(cont,'<div class="invVacio">Sin resultados'+(familia?' en '+familia:'')+'.</div>');
-        });
+      invSinResultados(ctx.cont,ctx,familia,texto);
       return;
     }
     invPintar(ctx.cont,familia);
@@ -3010,6 +3013,62 @@ function invBuscar(ctx,texto,familia,dentroDe){
    arman subgrupos con las palabras que más se repiten, chips de marca,
    y por defecto solo se muestra lo que hay en el local. */
 var INV_TODO={},INV_MARCA={},INV_SUB={},INV_OTROS={};
+var INV_TOTAL={},INV_TOPE={};
+/* "filtro de aire" debe empezar por los que se llaman así, no por las
+   carcasas y los conductos que también contienen esas palabras. */
+/* Rescate: la palabra más larga manda en la base (es la que menos
+   filas devuelve) y el resto se cruza acá. */
+function invBuscarSuelto(ctx,cont,texto,pal,dentroDe,TOPE){
+  var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
+             'catalogo_stock(sede_id,stock,ubicacion)';
+  var larga=pal.slice().sort(function(a,b){return b.length-a.length})[0];
+  var q=sb.from('catalogo').select(campos,{count:'exact'}).eq('tipo','REP').eq('activo',true);
+  if(dentroDe)q=q.eq('categoria',dentroDe);
+  q=q.or('descripcion.ilike.%'+larga+'%,marca.ilike.%'+larga+'%,modelo.ilike.%'+larga+'%,'+
+         'codigo.ilike.%'+larga+'%,codigo2.ilike.%'+larga+'%,categoria.ilike.%'+larga+'%');
+  q.order('descripcion').limit(1500).then(function(r2){
+    var l=(r2.data||[]).filter(function(it){
+      var t=invTexto(it);
+      return pal.every(function(p){return t.indexOf(p)>-1});
+    });
+    INV_TOTAL[cont]=l.length;INV_TOPE[cont]=TOPE;
+    INV_CACHE[cont]=l;INV_TODO[cont]=invOrdenarRelevancia(l,texto,pal);
+    INV_CACHE[cont]=INV_TODO[cont];
+    INV_MARCA[cont]='';INV_SUB[cont]='';
+    if(!l.length){ invSinResultados(cont,ctx,'',texto); return }
+    invPintar(cont,'');invPantalla(cont);
+  },function(){ invSinResultados(cont,ctx,'',texto) });
+}
+function invSinResultados(cont,ctx,familia,texto){
+  var z=document.getElementById(cont);if(!z)return;
+  sb.from('catalogo').select('id',{count:'exact',head:true})
+    .eq('tipo','REP').eq('activo',true).then(function(c){
+      var n=c.count||0;
+      invMsg(z,'<div class="invVacio">'+
+        (n===0
+          ? 'No hay <b>ningún repuesto</b> cargado en el catálogo todavía.<br>'+
+            'Usa el campo <b>Otro (fuera de inventario)</b> mientras tanto.'
+          : 'Sin resultados para <b>'+esc(texto||'')+'</b>'+(familia?' en '+familia:'')+
+            ' entre los <b>'+n+'</b> repuestos del catálogo.<br>'+
+            'Prueba con una sola palabra, la marca o el código.')+'</div>');
+    },function(){
+      invMsg(z,'<div class="invVacio">Sin resultados'+(familia?' en '+familia:'')+'.</div>');
+    });
+}
+function invOrdenarRelevancia(lista,texto,pal){
+  var frase=limpiarBusq(texto).toLowerCase().trim();
+  function rango(it){
+    var d=String(it.descripcion||'').toLowerCase();
+    if(frase&&d.indexOf(frase)===0)return 0;          /* se llama así */
+    if(frase&&d.indexOf(frase)>-1)return 1;           /* lo dice entero */
+    if(pal.length&&d.indexOf(pal[0])===0)return 2;    /* empieza por la 1ª palabra */
+    if(pal.every(function(p){return d.indexOf(p)>-1}))return 3;  /* todas en la descripción */
+    return 4;                                          /* coincide por marca, modelo o código */
+  }
+  return lista.map(function(it,i){return {it:it,r:rango(it),i:i}})
+    .sort(function(a,b){ return a.r-b.r || a.i-b.i })
+    .map(function(x){return x.it});
+}
 var INV_VACIAS=['de','del','la','el','los','las','para','con','y','a','en','por','x',
                 'mm','pza','pzas','und','kit','juego','set'];
 /* Palabras candidatas a subgrupo: las que dividen la lista en partes
@@ -3122,6 +3181,11 @@ function invPintar(cont,familia){
     '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b> · '
       :'')+'<b>'+lista.length+'</b> de '+todo.length+
       ' · '+(otros?'todos los locales':esc(SEDE_NOMBRE))+'</div>'+
+    (INV_TOTAL[cont]>todo.length
+      ? '<div class="invCorte">De <b>'+INV_TOTAL[cont]+'</b> coincidencias en el catálogo se '+
+        'muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
+        '(la marca, el modelo o el código) para verlas todas.</div>'
+      : '')+
     (fuera>0
       ? '<label class="invOtros"><input type="checkbox"'+(otros?' checked':'')+
         ' onchange="invToggleOtros(&quot;'+cont+'&quot;)"> Incluir otros locales '+
@@ -10230,7 +10294,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=155;
+var APP_VER=156;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
