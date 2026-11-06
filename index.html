@@ -1,4 +1,4 @@
-<!--IZAV:156-->
+<!--IZAV:157-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -475,6 +475,7 @@ body.sinScroll{overflow:hidden}
 .aprobB .l.ok2{color:#0B6E3F}
 .aprobB .l.pend{color:var(--rojo-osc);background:var(--rojo-cl);margin:8px -13px -11px;
   padding:9px 13px 11px;border-radius:0 0 10px 10px;border-top:1px solid var(--rojo)}
+.invLn .loc.ajeno{color:#8A5A00}
 .invCorte{background:#FFF6E0;border-left:3px solid #E0A106;color:#8A5A00;
   font-size:11.5px;line-height:1.4;padding:7px 10px;border-radius:0 7px 7px 0;margin:0 0 8px}
 .volverFi{display:block;width:100%;margin-top:8px;background:none;border:0;
@@ -894,7 +895,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 156</span>
+  <span class="demo-tag">versión 157</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2954,9 +2955,12 @@ function invBuscar(ctx,texto,familia,dentroDe){
   if(!sb){invMsg(cont,'<div class="invVacio">Sin conexión con la base.</div>');return}
   cont.classList.add('on');
   invMsg(cont,'<div class="invVacio">Buscando…</div>');
+  var soloMiLocal=!INV_OTROS[ctx.cont];
   var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
-             'catalogo_stock(sede_id,stock,ubicacion)';
+             'catalogo_stock'+(soloMiLocal?'!inner':'')+'(sede_id,stock,ubicacion)';
   var sel=sb.from('catalogo').select(campos,{count:'exact'}).eq('tipo','REP').eq('activo',true);
+  if(soloMiLocal&&SEDE_ACTIVA)
+    sel=sel.eq('catalogo_stock.sede_id',SEDE_ACTIVA).gt('catalogo_stock.stock',0);
   /* Una sola condición, con las palabras encadenadas por comodín:
      "filtro de aire" -> %filtro%aire%. Así la BASE ya descarta lo que
      no contiene todas, en vez de traer 250 alfabéticas y filtrarlas
@@ -2980,6 +2984,13 @@ function invBuscar(ctx,texto,familia,dentroDe){
   }
   sel.order('descripcion').limit(TOPE).then(function(r){
     if(r.error){
+      /* Si lo que falla es el filtro por local, se busca en todos antes
+         de dejar al usuario sin buscador. */
+      if(soloMiLocal){
+        INV_OTROS[ctx.cont]=true;
+        invBuscar(ctx,texto,familia,dentroDe);
+        return;
+      }
       invMsg(cont,'<div class="aviso rojo" style="margin:0">'+r.error.message+
         (/column|relation|permission|schema/i.test(r.error.message)
           ? '<br><b>Falta correr el paso 17 en Supabase.</b>' : '')+'</div>');
@@ -2997,7 +3008,9 @@ function invBuscar(ctx,texto,familia,dentroDe){
     lista=invOrdenarRelevancia(lista,texto,pal);
     INV_TOTAL[ctx.cont]=(typeof r.count==='number')?r.count:lista.length;
     INV_TOPE[ctx.cont]=TOPE;
-    INV_CACHE[ctx.cont]=lista;
+    /* cuántos hay si se abre a todos los locales, para el "+N" del check */
+    if(soloMiLocal)invContarGlobal(ctx,texto,pal,familia,dentroDe,condFrase);
+    INV_CACHE[ctx.cont]=lista;INV_FAMILIA[ctx.cont]=familia||'';
     INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';INV_SUB[ctx.cont]='';
     if(!lista.length){
       /* Distinguir "no coincide" de "no hay inventario cargado":
@@ -3012,12 +3025,25 @@ function invBuscar(ctx,texto,familia,dentroDe){
 /* Refinado sin volver a consultar: sobre los resultados ya traídos se
    arman subgrupos con las palabras que más se repiten, chips de marca,
    y por defecto solo se muestra lo que hay en el local. */
-var INV_TODO={},INV_MARCA={},INV_SUB={},INV_OTROS={};
-var INV_TOTAL={},INV_TOPE={};
+var INV_TODO={},INV_MARCA={},INV_SUB={},INV_OTROS={},INV_FAMILIA={};
+var INV_TOTAL={},INV_TOPE={},INV_GLOBAL={};
 /* "filtro de aire" debe empezar por los que se llaman así, no por las
    carcasas y los conductos que también contienen esas palabras. */
 /* Rescate: la palabra más larga manda en la base (es la que menos
    filas devuelve) y el resto se cruza acá. */
+/* El número del check "incluir otros locales" sale de un conteo aparte:
+   el mismo filtro, sin restringir la sede. */
+function invContarGlobal(ctx,texto,pal,familia,dentroDe,condFrase){
+  var q=sb.from('catalogo').select('id',{count:'exact',head:true})
+          .eq('tipo','REP').eq('activo',true);
+  if(familia)q=q.eq('categoria',familia);
+  else if(dentroDe)q=q.eq('categoria',dentroDe).or(condFrase(pal,false));
+  else q=q.or(condFrase(pal,true));
+  q.then(function(c){
+    INV_GLOBAL[ctx.cont]=(typeof c.count==='number')?c.count:0;
+    if(document.getElementById(ctx.cont))invPintar(ctx.cont,familia||'');
+  },function(){});
+}
 function invBuscarSuelto(ctx,cont,texto,pal,dentroDe,TOPE){
   var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
              'catalogo_stock(sede_id,stock,ubicacion)';
@@ -3107,7 +3133,15 @@ function invFiltrarSub(cont,p){
 }
 function invToggleOtros(cont){
   INV_OTROS[cont]=!INV_OTROS[cont];
-  invPintar(cont,'');
+  /* Hay que volver a consultar: con el filtro de sede en la base, lo
+     de los otros locales ni siquiera se trajo. */
+  var ctx=INV_CTX[cont];
+  if(!ctx){invPintar(cont,'');return}
+  var inp=document.getElementById(ctx.input||''),
+      q=document.getElementById(cont+'-q');
+  var texto=((q&&q.value)||(inp&&inp.value)||'').trim();
+  INV_SUB[cont]='';INV_MARCA[cont]='';
+  invBuscar(ctx,texto,INV_FAMILIA[cont]||'');
 }
 /* Lo que se escribe dentro del panel acota la lista en vivo. */
 function invRefinar(cont,txt){
@@ -3137,12 +3171,10 @@ function invPintar(cont,familia){
   var todo=INV_TODO[cont]||[],
       marca=INV_MARCA[cont]||'',sub=INV_SUB[cont]||'',otros=!!INV_OTROS[cont];
 
-  /* 1 · el local manda: lo de otros locales entra solo si se pide */
-  var enLocal=todo.filter(invEnMiLocal),
-      base=otros?todo:enLocal,
-      fuera=todo.length-enLocal.length;
-  /* si en el local no hay nada, no tiene sentido esconder el resto */
-  if(!base.length&&todo.length){ base=todo;otros=true;INV_OTROS[cont]=true }
+  /* 1 · el local manda: la base ya filtró por sede, así que lo traído
+     es lo del local salvo que se haya pedido lo demás */
+  var base=todo,
+      fuera=otros?0:Math.max(0,(INV_GLOBAL[cont]||0)-(INV_TOTAL[cont]||0));
 
   /* 2 · subgrupo por palabra */
   var lista=base;
@@ -3182,8 +3214,9 @@ function invPintar(cont,familia){
       :'')+'<b>'+lista.length+'</b> de '+todo.length+
       ' · '+(otros?'todos los locales':esc(SEDE_NOMBRE))+'</div>'+
     (INV_TOTAL[cont]>todo.length
-      ? '<div class="invCorte">De <b>'+INV_TOTAL[cont]+'</b> coincidencias en el catálogo se '+
-        'muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
+      ? '<div class="invCorte">De <b>'+INV_TOTAL[cont]+'</b> coincidencias'+
+        (otros?' en todos los locales':' en '+esc(SEDE_NOMBRE))+
+        ' se muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
         '(la marca, el modelo o el código) para verlas todas.</div>'
       : '')+
     (fuera>0
@@ -3203,17 +3236,25 @@ function invPintar(cont,familia){
   }
 }
 /* Línea de la lista: lo mínimo para decidir si es el que busca. */
+/* Cuál local se muestra: el mío si tiene stock, si no el que más
+   tenga. El número es el de ESE local, no la suma de todos. */
+function invDondeHay(it){
+  var con=(it.catalogo_stock||[]).filter(function(s){return Number(s.stock)>0});
+  if(!con.length)return null;
+  var mio=con.filter(function(s){return Number(s.sede_id)===Number(SEDE_ACTIVA)})[0];
+  if(mio)return {s:mio,otros:con.length-1,propio:true};
+  var mayor=con.slice().sort(function(a,b){return Number(b.stock)-Number(a.stock)})[0];
+  return {s:mayor,otros:con.length-1,propio:false};
+}
 function invLinea(ctx,it,i){
-  var stocks=it.catalogo_stock||[];
-  var con=stocks.filter(function(s){return Number(s.stock)>0});
-  var hay=con.length?con[0]:null;
-  var total=stocks.reduce(function(a,s){return a+Number(s.stock||0)},0);
+  var stocks=it.catalogo_stock||[],d=invDondeHay(it);
   return '<div class="invLn" id="'+ctx.cont+'-ln'+i+'">'+
     '<button class="nom" onclick="invAbrir(&quot;'+ctx.cont+'&quot;,'+i+')">'+it.descripcion+'</button>'+
-    '<span class="st '+(total>0?'hay':'no')+'" title="stock sumando todos los locales">'+
-      (total>0?total:'0')+'</span>'+
-    '<span class="loc">'+(hay?invSede(hay.sede_id):(stocks.length?'sin stock':'no registrado'))+
-      (con.length>1?' +'+(con.length-1)+' más':'')+'</span>'+
+    '<span class="st '+(d?'hay':'no')+'" title="stock en el local que se muestra">'+
+      (d?Number(d.s.stock):'0')+'</span>'+
+    '<span class="loc'+(d&&!d.propio?' ajeno':'')+'">'+
+      (d?invSede(d.s.sede_id):(stocks.length?'sin stock':'no registrado'))+
+      (d&&d.otros?' +'+d.otros+' más':'')+'</span>'+
     '<div class="ficha" id="'+ctx.cont+'-fi'+i+'"></div></div>';
 }
 /* Ficha: se arma al tocar, y un segundo toque la cierra. */
@@ -3226,8 +3267,8 @@ function invAbrir(cont,i){
   for(var k=0;k<otras.length;k++)otras[k].innerHTML='';
   var stocks=it.catalogo_stock||[];
   /* arrancar en el local que la línea ya mostraba, no en el primero de la lista */
-  var ini=0;
-  for(var q=0;q<stocks.length;q++){ if(Number(stocks[q].stock)>0){ini=q;break} }
+  var ini=0,dd=invDondeHay(it);
+  if(dd)for(var q=0;q<stocks.length;q++){ if(stocks[q]===dd.s){ini=q;break} }
   var pri=stocks[ini]||{stock:0,ubicacion:''};
   it._sel=ini;
   z.innerHTML=
@@ -10294,7 +10335,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=156;
+var APP_VER=157;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
