@@ -1,4 +1,4 @@
-<!--IZAV:157-->
+<!--IZAV:158-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -288,6 +288,12 @@ body.sinScroll{overflow:hidden}
 .invMarcas .et{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:2px}
 .invMarcas.sub .mc.on{background:var(--tinta);border-color:var(--tinta)}
+.atajos{display:flex;gap:7px;overflow-x:auto;padding:0 0 9px;-webkit-overflow-scrolling:touch}
+.atajos::-webkit-scrollbar{display:none}
+.atajo{flex:0 0 auto;background:#fff;border:1px solid var(--borde);border-radius:999px;
+  padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--tinta);white-space:nowrap;min-height:36px}
+.atajo:active{border-color:var(--rojo);color:var(--rojo)}
+.soloMio{color:var(--mudo);font-weight:500}
 .invOtros{display:flex;align-items:center;gap:8px;padding:2px 12px 10px;font-size:12.5px;
   color:var(--tinta);cursor:pointer}
 .invOtros input{width:18px;height:18px;margin:0}
@@ -895,7 +901,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 157</span>
+  <span class="demo-tag">versión 158</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -1200,6 +1206,7 @@ tr.sel td{background:var(--rojo-cl)}
         </div>
 
         <label>2 · Repuestos y accesorios</label>
+        <div class="atajos" id="atajosRep"></div>
         <div class="invBox" style="margin-bottom:10px">
           <input id="repBusq" placeholder="Escribe una o más letras: descripción, marca, modelo o código"
                  oninput="invTeclea('repRes',this.value)" onfocus="invFoco('repRes')"
@@ -2545,6 +2552,7 @@ function pintarPresupuesto(){
     pintarPresupuestoLista();
     conex(it.desc+' agregado');
   },'repBusq');
+  pintarAtajos('atajosRep','repRes','repBusq');
   var rb=$('repBusq');
   if(rb)rb.value='';
   pintarPresupuestoLista();
@@ -2924,7 +2932,9 @@ function veCodigos(){
   return ['ventanilla','asesor','caja','admin_local','admin_general'].indexOf(SESION.rol)>-1;
 }
 function limpiarBusq(t){
-  return String(t||'').replace(/[,()%*'"\\]/g,' ').trim();
+  return String(t||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[,()%*'"\\]/g,' ').trim();
 }
 /* ========= BUSCADOR DE INVENTARIO =========
    Dos pasos: primero la lista corta (nombre · stock · local),
@@ -3219,10 +3229,12 @@ function invPintar(cont,familia){
         ' se muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
         '(la marca, el modelo o el código) para verlas todas.</div>'
       : '')+
-    (fuera>0
+    (fuera>0||otros
       ? '<label class="invOtros"><input type="checkbox"'+(otros?' checked':'')+
-        ' onchange="invToggleOtros(&quot;'+cont+'&quot;)"> Incluir otros locales '+
-        '<b>+'+fuera+'</b></label>'
+        ' onchange="invToggleOtros(&quot;'+cont+'&quot;)"> Incluir otros locales'+
+        (fuera>0?' <b>+'+fuera+'</b>':'')+
+        (otros?' <span class="soloMio">· desmárcalo para ver solo '+esc(SEDE_NOMBRE)+'</span>':'')+
+        '</label>'
       : '')+
     chipsSub+chipsMar+
     '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
@@ -3404,6 +3416,55 @@ var INV_CTX={};
 function invMontar(contId,onAdd,inputId){
   INV_CTX[contId]={cont:contId,onAdd:onAdd,input:inputId||''};
   cargarSedesInv();
+}
+/* Lo que más se pide en el mostrador, a un toque. */
+/* El rótulo es lo que se lee; la búsqueda va en singular y sin tilde,
+   que es como está escrito el catálogo. Si el primer término no da
+   nada, se prueba el siguiente: cada taller nombra distinto. */
+var ATAJOS_REP=[
+  {t:'Filtro de aire',     q:['filtro aire']},
+  {t:'Filtro de gasolina', q:['filtro gasolina','filtro combustible','filtro petroleo']},
+  {t:'Filtro de cabina',   q:['filtro cabina','filtro polen','filtro habitaculo']},
+  {t:'Bujías',             q:['bujia']},
+  {t:'Frenos',             q:['freno','pastilla']}
+];
+function pintarAtajos(zonaId,contId,inputId){
+  var z=document.getElementById(zonaId);if(!z)return;
+  z.innerHTML=ATAJOS_REP.map(function(a,i){
+    return '<button type="button" class="atajo" onclick="invAtajo(&quot;'+contId+'&quot;,'+i+
+      ',&quot;'+(inputId||'')+'&quot;)">'+esc(a.t)+'</button>';
+  }).join('');
+}
+function invAtajo(contId,idx,inputId){
+  var ctx=INV_CTX[contId],a=ATAJOS_REP[idx];
+  if(!ctx||!a)return;
+  INV_SUB[contId]='';INV_MARCA[contId]='';
+  INV_OTROS[contId]=false;      /* el atajo arranca en el local propio */
+  clearTimeout(INV_TIMER);
+  invAtajoProbar(ctx,a,0,inputId);
+}
+/* Prueba los términos en orden y se queda con el primero que tenga
+   stock acá; si ninguno lo tiene, usa el primero igual para que el
+   usuario vea el mensaje y pueda abrir los otros locales. */
+function invAtajoProbar(ctx,a,i,inputId){
+  function usar(q){
+    var inp=document.getElementById(inputId||ctx.input||'');
+    if(inp)inp.value=q;
+    invBuscar(ctx,q);
+  }
+  if(!sb||i>=a.q.length){ usar(a.q[0]); return }
+  var q=a.q[i],pal=invPalabras(q);
+  var cond=['descripcion.ilike.%'+pal.join('%')+'%'];
+  if(pal.length>1)cond.push('descripcion.ilike.%'+pal.slice().reverse().join('%')+'%');
+  var c=sb.from('catalogo')
+      .select('id'+(SEDE_ACTIVA?',catalogo_stock!inner(sede_id,stock)':''),
+              {count:'exact',head:true})
+      .eq('tipo','REP').eq('activo',true).or(cond.join(','));
+  if(SEDE_ACTIVA)c=c.eq('catalogo_stock.sede_id',SEDE_ACTIVA).gt('catalogo_stock.stock',0);
+  c.then(function(r){
+    if(!r.error&&(r.count||0)>0){ usar(q); return }
+    invAtajoProbar(ctx,a,i+1,inputId);
+  },function(){ usar(q) });
 }
 function invTeclea(contId,valor){
   var z=document.getElementById(contId);
@@ -10335,7 +10396,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=157;
+var APP_VER=158;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
