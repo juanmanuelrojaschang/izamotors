@@ -1,4 +1,4 @@
-<!--IZAV:161-->
+<!--IZAV:163-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -913,7 +913,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 161</span>
+  <span class="demo-tag">versión 163</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2720,12 +2720,16 @@ function desglosarIGV(total){
   var sub=Math.round(total/1.18);
   return {sub:sub,igv:total-sub,tot:total};
 }
-/* Solo estos dos trabajos consumen aceite, y el preciario aparece
-   únicamente si uno de ellos está en el presupuesto. "Cambio de
-   aceite" entra por nombre propio; un "filtro de aceite" no. */
+/* El preciario sale por el NOMBRE del servicio: un afinamiento, o
+   cualquiera que mencione aceite. La familia no cuenta: dentro de
+   MANTENIMIENTO hay trabajos que no llevan aceite. */
 function esCambioAceite(t){
-  var s=String(t||'');
-  return /mantenimiento|afinamiento|afinaci[oó]n|cambio\s+de\s+aceite/i.test(s);
+  return /afinamiento|afinaci[oó]n|aceite/i.test(String(t||''));
+}
+/* El servicio que el preciario deja en cero: solo el cambio de aceite
+   propiamente dicho. */
+function esSoloCambioAceite(t){
+  return /cambio\s*(de\s*)?aceite/i.test(String(t||''));
 }
 /* El aceite ya no cuelga del servicio: entra al bloque de repuestos
    como una línea más, con su precio. El servicio de cambio de aceite
@@ -2734,7 +2738,7 @@ function hayAceiteEnRepuestos(){
   return LINEAS_REP.some(function(l){return l.es_aceite});
 }
 function usaAceite(l){
-  return esCambioAceite(l&&l.desc)||esCambioAceite(l&&l.categoria);
+  return esCambioAceite(l&&l.desc);
 }
 function lineaAceitePendiente(){
   if(hayAceiteEnRepuestos())return -1;
@@ -2753,15 +2757,16 @@ function aceElegir(mi,li,col){
   LINEAS_REP.push({codigo:'',codigo2:'',desc:nom,precio:Number(pr),cant:1,
                    marca:m.m,modelo:'',ubicacion:'',es_aceite:true});
   /* El precio del preciario ya incluye aceite y filtro, así que el
-     servicio no vuelve a cobrarse. */
-  var i=ACE_LINEA,ajustado=false;
-  if(i!==null&&i!==undefined&&LINEAS_SERV[i]&&Number(LINEAS_SERV[i].precio)>0){
-    LINEAS_SERV[i].precio=0;ajustado=true;
-  }
+     cambio de aceite no vuelve a cobrarse. El afinamiento sí conserva
+     el suyo: ahí el aceite es un insumo más de un trabajo más grande. */
+  var ajustado=0;
+  LINEAS_SERV.forEach(function(l){
+    if(esSoloCambioAceite(l.desc)&&Number(l.precio)>0){ l.precio=0;ajustado++ }
+  });
   ACE_MARCA=null;ACE_LINEA=null;
   auditar('AGREGA_ITEM','orden',OT_NUM,'Aceite: '+nom+' · '+S(pr),pr);
   conex('Aceite agregado a repuestos · '+S(pr)+
-    (ajustado?' · el servicio queda en S/ 0':'')+' · ajústalo si corresponde');
+    (ajustado?' · el cambio de aceite queda en S/ 0':'')+' · ajústalo si corresponde');
   pintarPresupuestoLista();
 }
 function bloqueAceite(){
@@ -10468,7 +10473,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=161;
+var APP_VER=163;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
