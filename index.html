@@ -1,4 +1,4 @@
-<!--IZAV:163-->
+<!--IZAV:164-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -548,19 +548,27 @@ body.sinScroll{overflow:hidden}
 .presT td{word-break:break-word}
 .presT input{max-width:100%}
 .presT .btn{padding:0 8px;min-height:34px;width:auto}
+.presT input.pu{width:100%;text-align:right;padding:6px;min-height:34px}
 @media(max-width:600px){
   .presT,.presT tbody,.presT tr,.presT td,.presT th{display:block;width:auto}
   .presT thead,.presT tr>th{display:none}
   .presT tr{position:relative;padding:9px 46px 9px 0;border-bottom:1px solid rgba(255,255,255,.12)}
   .presT td{padding:2px 0}
+  /* los anchos fijos de la tabla no valen acá: la fila pasa a ser una
+     caja flexible con el nombre arriba y los controles en un renglón */
+  .presT tr:not(.totalRow){display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .presT tr:not(.totalRow) td{width:auto !important;padding:0}
+  .presT tr:not(.totalRow) td:nth-child(1){flex:1 1 100%;padding:0 0 7px}
   .presT tr:not(.totalRow) td:nth-child(2),
-  .presT tr:not(.totalRow) td:nth-child(3){display:inline-block;width:auto;margin-right:9px;vertical-align:middle}
-  .presT tr:not(.totalRow) td:nth-child(2):before{content:'Cant ';font-size:10px;opacity:.6}
-  .presT tr:not(.totalRow) td:nth-child(3):before{content:'P. unit ';font-size:10px;opacity:.6}
-  .presT tr:not(.totalRow) td:nth-child(4){display:inline-block;width:auto;font-size:14px;
-    white-space:nowrap;vertical-align:middle}
-  .presT tr:not(.totalRow) td:nth-child(2) input{width:56px}
-  .presT tr:not(.totalRow) td:nth-child(3) input{width:76px}
+  .presT tr:not(.totalRow) td:nth-child(3){flex:0 0 auto;display:flex;align-items:center}
+  .presT tr:not(.totalRow) td:nth-child(3):before{content:'S/';font-size:10.5px;opacity:.55;margin-right:4px}
+  .presT tr:not(.totalRow) td:nth-child(4){flex:0 0 auto;font-size:14px;white-space:nowrap;
+    margin-left:auto;padding-right:2px}
+  .presT tr:not(.totalRow) td:nth-child(3) input.pu{width:58px;padding:6px 6px}
+  .presT tr:not(.totalRow) td:nth-child(4){font-size:13px}
+  .presT .cantBox{flex:0 0 auto}
+  .presT .cantBox input{width:32px}
+  .presT .cantBox .cmas{width:28px}
   .presT td:nth-child(5){position:absolute;right:0;top:10px;width:auto;padding:0}
   .presT td:nth-child(5):empty{display:none}
   .presT .btn{min-height:30px;padding:0 9px;font-size:12px}
@@ -913,7 +921,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 163</span>
+  <span class="demo-tag">versión 164</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2941,7 +2949,7 @@ function pintarPresupuestoLista(){
     filas+=LINEAS_SERV.map(function(l,i){
       return '<tr><td>'+l.desc+'</td>'+
       '<td class="der">'+pasoCant('cantServicioPaso',i,l.cant||1)+'</td>'+
-      '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
+      '<td class="der"><input class="pu" type="number" min="0" step="0.01" value="'+l.precio+'" '+
         'oninput="precioServicio('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
       '<td>'+botonLinea('MO',i)+'</td></tr>';
@@ -2954,7 +2962,7 @@ function pintarPresupuestoLista(){
       return '<tr><td>'+l.desc+
       ((l.marca||l.modelo)?'<div class="hint" style="margin:2px 0 0">'+[l.marca,l.modelo].filter(Boolean).join(' · ')+'</div>':'')+'</td>'+
       '<td class="der">'+pasoCant('cantRepuestoPaso',i,l.cant)+'</td>'+
-      '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
+      '<td class="der"><input class="pu" type="number" min="0" step="0.01" value="'+l.precio+'" '+
         'oninput="precioRepuesto('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*l.cant)+'</b></td>'+
       '<td>'+botonLinea('REP',i)+'</td></tr>';
@@ -10473,7 +10481,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=163;
+var APP_VER=164;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
