@@ -1,4 +1,4 @@
-<!--IZAV:168-->
+<!--IZAV:170-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -143,6 +143,12 @@ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
 .cen{text-align:center}
+/* Rótulo de grupo dentro de la lista de repuestos */
+.invGrupo{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mudo);
+  font-weight:700;padding:11px 4px 5px;border-top:1px solid var(--gris2);margin-top:4px}
+.invLista .invGrupo:first-of-type{border-top:0;margin-top:0;padding-top:7px}
+/* La marca del carro que está en el taller, marcada entre los botones */
+.invMarcas .mc.suya{border-color:var(--rojo);color:var(--rojo);font-weight:700}
 /* La hoja de servicios es una tabla ancha: se lee corrida de lado,
    con la cabecera fija para no perder de vista las columnas. */
 .hojaT{font-size:12px;white-space:nowrap;min-width:900px}
@@ -438,13 +444,14 @@ body.sinScroll{overflow:hidden}
 
 /* ===== menús de flujo ===== */
 .menuf{margin-bottom:10px;border:1.5px solid var(--borde);border-radius:12px;overflow:hidden;background:var(--blanco)}
-.menuf .cab{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;background:var(--gris)}
-.menuf .cab:hover{background:var(--gris2)}
-.menuf.on .cab{background:var(--rojo-cl)}
+.menuf .cab{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;
+  background:#171B21;color:#fff}
+.menuf .cab:hover{background:#1F242C}
+.menuf.on .cab{background:#171B21}
 .menuf .cab .ico{font-size:17px}
 .menuf .cab .tit{font-family:'Barlow Condensed',Impact,sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.04em}
-.menuf .cab .act{margin-left:auto;font-size:12px;font-weight:700;color:var(--rojo);text-align:right;line-height:1.2}
-.menuf .cab .fl{font-size:12px;color:var(--mudo);margin-left:6px}
+.menuf .cab .act{margin-left:auto;font-size:12px;font-weight:700;color:#FF6B6B;text-align:right;line-height:1.2}
+.menuf .cab .fl{font-size:12px;color:rgba(255,255,255,.55);margin-left:6px}
 .menuf .pasos-l{display:none;padding:8px;background:var(--blanco)}
 .menuf.abierto .pasos-l{display:block}
 .pasoi{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;margin-bottom:4px;
@@ -1432,6 +1439,15 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="fila" style="gap:6px;margin-top:8px">
           <button class="btn chico sec" style="flex:1" onclick="impBajar('mecanicos')">Descargar</button>
           <button class="btn chico sec" style="flex:1" onclick="impSheets('mecanicos')">Abrir en Sheets</button>
+        </div>
+      </div>
+      <div class="card" style="margin:0;background:var(--gris)" id="impCajaMM">
+        <label style="margin:0 0 4px">Mantenimiento mayor</label>
+        <div class="hint" style="margin:0 0 8px">El preciario por vehículo: litros, filtros, bujías y mano de obra.
+          Sube el Excel completo; la app lee la hoja VEHICULOS.</div>
+        <input type="file" id="impFileMM" onchange="impLeerMM(this)" style="padding:9px;width:100%;font-size:12px">
+        <div class="fila" style="gap:6px;margin-top:8px">
+          <button class="btn chico sec" style="flex:1" onclick="impBajar('mm')">Descargar</button>
         </div>
       </div>
     </div>
@@ -2702,7 +2718,35 @@ function srvPintarLista(fam,filtro){
       }).join('')
     : '<div class="srvVacio">Sin servicios'+(q?' con "'+filtro+'"':'')+' en esta familia.</div>';
   dl.classList.toggle('on',SRV_ABIERTA);
+  srvAcomodarLista();
 }
+/* En el celular el teclado se come media pantalla. Si la lista se
+   dibuja con alto fijo, las últimas opciones quedan detrás del
+   teclado y no hay manera de llegar a ellas por más que se arrastre.
+   Acá se mide el alto que de verdad queda visible y, si arriba hay
+   más sitio que abajo, la lista se abre hacia arriba. */
+function srvAcomodarLista(){
+  var dl=$('servLista'),inp=$('servDesc');
+  if(!dl||!inp||!dl.classList.contains('on'))return;
+  var vv=window.visualViewport;
+  var topVista=vv?vv.offsetTop:0,altoVista=vv?vv.height:window.innerHeight;
+  var r=inp.getBoundingClientRect();
+  var abajo=(topVista+altoVista)-r.bottom-14;
+  var arriba=r.top-topVista-14;
+  if(abajo>=150||abajo>=arriba){
+    dl.style.top='100%';dl.style.bottom='auto';
+    dl.style.maxHeight=Math.max(130,Math.min(300,abajo))+'px';
+  }else{
+    dl.style.top='auto';dl.style.bottom='100%';
+    dl.style.marginTop='0';dl.style.marginBottom='3px';
+    dl.style.maxHeight=Math.max(130,Math.min(300,arriba))+'px';
+  }
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',srvAcomodarLista);
+  window.visualViewport.addEventListener('scroll',srvAcomodarLista);
+}
+window.addEventListener('resize',srvAcomodarLista);
 function srvAbrir(){
   SRV_ABIERTA=true;
   var c=$('servFam');
@@ -2725,6 +2769,9 @@ function srvElegir(cod){
   SRV_ABIERTA=false;
   var dl=$('servLista');if(dl)dl.classList.remove('on');
   srvDato();
+  /* El mantenimiento mayor no se agrega como un servicio más: trae su
+     propia lista de repuestos según el vehículo. */
+  if(mmEsServicio(s.descripcion)){ mmPrecargar(); return }
 }
 function srvFamilia(fam){
   var d=$('servDesc');
@@ -2790,7 +2837,7 @@ function desglosarIGV(total){
    cualquiera que mencione aceite. La familia no cuenta: dentro de
    MANTENIMIENTO hay trabajos que no llevan aceite. */
 function esCambioAceite(t){
-  return /afinamiento|afinaci[oó]n|aceite/i.test(String(t||''));
+  return /afinamiento|afinaci[oó]n|aceite|mantenimiento\s+mayor/i.test(String(t||''));
 }
 /* El servicio que el preciario deja en cero: solo el cambio de aceite
    propiamente dicho. */
@@ -2813,9 +2860,9 @@ function lineaAceitePendiente(){
   return -1;
 }
 /* Los precios cargados son de auto. La camioneta usa más aceite: el
-   galón (4/4) sube S/ 5 en todas las marcas. */
+   galón (4/4) sube el recargo de abajo en todas las marcas. */
 var ACE_TIPO='auto';
-var ACE_RECARGO_4_4=5;
+var ACE_RECARGO_4_4=10;
 function aceTipo(t){ ACE_TIPO=t; pintarPresupuestoLista(); }
 function esMedida44(col){ return /^4\/4/.test(MEDIDAS[col]||'') }
 function acePrecio(pr,col){
@@ -2914,6 +2961,193 @@ function bloqueAdicionales(){
         '<option value="">— elige un adicional —</option>'+ops+'</select></div>'+
       '<div style="flex:0 0 auto"><button class="btn chico" onclick="adicAgregar()">Agregar</button></div>'+
     '</div></div>';
+}
+
+/* ================= MANTENIMIENTO MAYOR =================
+   Al elegir "Mantenimiento mayor" no se cobra un precio de lista: se
+   busca el vehículo del cliente en el preciario y se arma la lista de
+   repuestos que le corresponde, para editarla o recortarla.
+
+   Lo que se precarga es lo de las filas 17 a 25 del cotizador, menos
+   el recargo de camioneta (que ahí no aplica al mantenimiento mayor)
+   y menos los adicionales, que se agregan a mano desde el combo.
+   ======================================================= */
+var MM_CACHE={}, MM_VEH=null;
+function mmEsServicio(t){ return /mantenimiento\s+mayor/i.test(String(t||'')) }
+/* Mayúsculas, sin tildes y sin signos: "Santa Fé 2.2" -> "SANTA FE 2 2" */
+function mmLlano(t){
+  return String(t||'').toUpperCase()
+    .replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I')
+    .replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U')
+    .replace(/[^A-Z0-9]+/g,' ').trim();
+}
+/* El puntaje imita lo que hace el Excel a mano: primero la clave
+   marca|modelo, después los alias, y si no, lo que más se parezca. */
+function mmPuntaje(fila,modelo,anio){
+  var m=mmLlano(modelo); if(!m)return 0;
+  var cands=[mmLlano(fila.modelo)];
+  String(fila.alias_modelo||'').split(',').forEach(function(a){
+    a=mmLlano(a); if(a)cands.push(a);
+  });
+  var mejor=0;
+  cands.forEach(function(c){
+    if(!c)return;
+    var p=0;
+    if(c===m)p=100;
+    else if(m.indexOf(c+' ')===0||c.indexOf(m+' ')===0)p=85;
+    else if(m.indexOf(c)>-1||c.indexOf(m)>-1)p=70;
+    else{
+      var tm=m.split(' '),tc=c.split(' '),comunes=0;
+      tc.forEach(function(t){ if(t.length>1&&tm.indexOf(t)>-1)comunes++ });
+      if(comunes)p=30+comunes*12;
+    }
+    if(p>mejor)mejor=p;
+  });
+  if(!mejor)return 0;
+  var a=Number(anio)||0;
+  if(a&&fila.anio_desde&&fila.anio_hasta)
+    mejor += (a>=fila.anio_desde&&a<=fila.anio_hasta) ? 15 : -12;
+  return mejor;
+}
+/* Marcas que todavía no tienen ficha propia en el preciario y se
+   atienden con la de su marca madre. */
+var MM_EQUIV={'LEXUS':'TOYOTA'};
+function mmMarcaBuscar(marca){
+  var m=mmLlano(marca);
+  return MM_EQUIV[m]||marca;
+}
+function mmBuscar(marca,modelo,anio,cb){
+  marca=mmMarcaBuscar(marca);
+  var ma=mmLlano(marca);
+  if(!ma){cb(null,'sin-marca');return}
+  if(MM_CACHE[ma]){cb(mmElegir(MM_CACHE[ma],modelo,anio),null,MM_CACHE[ma]);return}
+  if(!sb){cb(null,'sin-base');return}
+  sb.from('mm_vehiculos').select('*').ilike('marca','%'+marca.trim()+'%').limit(300)
+    .then(function(r){
+      if(r.error){cb(null,'error:'+r.error.message);return}
+      var filas=r.data||[];
+      /* El ilike puede traer otra marca que la contenga: se afina acá. */
+      filas=filas.filter(function(f){
+        var fm=mmLlano(f.marca);
+        return fm===ma||fm.indexOf(ma)===0||ma.indexOf(fm)===0;
+      });
+      MM_CACHE[ma]=filas;
+      if(!filas.length){cb(null,'sin-marca');return}
+      cb(mmElegir(filas,modelo,anio),null,filas);
+    },function(){cb(null,'sin-base')});
+}
+function mmElegir(filas,modelo,anio){
+  var mejor=null,pts=0;
+  filas.forEach(function(f){
+    var p=mmPuntaje(f,modelo,anio);
+    if(p>pts){pts=p;mejor=f}
+  });
+  if(!mejor)return null;
+  mejor=JSON.parse(JSON.stringify(mejor));
+  mejor._pts=pts;
+  return (pts>=45)?mejor:null;
+}
+/* Las líneas que salen de la ficha del vehículo. */
+function mmLineas(v){
+  var rep=[],n=function(x){return Number(x)||0};
+  function poner(desc,cod,cant,precio){
+    if(!(cant>0)||!(precio>0))return;
+    rep.push({codigo:'MM-'+v.id_vehiculo+'-'+rep.length,codigo2:cod||'',
+      desc:desc,precio:n(precio),cant:n(cant),mm:true});
+  }
+  poner('Filtro de aceite'+(v.cod_filtro_aceite?' · '+v.cod_filtro_aceite:''),
+        v.cod_filtro_aceite, n(v.litros_aceite)>0?1:0, v.precio_filtro_aceite);
+  poner('Filtro de aire'+(v.cod_filtro_aire?' · '+v.cod_filtro_aire:''),
+        v.cod_filtro_aire, 1, v.precio_filtro_aire);
+  if(String(v.lleva_filtro_aire_secundario||'').toUpperCase()==='SI')
+    poner('Filtro de aire secundario', '', 1, v.precio_filtro_aire_secundario);
+  poner('Filtro de combustible'+(v.cod_filtro_combustible?' · '+v.cod_filtro_combustible:''),
+        v.cod_filtro_combustible, v.cant_filtro_combustible, v.precio_filtro_combustible);
+  poner('Bujías'+(v.cod_bujia?' · '+v.cod_bujia:''),
+        v.cod_bujia, v.cant_bujias, v.precio_bujia);
+  poner('Filtro de cabina'+(v.cod_filtro_cabina?' · '+v.cod_filtro_cabina:''),
+        v.cod_filtro_cabina, 1, v.precio_filtro_cabina_opcional);
+  return rep;
+}
+/* La orden guarda el vehículo como un solo texto ("KIA Sportage
+   2019"). La ficha suelta está en ACTUAL; si no está, se parte el
+   texto: primera palabra la marca, el año al final si lo trae. */
+function mmVehiculoDelCliente(){
+  var a=ACTUAL||{};
+  if(a.marca&&a.modelo)return {marca:a.marca,modelo:a.modelo,anio:a.anio||''};
+  var t=String((ORD&&ORD.veh)||(datosOrden()||{}).veh||'').trim();
+  if(!t)return {marca:'',modelo:'',anio:''};
+  var anio='';
+  t=t.replace(/\s(19|20)\d{2}$/,function(m){anio=m.trim();return ''}).trim();
+  var par=t.split(/\s+/);
+  return {marca:par.shift()||'',modelo:par.join(' '),anio:anio};
+}
+function mmPrecargar(){
+  var v0=mmVehiculoDelCliente();
+  var marca=v0.marca, modelo=v0.modelo, anio=v0.anio;
+  if(!marca||!modelo){
+    aviso('Para el mantenimiento mayor hace falta la marca y el modelo del vehículo. '+
+          'Complétalos en la recepción y vuelve a elegirlo.');
+    return;
+  }
+  conex('Buscando '+marca+' '+modelo+' en el preciario…');
+  mmBuscar(marca,modelo,anio,function(v,err,todas){
+    if(err==='sin-base'){ aviso('No se pudo leer el preciario de mantenimiento mayor. Revisa la conexión.'); return }
+    if(!v){ mmPedirModelo(marca,modelo,todas||[]); return }
+    mmAplicar(v);
+  });
+}
+function mmAplicar(v){
+  MM_VEH=v;
+  /* El servicio lleva la mano de obra del preciario; los repuestos van
+     cada uno en su línea para poder quitar lo que no corresponda. */
+  var mo=Number(v.mano_obra)||0;
+  var yaMM=-1;
+  LINEAS_SERV.forEach(function(l,i){ if(mmEsServicio(l.desc))yaMM=i });
+  var linea={codigo:'MM-GEN',codigo2:v.id_vehiculo,
+    desc:'Mantenimiento mayor · '+v.marca+' '+v.modelo+(v.motor?' '+v.motor:''),
+    precio:mo,precio_base:mo,cant:1,categoria:'Mantenimiento'};
+  if(yaMM>-1)LINEAS_SERV[yaMM]=linea; else LINEAS_SERV.push(linea);
+  /* Al recargar se quitan los repuestos que puso el precargado antes,
+     no los que agregó la persona a mano. */
+  LINEAS_REP=LINEAS_REP.filter(function(l){return !l.mm});
+  mmLineas(v).forEach(function(l){ LINEAS_REP.push(l) });
+  SRV_SEL=null;
+  if($('servDesc'))$('servDesc').value='';
+  if($('servPrecio'))$('servPrecio').value='';
+  srvDato();
+  pintarPresupuestoLista();
+  var n=mmLineas(v).length;
+  var aprox=(v._pts&&v._pts<85)?' Calcé por aproximación: revisa que sea el motor correcto.':'';
+  var est=(v.confianza==='B')?' Los datos técnicos de este vehículo son estimados: valida litros y filtros antes de enviar.':'';
+  conex('Mantenimiento mayor cargado · '+n+' repuesto'+(n===1?'':'s')+
+        (v.litros_aceite?' · '+v.litros_aceite+' L de '+(v.grado_recomendado||'aceite'):''));
+  if(aprox||est)aviso('Cargado como <b>'+v.marca+' '+v.modelo+(v.motor?' '+v.motor:'')+'</b>.'+aprox+est);
+}
+/* Cuando no hay calce, se elige a mano de la lista de esa marca. */
+function mmPedirModelo(marca,modelo,filas){
+  if(!filas.length){
+    aviso('El preciario de mantenimiento mayor no tiene la marca <b>'+esc(marca)+'</b>. '+
+          'Carga el servicio y sus repuestos a mano, o sube el Excel actualizado desde Datos maestros.');
+    return;
+  }
+  var ops=filas.slice().sort(function(a,b){
+      return String(a.modelo).localeCompare(String(b.modelo));
+    }).map(function(f){
+      return '<option value="'+f.id_vehiculo+'">'+esc(f.modelo)+
+             (f.motor?' · '+esc(f.motor):'')+(f.anios?' · '+esc(f.anios):'')+'</option>';
+    }).join('');
+  pregunta('Mantenimiento mayor',
+    '<p style="margin:0 0 10px">No encontré <b>'+esc(modelo)+'</b> en el preciario de '+
+    esc(marca)+'. Elige el más parecido:</p>'+
+    '<select id="mmSel" style="width:100%">'+ops+'</select>',
+    [{t:'Cargar',cierra:false,fn:function(){
+        var id=(document.getElementById('mmSel')||{}).value;
+        var v=filas.filter(function(f){return f.id_vehiculo===id})[0];
+        pregCerrar();
+        if(v){v=JSON.parse(JSON.stringify(v));v._pts=100;mmAplicar(v)}
+      }},
+     {t:'Cancelar',fn:pregCerrar}]);
 }
 function agregarServicio(){
   var s=SRV_SEL;
@@ -3245,8 +3479,38 @@ function invSinResultados(cont,ctx,familia,texto){
       invMsg(z,'<div class="invVacio">Sin resultados'+(familia?' en '+familia:'')+'.</div>');
     });
 }
+/* La marca del carro que está en el taller. Sirve para subir sus
+   repuestos en la lista: buscando "filtro de aire" interesa primero el
+   genérico, después el de SU marca, y recién al final el resto. */
+function invMarcaCliente(){
+  /* Solo agrupa cuando hay un vehículo de verdad en la orden. En la
+     tienda o en una búsqueda suelta no hay carro al que referirse, y
+     datosOrden() devolvería el vehículo de muestra. */
+  if(!(ACTUAL&&ACTUAL.marca)&&!(ORD&&ORD.veh))return '';
+  var v=(typeof mmVehiculoDelCliente==='function')?mmVehiculoDelCliente():null;
+  return v&&v.marca?mmLlano(v.marca):'';
+}
+/* Las marcas que valen para ese carro: la suya y la marca madre con la
+   que se atiende (un Lexus se sirve con repuesto Toyota). */
+function invMarcasDelCarro(mc){
+  if(!mc)return [];
+  var l=[mc], eq=mmLlano(MM_EQUIV[mc]||'');
+  if(eq&&eq!==mc)l.push(eq);
+  return l;
+}
+function invGrupoMarca(it,mc){
+  var m=mmLlano(invMarcaDe(it));
+  if(!m||m==='SIN MARCA'||m==='GENERICO')return 0;   /* sirve para cualquiera */
+  var suyas=invMarcasDelCarro(mc);
+  for(var i=0;i<suyas.length;i++){
+    var x=suyas[i];
+    if(m===x||m.indexOf(x)===0||x.indexOf(m)===0)return 1;
+  }
+  return 2;                                           /* otra marca */
+}
 function invOrdenarRelevancia(lista,texto,pal){
   var frase=limpiarBusq(texto).toLowerCase().trim();
+  var mc=invMarcaCliente();
   function rango(it){
     var d=String(it.descripcion||'').toLowerCase();
     if(frase&&d.indexOf(frase)===0)return 0;          /* se llama así */
@@ -3255,8 +3519,8 @@ function invOrdenarRelevancia(lista,texto,pal){
     if(pal.every(function(p){return d.indexOf(p)>-1}))return 3;  /* todas en la descripción */
     return 4;                                          /* coincide por marca, modelo o código */
   }
-  return lista.map(function(it,i){return {it:it,r:rango(it),i:i}})
-    .sort(function(a,b){ return a.r-b.r || a.i-b.i })
+  return lista.map(function(it,i){return {it:it,r:rango(it),g:invGrupoMarca(it,mc),i:i}})
+    .sort(function(a,b){ return a.r-b.r || a.g-b.g || a.i-b.i })
     .map(function(x){return x.it});
 }
 var INV_VACIAS=['de','del','la','el','los','las','para','con','y','a','en','por','x',
@@ -3348,8 +3612,12 @@ function invPintar(cont,familia){
   /* 3 · marca */
   var cuenta={};
   lista.forEach(function(it){ var m=invMarcaDe(it); cuenta[m]=(cuenta[m]||0)+1 });
+  var mcli=invMarcaCliente();
+  function esDelCarro(m){ return invGrupoMarca({marca:m},mcli)===1 }
   var marcas=Object.keys(cuenta).sort(function(a,b){
-    return cuenta[b]-cuenta[a]||a.localeCompare(b,'es');
+    /* la marca del carro manda, después las que más repuestos tienen */
+    var da=esDelCarro(a)?0:1, db=esDelCarro(b)?0:1;
+    return da-db||cuenta[b]-cuenta[a]||a.localeCompare(b,'es');
   });
   if(marca)lista=lista.filter(function(it){return invMarcaDe(it)===marca});
   INV_CACHE[cont]=lista;
@@ -3367,7 +3635,7 @@ function invPintar(cont,familia){
     '<button class="mc'+(marca?'':' on')+'" onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;&quot;)">'+
       'Todas</button>'+
     marcas.map(function(m){
-      return '<button class="mc'+(marca===m?' on':'')+'" '+
+      return '<button class="mc'+(marca===m?' on':'')+(esDelCarro(m)?' suya':'')+'" '+
         'onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;'+m.replace(/"/g,'')+'&quot;)">'+
         esc(m)+' <b>'+cuenta[m]+'</b></button>';
     }).join('')+'</div>':'';
@@ -3393,13 +3661,35 @@ function invPintar(cont,familia){
     chipsSub+chipsMar+
     '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
       '<span class="st">Stock</span><span class="loc">Dónde hay</span></div>'+
-    (lista.length?lista.map(function(it,i){return invLinea(ctx,it,i)}).join('')
+    (lista.length?invConSeparadores(ctx,lista)
       :'<div class="invVacio">Nada con esos filtros. Quita uno o escribe distinto.</div>')+
     '</div>';
   if(escribiendo){
     var q=document.getElementById(cont+'-q');
     if(q){ q.focus(); try{ q.setSelectionRange(caret,caret) }catch(e){} }
   }
+}
+/* Los tres grupos salen rotulados: sin rótulo, la lista parece un
+   revoltijo y no se entiende por qué un repuesto va antes que otro. */
+function invConSeparadores(ctx,lista){
+  var mc=invMarcaCliente();
+  var v=(typeof mmVehiculoDelCliente==='function')?mmVehiculoDelCliente():null;
+  var eq=MM_EQUIV[mc]||'';
+  var rot={0:'Sirven para cualquier vehículo',
+           1:'De '+((v&&v.marca)||'tu marca')+((v&&v.modelo)?' '+v.modelo:'')+
+             (eq?' · y de '+famBonita(eq):''),
+           2:'Otras marcas'};
+  var g=-1,sal='';
+  lista.forEach(function(it,i){
+    var gi=invGrupoMarca(it,mc);
+    if(gi!==g){
+      g=gi;
+      /* sin marca de carro no hay nada que separar */
+      if(mc)sal+='<div class="invGrupo">'+esc(rot[gi])+'</div>';
+    }
+    sal+=invLinea(ctx,it,i);
+  });
+  return sal;
 }
 /* Línea de la lista: lo mínimo para decidir si es el que busca. */
 /* Cuál local se muestra: el mío si tiene stock, si no el que más
@@ -5792,6 +6082,79 @@ function impServicios(filas){
   IMP.tipo='servicios';IMP.items=items;IMP.stock=[];IMP.sedes=[];
   impResumen(filas.length);
 }
+/* ============ MANTENIMIENTO MAYOR ============
+   Este Excel trae varias hojas y la primera es el LÉEME, así que no
+   sirve el lector general: hay que ir a la hoja VEHICULOS por nombre.
+   Si la renombran, se la busca por sus columnas. */
+function impHojaVehiculos(wb){
+  if(wb.Sheets['VEHICULOS'])return wb.Sheets['VEHICULOS'];
+  for(var i=0;i<wb.SheetNames.length;i++){
+    var h=wb.Sheets[wb.SheetNames[i]];
+    var f=XLSX.utils.sheet_to_json(h,{defval:'',raw:true});
+    if(f.length&&Object.keys(f[0]).indexOf('id_vehiculo')>-1)return h;
+  }
+  return null;
+}
+var MM_COLS=['id_vehiculo','marca','modelo','motor','anios','anio_desde','anio_hasta',
+  'alias_modelo','tipo_unidad','combustible','litros_aceite','grado_recomendado',
+  'tipo_aceite_recomendado','medida_aceite','precio_aceite_sugerido','cod_filtro_aceite',
+  'precio_filtro_aceite','cod_filtro_aire','precio_filtro_aire','lleva_filtro_aire_secundario',
+  'precio_filtro_aire_secundario','cod_filtro_combustible','cant_filtro_combustible',
+  'precio_filtro_combustible','cod_bujia','cant_bujias','precio_bujia','cod_filtro_cabina',
+  'precio_filtro_cabina_opcional','ruedas','mano_obra','confianza','notas','clave_busqueda'];
+var MM_NUM=['anio_desde','anio_hasta','litros_aceite','precio_aceite_sugerido',
+  'precio_filtro_aceite','precio_filtro_aire','precio_filtro_aire_secundario',
+  'cant_filtro_combustible','precio_filtro_combustible','cant_bujias','precio_bujia',
+  'precio_filtro_cabina_opcional','ruedas','mano_obra'];
+function impLeerMM(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  IMP={tipo:'mm',items:[],stock:[],sedes:[],archivo:f.name};
+  $('impInfo').innerHTML='<div class="invVacio">Leyendo '+f.name+'…</div>';
+  $('impAcc').innerHTML='';$('impProg').innerHTML='';
+  var fr=new FileReader();
+  fr.onload=function(e){
+    var filas;
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var hoja=impHojaVehiculos(wb);
+      if(!hoja){
+        $('impInfo').innerHTML='<div class="aviso rojo" style="margin:0">'+
+          'No encontré la hoja VEHICULOS en este archivo.<br>Hojas: '+wb.SheetNames.join(' · ')+'</div>';
+        return;
+      }
+      filas=XLSX.utils.sheet_to_json(hoja,{defval:'',raw:true});
+    }catch(err){
+      $('impInfo').innerHTML='<div class="aviso rojo" style="margin:0">No pude leer el archivo: '+err.message+'</div>';
+      return;
+    }
+    var items=[];
+    filas.forEach(function(r){
+      var id=impTxt(r.id_vehiculo), ma=impTxt(r.marca), mo=impTxt(r.modelo);
+      if(!id||!ma||!mo)return;
+      var o={};
+      MM_COLS.forEach(function(c){
+        var v=r[c];
+        o[c]=(MM_NUM.indexOf(c)>-1) ? (impNum(v)||null) : (impTxt(v)||null);
+      });
+      o.id_vehiculo=id;o.marca=ma;o.modelo=mo;
+      o.clave_busqueda=o.clave_busqueda||(ma.toUpperCase()+'|'+mo.toUpperCase());
+      items.push(o);
+    });
+    IMP.items=items;
+    impResumen(filas.length);
+  };
+  fr.readAsArrayBuffer(f);
+}
+function impMMSubir(){
+  impProgreso(0,IMP.items.length,'mantenimiento mayor');
+  impLote('mm_vehiculos',IMP.items,'id_vehiculo',0,function(err){
+    if(err)impMsg('No se pudo cargar: '+(IMP_ERR||'revisa que el paso 45 esté corrido.'),true);
+    else{
+      impMsg('✓ '+IMP.items.length+' vehículos cargados en mantenimiento mayor.');
+      MM_CACHE={};
+    }
+  });
+}
 function impResumen(nf){
   var z=$('impInfo');
   if(!IMP.items.length){z.innerHTML='<div class="aviso rojo" style="margin:0">No encontré filas válidas.</div>';return}
@@ -5816,6 +6179,13 @@ function impResumen(nf){
       kpi(IMP.items.length,'personas')+
       kpi(Object.keys(locs).length,'locales')+
       kpi(Object.keys(rls).length,'cargos')+'</div>';
+  }else if(IMP.tipo==='mm'){
+    var mks={},baja=0;
+    IMP.items.forEach(function(i){mks[i.marca]=1;if(i.confianza==='B')baja++});
+    det='<div class="fila" style="gap:10px">'+
+      kpi(IMP.items.length,'vehículos')+
+      kpi(Object.keys(mks).length,'marcas')+
+      kpi(baja,'con datos estimados')+'</div>';
   }else{
     var fams={};IMP.items.forEach(function(i){if(i.categoria)fams[i.categoria]=1});
     det='<div class="fila" style="gap:10px">'+
@@ -5853,13 +6223,15 @@ function impSubir(){
   if(!sb){impMsg('Sin conexión con la base.',true);return}
   var qué=(IMP.tipo==='stock')?'repuestos'
          :(IMP.tipo==='usuarios'?'usuarios'
-         :(IMP.tipo==='mecanicos'?'mecánicos y lavadores':'servicios'));
+         :(IMP.tipo==='mecanicos'?'mecánicos y lavadores'
+         :(IMP.tipo==='mm'?'vehículos de mantenimiento mayor':'servicios')));
   confirmar('¿Cargar '+IMP.items.length+' '+qué+' a la base?',function(){ impSubirYa() },'Cargar');
 }
 function impSubirYa(){
   $('impAcc').innerHTML='';
   if(IMP.tipo==='usuarios'){impUsuariosSubir();return}
   if(IMP.tipo==='mecanicos'){impMecanicosSubir();return}
+  if(IMP.tipo==='mm'){impMMSubir();return}
   var tipo=(IMP.tipo==='stock')?'REP':'MO';
   var cat=IMP.items.map(function(i){
     return {codigo:i.codigo,tipo:tipo,descripcion:i.descripcion,
@@ -10877,7 +11249,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=168;
+var APP_VER=170;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
