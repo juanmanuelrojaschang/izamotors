@@ -1,4 +1,4 @@
-<!--IZAV:158-->
+<!--IZAV:159-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -901,7 +901,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 158</span>
+  <span class="demo-tag">versión 159</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2942,6 +2942,14 @@ function limpiarBusq(t){
    ubicación y el botón de agregar. Con 300 ítems en pantalla
    nadie encuentra nada; con una lista de nombres, sí.
    ========================================== */
+function enSingular(pal){
+  var hubo=false;
+  var r=pal.map(function(p){
+    if(p.length>3&&/s$/.test(p)&&!/ss$/.test(p)){hubo=true;return p.replace(/e?s$/,'')}
+    return p;
+  });
+  return hubo?r:null;
+}
 function invPalabras(t){
   return limpiarBusq(t).toLowerCase().split(/\s+/).filter(function(p){return p.length>0});
 }
@@ -2953,7 +2961,7 @@ function invSede(sid){
   var s=INV_SEDES.filter(function(x){return x.id===sid})[0];
   return s?s.nombre:('Local '+sid);
 }
-function invBuscar(ctx,texto,familia,dentroDe){
+function invBuscar(ctx,texto,familia,dentroDe,reintento){
   var cont=document.getElementById(ctx.cont);if(!cont)return;
   var pal=invPalabras(texto);
   if(!familia&&(!pal.length||limpiarBusq(texto).length<2)){
@@ -3011,9 +3019,11 @@ function invBuscar(ctx,texto,familia,dentroDe){
        son varias palabras, puede que estén repartidas (marca MANN +
        descripción AIRE): se reintenta por la palabra más larga y se
        cruza aquí. */
-    if(!lista.length&&!familia&&pal.length>1&&!r.error){
-      invBuscarSuelto(ctx,ctx.cont,texto,pal,dentroDe,TOPE);
-      return;
+    if(!lista.length&&!familia&&!r.error){
+      /* "bujías" no encuentra "BUJIA": se reintenta en singular */
+      var sing=(!reintento)&&enSingular(pal);
+      if(sing){ invBuscar(ctx,sing.join(' '),familia,dentroDe,true); return }
+      if(pal.length>1){ invBuscarSuelto(ctx,ctx.cont,texto,pal,dentroDe,TOPE); return }
     }
     lista=invOrdenarRelevancia(lista,texto,pal);
     INV_TOTAL[ctx.cont]=(typeof r.count==='number')?r.count:lista.length;
@@ -3422,9 +3432,9 @@ function invMontar(contId,onAdd,inputId){
    que es como está escrito el catálogo. Si el primer término no da
    nada, se prueba el siguiente: cada taller nombra distinto. */
 var ATAJOS_REP=[
-  {t:'Filtro de aire',     q:['filtro aire']},
-  {t:'Filtro de gasolina', q:['filtro gasolina','filtro combustible','filtro petroleo']},
-  {t:'Filtro de cabina',   q:['filtro cabina','filtro polen','filtro habitaculo']},
+  {t:'Filtro de aire',     q:['filtro de aire','filtro aire']},
+  {t:'Filtro de gasolina', q:['filtro de gasolina','filtro de combustible','filtro de petroleo']},
+  {t:'Filtro de cabina',   q:['filtro de cabina','filtro de polen','filtro de habitaculo']},
   {t:'Bujías',             q:['bujia']},
   {t:'Frenos',             q:['freno','pastilla']}
 ];
@@ -3448,9 +3458,13 @@ function invAtajo(contId,idx,inputId){
    usuario vea el mensaje y pueda abrir los otros locales. */
 function invAtajoProbar(ctx,a,i,inputId){
   function usar(q){
+    /* En el campo va el rótulo, que es lo que se leyó en el botón; la
+       búsqueda usa el término que encuentra en el catálogo. */
     var inp=document.getElementById(inputId||ctx.input||'');
-    if(inp)inp.value=q;
+    if(inp)inp.value=a.t;
     invBuscar(ctx,q);
+    var pq=document.getElementById(ctx.cont+'-q');
+    if(pq)pq.value=a.t;
   }
   if(!sb||i>=a.q.length){ usar(a.q[0]); return }
   var q=a.q[i],pal=invPalabras(q);
@@ -10396,7 +10410,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=158;
+var APP_VER=159;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
