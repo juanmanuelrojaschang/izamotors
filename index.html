@@ -1,4 +1,4 @@
-<!--IZAV:165-->
+<!--IZAV:168-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -142,6 +142,15 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--mudo);padding:9px 7px;border-bottom:1.5px solid var(--borde);font-weight:700}
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
+.cen{text-align:center}
+/* La hoja de servicios es una tabla ancha: se lee corrida de lado,
+   con la cabecera fija para no perder de vista las columnas. */
+.hojaT{font-size:12px;white-space:nowrap;min-width:900px}
+.hojaT th,.hojaT td{border:1px solid rgba(255,255,255,.14);padding:5px 7px}
+.hojaT thead th{position:sticky;top:0;background:var(--gris2);font-size:10px;
+  text-transform:uppercase;letter-spacing:.04em;z-index:1}
+.hojaT tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
+.hojaT td:nth-child(10){white-space:normal;min-width:180px}
 
 .eti{display:inline-block;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .e1{color:var(--mudo);background:var(--gris2)}
@@ -553,7 +562,7 @@ body.sinScroll{overflow:hidden}
 @media(max-width:600px){
   .presT,.presT tbody,.presT tr,.presT td,.presT th{display:block;width:auto}
   .presT thead,.presT tr>th{display:none}
-  .presT tr{position:relative;padding:9px 46px 9px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+  .presT tr{position:relative;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.12)}
   .presT td{padding:2px 0}
   /* los anchos fijos de la tabla no valen acá: la fila pasa a ser una
      caja flexible con el nombre arriba y los controles en un renglón */
@@ -564,26 +573,31 @@ body.sinScroll{overflow:hidden}
   .presT tr:not(.totalRow) td:nth-child(3){flex:0 0 auto;display:flex;align-items:center}
   .presT tr:not(.totalRow) td:nth-child(3):before{content:'S/';font-size:10.5px;opacity:.55;margin-right:4px}
   .presT tr:not(.totalRow) td:nth-child(4){flex:0 0 auto;font-size:14px;white-space:nowrap;
-    margin-left:auto;padding-right:2px}
-  /* el botón ancho ("pedir ✕") no cabe arriba a la derecha sin tapar el
-     precio: va al final del renglón de controles */
-  .presT tr:not(.totalRow):has(.anch) td:nth-child(5){position:static;flex:1 1 100%;
-    padding-top:8px}
-  .presT tr:not(.totalRow):has(.anch){padding-right:0}
-  .presT .anch{width:100%}
+    margin-left:auto}
+  .presT tr:not(.totalRow) td:nth-child(5){flex:0 0 auto;display:flex;align-items:center}
+  /* "pedir ✕" va en la misma línea, como pastilla de borde punteado:
+     el punteado lo distingue del ✕ que borra de una */
+  .presT td:nth-child(5) .btn.anch{height:30px;min-height:30px;padding:0 9px;
+    font-size:11px;white-space:nowrap;background:transparent;
+    border:1px dashed rgba(214,58,58,.55);color:var(--rojo)}
   .presT tr:not(.totalRow) td:nth-child(3) input.pu{width:58px;padding:6px 6px}
   .presT tr:not(.totalRow) td:nth-child(4){font-size:13px}
   .presT .cantBox{flex:0 0 auto}
   .presT .cantBox input{width:32px}
   .presT .cantBox .cmas{width:28px}
-  .presT td:nth-child(5){position:absolute;right:0;top:10px;width:auto;padding:0}
+  .presT td:nth-child(5){width:auto;padding:0}
   .presT td:nth-child(5):empty{display:none}
   .presT .btn{min-height:30px;padding:0 9px;font-size:12px}
+  /* el ✕ a la medida del renglón: cuadrado y discreto, no un bloque */
+  .presT td:nth-child(5) .btn.peligro{width:30px;min-width:30px;height:30px;min-height:30px;
+    padding:0;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--rojo);border:1px solid rgba(214,58,58,.45)}
+  .presT td:nth-child(5) .btn.peligro:active{background:rgba(214,58,58,.18)}
   .presT td[colspan]{padding-top:12px}
   .presT tr.totalRow{padding:9px 0;display:flex;justify-content:space-between;align-items:center}
   .presT tr.totalRow td{display:block;padding:0}
   .presT tr.totalRow td:empty{display:none}
-  .presT tr:has(td[colspan="5"]){border-bottom:0;padding-right:0}
+  .presT tr:has(td[colspan="5"]){border-bottom:0}
 }
 .tituloVig{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:21px;
   text-transform:uppercase;letter-spacing:.02em;color:#fff;margin:2px 0 10px;line-height:1.1}
@@ -1670,6 +1684,31 @@ tr.sel td{background:var(--rojo-cl)}
   </div>
 </section>
 
+<!-- ================= HOJA DE SERVICIOS ================= -->
+<section class="vista" id="v-hoja">
+  <div class="card">
+    <h3 id="hojaTitulo">Hoja de servicios</h3>
+    <div id="hojaSedeSel"></div>
+    <div class="fila" style="align-items:flex-end;margin-bottom:12px">
+      <div style="flex:1;min-width:150px"><label style="margin:0 0 4px">Fecha</label>
+        <input type="date" id="hojaFecha" onchange="pintarHoja()"></div>
+      <div style="flex:0 0 auto;display:flex;gap:8px;align-items:flex-end">
+        <button class="btn chico sec" onclick="hojaDia(-1)">◀ día</button>
+        <button class="btn chico sec" onclick="hojaHoy()">Hoy</button>
+        <button class="btn chico sec" onclick="hojaDia(1)">día ▶</button>
+      </div>
+    </div>
+    <div class="fila" style="gap:8px;margin-bottom:4px">
+      <button class="btn chico" onclick="hojaExcel()">⬇ Excel</button>
+      <button class="btn chico sec" onclick="hojaPDF()">🖨️ PDF / imprimir</button>
+    </div>
+    <div class="hint" id="hojaResumen" style="margin:8px 0 0"></div>
+  </div>
+  <div class="card">
+    <div style="overflow-x:auto"><table class="hojaT" id="tablaHoja"></table></div>
+  </div>
+</section>
+
 <!-- ================= CLIENTE ================= -->
 <section class="vista" id="v-cliente">
 
@@ -1852,7 +1891,8 @@ var MODULOS={
     {v:'ventanilla',t:'Anulaciones',tab:'anul'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'tienda',t:'Tienda'},{v:'productividad',t:'Productividad'},{v:'bitacora',t:'Bitácora y transacciones'}]},
+    {v:'taller',t:'Taller'},{v:'tienda',t:'Tienda'},{v:'productividad',t:'Productividad'},
+    {v:'bitacora',t:'Bitácora y transacciones'},{v:'hoja',t:'Hoja de servicios'}]},
   configuracion:{t:'Configuración',vistas:[
     {v:'usuarios',t:'Usuarios y permisos'},
     {v:'importar',t:'Datos maestros'}]}
@@ -2187,7 +2227,7 @@ function ir(v,atras){
 
   window.scrollTo(0,0);
   try{pintarAtras()}catch(e){}
-  if(v==='recepcion')segEntrada();if(v==='bitacora'){cargarAuditoria();if(BIT_TAB==='anul')bitTab('anul');}if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
+  if(v==='recepcion')segEntrada();if(v==='bitacora'){cargarAuditoria();if(BIT_TAB==='anul')bitTab('anul');}if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='hoja')abrirHoja();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -2203,17 +2243,17 @@ try{ sb=supabase.createClient(SB_URL,SB_KEY); }catch(e){ console.error('Supabase
 
 var ROLES={
   admin_general:{t:'Administrador General', d:'Todos los locales, configuración completa',
-                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','usuarios','importar']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','hoja','usuarios','importar']},
   admin_local:  {t:'Administrador Local',   d:'Su local completo; edita los usuarios de su local',
-                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','usuarios']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','hoja','usuarios']},
   jefe_taller:  {t:'Jefe de Taller',        d:'Recepción y piso de su local',
-                 vistas:['recepcion','taller','tienda','productividad','bitacora']},
+                 vistas:['recepcion','taller','tienda','productividad','bitacora','hoja']},
   ventanilla:   {t:'Ventanilla',            d:'Valida stock, codifica y arma la OT final',
-                 vistas:['ventanilla','taller','tienda','productividad','bitacora']},
+                 vistas:['ventanilla','taller','tienda','productividad','bitacora','hoja']},
   asesor:       {t:'Asesor de Servicio',    d:'Cierra con el cliente y cobra con tarjeta',
-                 vistas:['asesor','taller','tienda','productividad','bitacora']},
+                 vistas:['asesor','taller','tienda','productividad','bitacora','hoja']},
   caja:         {t:'Caja',                  d:'Valida el cobro y emite el comprobante',
-                 vistas:['caja','taller','tienda','productividad','bitacora']}
+                 vistas:['caja','taller','tienda','productividad','bitacora','hoja']}
 };
 /* los usuarios viven en la base desde el paso 22 */
 var SEDE_ACTIVA=1,SEDE_NOMBRE='Las Américas';
@@ -6553,9 +6593,15 @@ function renderFlujos(){
           ? ' <span class="eti e3" style="font-size:9px;padding:1px 6px">'+
             etiquetaVBde(e.k).replace('aprobada ','').replace('sin VB del cliente','sin VB cliente')+'</span>'
           : '';
+        /* El mecánico puede quedar pendiente al iniciar el diagnóstico.
+           Mientras falte, el paso lo dice y se puede volver a él. */
+        var pdteM=(id==='taller'&&e.k==='RECIBIDO'&&!MECANICO_OT&&
+                   ['RECIBIDO','EN_DIAGNOSTICO','EN_PROCESO'].indexOf(tallerAct)>-1)
+          ? ' <span class="eti e3" style="font-size:9px;padding:1px 6px">pdte asignar mecánico</span>'
+          : '';
         return '<div class="'+cls+'" onclick="verPaso(&quot;'+id+'&quot;,&quot;'+e.k+'&quot;)">'+
           '<span class="pt">'+(i<idx?'✓':i+1)+'</span>'+
-          '<span>'+e.ic+' '+e.t+sinvb+'</span>'+
+          '<span>'+e.ic+' '+e.t+sinvb+pdteM+'</span>'+
           (hh?'<span class="hh">'+hh+'</span>':'')+'</div>';
       }).join('')+
       '</div></div>';
@@ -6716,7 +6762,12 @@ function renderPanel(){
   /* Como el mecánico puede quedar pendiente, el bloque sigue a mano
      mientras el trabajo avanza: es el único lugar donde asignarlo. */
   var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO'||EST_TALLER==='EN_PROCESO');
-  $('gAsig').style.display=(esAccion&&sel.f==='taller'&&tocaMec&&puede)?'block':'none';
+  /* Volver al paso de recepción con el mecánico pendiente abre solo el
+     bloque de asignación: no rehace el inicio del diagnóstico. */
+  var reabrirMec=(sel.f==='taller'&&sel.k==='RECIBIDO'&&!MECANICO_OT&&
+                  ['EN_DIAGNOSTICO','EN_PROCESO'].indexOf(EST_TALLER)>-1);
+  $('gAsig').style.display=
+    (((esAccion&&sel.f==='taller'&&tocaMec)||reabrirMec)&&puede)?'block':'none';
   var hMec=document.getElementById('tituloMec');
   var bMec=document.getElementById('btnMec');
   if(EST_TALLER==='RECIBIDO'){
@@ -7405,6 +7456,212 @@ function rangoTaller(){
 var TALLER_SEDE='ACTUAL';
 function tallerCambiaSede(v){ TALLER_SEDE=v; pintarTaller() }
 function tallerTodos(){ return TALLER_SEDE==='TODOS'&&esAdminGeneral() }
+
+/* ===================== HOJA DE SERVICIOS =====================
+   La misma hoja que el taller llena a mano, armada con lo que ya
+   está en la base. Un renglón por vehículo recibido en el día.
+   Las columnas CA / AF / FRENOS / TRÍO se marcan leyendo los
+   servicios de la orden; la descripción trae el comentario interno.
+   ============================================================= */
+var HOJA_SEDE='ACTUAL', HOJA=[], HOJA_FECHA='';
+function hojaHoyISO(){
+  var d=new Date();
+  return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function abrirHoja(){
+  if(!HOJA_FECHA)HOJA_FECHA=hojaHoyISO();
+  var f=document.getElementById('hojaFecha');
+  if(f&&!f.value)f.value=HOJA_FECHA;
+  if(!FLOTAS.length)cargarFlotas();
+  cargarSedesTodas(function(){ detectarEsPrueba(function(){ pintarHoja() }) });
+}
+function hojaCambiaSede(v){ HOJA_SEDE=v; pintarHoja() }
+function hojaHoy(){
+  var f=document.getElementById('hojaFecha');
+  if(f)f.value=hojaHoyISO();
+  pintarHoja();
+}
+function hojaDia(n){
+  var f=document.getElementById('hojaFecha');if(!f)return;
+  var d=new Date((f.value||hojaHoyISO())+'T12:00:00');
+  d.setDate(d.getDate()+n);
+  f.value=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  pintarHoja();
+}
+function hojaTodos(){ return HOJA_SEDE==='TODOS' }
+/* sin tildes y en minúscula, para que "Trío" y "trio" sean lo mismo */
+function hojaLlano(t){
+  return String(t||'').toLowerCase()
+    .replace(/[áà]/g,'a').replace(/[éè]/g,'e').replace(/[íì]/g,'i')
+    .replace(/[óò]/g,'o').replace(/[úùü]/g,'u');
+}
+/* Qué columna marca cada servicio. Se mira la descripción porque es
+   lo que queda escrito en la orden, venga del catálogo o a mano. */
+function hojaMarca(lineas,cual){
+  var pat={CA:/cambio de aceite|^ca · |^ca -/,
+           AF:/afinamiento/,
+           FRENOS:/freno/,
+           TRIO:/trio/};
+  var re=pat[cual];
+  return lineas.some(function(l){
+    return l.tipo==='MO' && re.test(hojaLlano(l.descripcion));
+  }) ? 'X' : '';
+}
+/* La marca y el grado del aceite que se le puso, como lo anotan a
+   mano: "10W30 SHELL". Sale del repuesto, no del servicio. */
+function hojaAceite(lineas){
+  var marcas=ACEITES.map(function(a){return a.m.split(' / ')[0]});
+  var hall='';
+  lineas.forEach(function(l){
+    if(hall||l.tipo==='MO')return;
+    var d=String(l.descripcion||'');
+    var grado=(d.match(/\b\d{1,2}W\s?\d{2}\b/i)||[''])[0].toUpperCase().replace(/\s/g,'');
+    var marca='';
+    marcas.forEach(function(m){ if(!marca&&hojaLlano(d).indexOf(hojaLlano(m))>-1)marca=m });
+    if(grado||marca)hall=[grado,marca].filter(Boolean).join(' ');
+  });
+  return hall;
+}
+function hojaHora(iso){
+  if(!iso)return '';
+  var d=new Date(iso);
+  return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+function pintarHoja(){
+  if(!sb)return;
+  var zs=document.getElementById('hojaSedeSel');
+  if(zs)zs.innerHTML=selectorSedeHTML(HOJA_SEDE,'hojaCambiaSede');
+  var f=document.getElementById('hojaFecha');
+  HOJA_FECHA=(f&&f.value)||hojaHoyISO();
+  if(f&&!f.value)f.value=HOJA_FECHA;
+  var desde=new Date(HOJA_FECHA+'T00:00:00'), hasta=new Date(HOJA_FECHA+'T23:59:59.999');
+  var tt=document.getElementById('hojaTitulo');
+  if(tt)tt.textContent='Hoja de servicios · '+
+    (hojaTodos()?'todos los locales':sedeNombrePorId(sedeElegida(HOJA_SEDE)));
+  var q=sb.from('ordenes')
+    .select('id,numero,sede_id,ingreso,total_taller,mecanico_nombre,lavador_nombre,'+
+            'nota_interna,'+(HAY_ES_PRUEBA?'es_prueba,':'')+
+            'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono,flota_id),'+
+            'orden_detalle(tipo,descripcion,precio_taller,cantidad,anulada)')
+    .not('estado_taller','eq','ANULADO');
+  var sid=hojaTodos()?null:sedeElegida(HOJA_SEDE);
+  if(sid!==null)q=q.eq('sede_id',sid);
+  q=sinPruebas(q);
+  q.gte('ingreso',desde.toISOString()).lte('ingreso',hasta.toISOString())
+   .order('ingreso',{ascending:true}).limit(400)
+   .then(function(r){
+      HOJA=(r.data||[]).map(function(o,i){
+        var v=o.vehiculos||{}, c=o.clientes||{};
+        var ln=(o.orden_detalle||[]).filter(function(l){return !l.anulada});
+        return {
+          n:i+1,
+          placa:v.placa||'',
+          modelo:[v.marca,v.modelo].filter(Boolean).join(' ')||'',
+          hora:hojaHora(o.ingreso),
+          ca:hojaMarca(ln,'CA'), af:hojaMarca(ln,'AF'),
+          frenos:hojaMarca(ln,'FRENOS'), trio:hojaMarca(ln,'TRIO'),
+          aceite:hojaAceite(ln),
+          flota:c.flota_id?(nombreFlota(c.flota_id)||'Flota '+c.flota_id):'',
+          desc:String(o.nota_interna||'').trim(),
+          mec1:o.mecanico_nombre||'',
+          total:Number(o.total_taller||0),
+          sede:sedeNombrePorId(o.sede_id)
+        };
+      });
+      hojaPintarTabla();
+   },function(e){
+      var t=document.getElementById('tablaHoja');
+      if(t)t.innerHTML='<tr><td>No se pudo leer la base. Revisa la conexión.</td></tr>';
+   });
+}
+var HOJA_COLS=[
+  ['n','N°'],['placa','PLACA'],['modelo','MODELO'],['hora','HORA'],
+  ['ca','CA'],['af','AF'],['frenos','FRENOS'],['trio','TRÍO'],
+  ['aceite','MARCA DE ACEITE'],['flota','FLOTA'],
+  ['desc','DESCRIPCIÓN'],['mec1','MECÁNICO'],['total','TOTAL']
+];
+function hojaPintarTabla(){
+  var t=document.getElementById('tablaHoja');if(!t)return;
+  var res=document.getElementById('hojaResumen');
+  var suma=0;HOJA.forEach(function(x){suma+=x.total});
+  if(res)res.innerHTML=HOJA.length
+    ? HOJA.length+' vehículo'+(HOJA.length===1?'':'s')+' · total S/ '+suma.toFixed(2)
+    : 'Sin vehículos recibidos ese día en este local.';
+  if(!HOJA.length){ t.innerHTML=''; return }
+  var th=HOJA_COLS.map(function(c){return '<th>'+c[1]+'</th>'}).join('');
+  var filas=HOJA.map(function(x){
+    return '<tr>'+HOJA_COLS.map(function(c){
+      var v=x[c[0]];
+      if(c[0]==='total')return '<td class="num der">'+(v?v.toFixed(2):'')+'</td>';
+      if(['ca','af','frenos','trio'].indexOf(c[0])>-1)return '<td class="cen">'+(v||'')+'</td>';
+      return '<td>'+String(v===0?'':(v||''))+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  t.innerHTML='<thead><tr>'+th+'</tr></thead><tbody>'+filas+'</tbody>';
+}
+function hojaExcel(){
+  if(!HOJA.length){aviso('No hay nada que descargar en esa fecha.');return}
+  if(typeof XLSX==='undefined'){
+    aviso('La librería de Excel no cargó. Revisa la conexión y recarga la página; '+
+          'mientras tanto puedes usar el PDF.');return;
+  }
+  var filas=HOJA.map(function(x){
+    var o={};
+    HOJA_COLS.forEach(function(c){
+      o[c[1]]=(c[0]==='total')?(x.total||'') : (x[c[0]]===0?'':x[c[0]]);
+    });
+    return o;
+  });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(filas),'Hoja de servicios');
+  XLSX.writeFile(wb,'hoja-de-servicios-'+HOJA_FECHA+'.xlsx');
+}
+function hojaPDF(){
+  if(!HOJA.length){aviso('No hay nada que imprimir en esa fecha.');return}
+  var local=hojaTodos()?'TODOS LOS LOCALES':sedeNombrePorId(sedeElegida(HOJA_SEDE)).toUpperCase();
+  var th=HOJA_COLS.map(function(c){return '<th>'+c[1]+'</th>'}).join('');
+  var filas=HOJA.map(function(x){
+    return '<tr>'+HOJA_COLS.map(function(c){
+      var v=x[c[0]];
+      var cls=(c[0]==='total')?' class="r"':(['ca','af','frenos','trio'].indexOf(c[0])>-1?' class="c"':'');
+      if(c[0]==='total')return '<td'+cls+'>'+(v?Number(v).toFixed(2):'')+'</td>';
+      return '<td'+cls+'>'+String(v===0?'':(v||''))+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  var vacias='';
+  for(var i=HOJA.length;i<32;i++)
+    vacias+='<tr><td>'+(i+1)+'</td>'+new Array(HOJA_COLS.length).join('<td></td>')+'</tr>';
+  var suma=0;HOJA.forEach(function(x){suma+=x.total});
+  var css='@page{size:A4 landscape;margin:8mm}'+
+    'body{font-family:Arial,sans-serif;font-size:9px;color:#000;margin:0}'+
+    '.cab{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px}'+
+    '.cab b{font-size:12px}'+
+    'table{width:100%;border-collapse:collapse}'+
+    'th,td{border:1px solid #000;padding:2px 3px;height:15px}'+
+    'th{background:#eee;font-size:8px;text-transform:uppercase}'+
+    '.c{text-align:center}.r{text-align:right}'+
+    'tfoot td{font-weight:700}';
+  var html='<!doctype html><html><head><meta charset="utf-8">'+
+    '<title>Hoja de servicios '+HOJA_FECHA+'</title><style>'+css+'</style></head><body>'+
+    '<div class="cab"><div><b>'+RAZON_EMISOR+'</b><br>Hoja de servicios</div>'+
+    '<div>FECHA: <b>'+HOJA_FECHA+'</b></div>'+
+    '<div>SEDE: <b>'+local+'</b></div></div>'+
+    '<table><thead><tr>'+th+'</tr></thead><tbody>'+filas+vacias+'</tbody>'+
+    '<tfoot><tr><td colspan="'+(HOJA_COLS.length-1)+'" class="r">TOTAL DEL DÍA</td>'+
+    '<td class="r">'+suma.toFixed(2)+'</td></tr></tfoot></table></body></html>';
+  var viejo=document.getElementById('marcoImpresion');
+  if(viejo)viejo.parentNode.removeChild(viejo);
+  var fr=document.createElement('iframe');
+  fr.id='marcoImpresion';
+  fr.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0';
+  document.body.appendChild(fr);
+  var doc=fr.contentWindow.document;
+  doc.open();doc.write(html);doc.close();
+  setTimeout(function(){
+    try{fr.contentWindow.focus();fr.contentWindow.print()}
+    catch(e){aviso('No se pudo abrir la impresión: '+e.message)}
+  },350);
+}
 function abrirTaller(){
   cargarSedesTodas(function(){ detectarEsPrueba(function(){ pintarTaller() }) });
 }
@@ -10620,7 +10877,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=165;
+var APP_VER=168;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
