@@ -1,4 +1,4 @@
-<!--IZAV:164-->
+<!--IZAV:165-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -288,6 +288,7 @@ body.sinScroll{overflow:hidden}
 .invMarcas .et{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:2px}
 .invMarcas.sub .mc.on{background:var(--tinta);border-color:var(--tinta)}
+.tblAce .pz.rec{box-shadow:inset 0 0 0 1px #E0A106}
 .cantBox{display:inline-flex;align-items:center;gap:0;border:1px solid var(--borde);
   border-radius:9px;overflow:hidden;background:#fff}
 .cantBox input{border:0;border-radius:0;text-align:center;padding:6px 0;min-height:34px;
@@ -564,6 +565,12 @@ body.sinScroll{overflow:hidden}
   .presT tr:not(.totalRow) td:nth-child(3):before{content:'S/';font-size:10.5px;opacity:.55;margin-right:4px}
   .presT tr:not(.totalRow) td:nth-child(4){flex:0 0 auto;font-size:14px;white-space:nowrap;
     margin-left:auto;padding-right:2px}
+  /* el botón ancho ("pedir ✕") no cabe arriba a la derecha sin tapar el
+     precio: va al final del renglón de controles */
+  .presT tr:not(.totalRow):has(.anch) td:nth-child(5){position:static;flex:1 1 100%;
+    padding-top:8px}
+  .presT tr:not(.totalRow):has(.anch){padding-right:0}
+  .presT .anch{width:100%}
   .presT tr:not(.totalRow) td:nth-child(3) input.pu{width:58px;padding:6px 6px}
   .presT tr:not(.totalRow) td:nth-child(4){font-size:13px}
   .presT .cantBox{flex:0 0 auto}
@@ -591,6 +598,17 @@ body.sinScroll{overflow:hidden}
   padding:4px 0;color:var(--tinta)}
 .adicLista .it.ok{color:#0B6E3F}
 .adicLista .it.tot{margin-top:6px;padding-top:7px;border-top:1px dashed var(--borde);font-weight:700}
+.fichaVeh{display:flex;align-items:center;gap:12px;background:var(--gris);border-radius:11px;
+  padding:11px 13px;margin:0 0 12px}
+.fichaVeh .pl{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;color:var(--rojo);
+  background:#fff;border:1px solid var(--borde);border-radius:7px;padding:6px 9px;white-space:nowrap}
+.fichaVeh .dd{font-size:13px;line-height:1.4;color:var(--tinta)}
+.notaOT{border:1px solid #E0A106;background:#FFFBF0;border-radius:11px;padding:11px 13px;margin:0 0 12px}
+.notaOT.ok{border-color:#BFE6CE;background:#F2FAF5}
+.notaOT .t{font-weight:700;font-size:13px;color:#8A5A00;margin-bottom:5px}
+.notaOT.ok .t{color:#0B6E3F}
+.notaOT .x{font-size:13.5px;line-height:1.45;color:var(--tinta);white-space:pre-wrap}
+.notaOT .q{font-size:11.5px;color:var(--mudo);margin-top:6px}
 .notaInt{display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#8A5A00;
   background:#FFF6E0;border-left:3px solid #E0A106;border-radius:0 5px 5px 0;padding:3px 7px;
   white-space:normal;max-width:320px}
@@ -2754,11 +2772,21 @@ function lineaAceitePendiente(){
     if(usaAceite(LINEAS_SERV[i]))return i;
   return -1;
 }
+/* Los precios cargados son de auto. La camioneta usa más aceite: el
+   galón (4/4) sube S/ 5 en todas las marcas. */
+var ACE_TIPO='auto';
+var ACE_RECARGO_4_4=5;
+function aceTipo(t){ ACE_TIPO=t; pintarPresupuestoLista(); }
+function esMedida44(col){ return /^4\/4/.test(MEDIDAS[col]||'') }
+function acePrecio(pr,col){
+  if(pr===null||pr===undefined)return pr;
+  return (ACE_TIPO==='camioneta'&&esMedida44(col)) ? Number(pr)+ACE_RECARGO_4_4 : Number(pr);
+}
 function aceMarca(i){ ACE_MARCA=(ACE_MARCA===i)?null:i; pintarPresupuestoLista() }
 function aceElegir(mi,li,col){
-  var m=ACEITES[mi],a=m.l[li],pr=a[col+1];
+  var m=ACEITES[mi],a=m.l[li],pr=acePrecio(a[col+1],col);
   if(pr===null||pr===undefined){aviso('Esa medida no está disponible para este aceite.');return}
-  var nom=nombreAceite(m.m,a[0],col);
+  var nom=nombreAceite(m.m,a[0],col)+(ACE_TIPO==='camioneta'&&esMedida44(col)?' · camioneta':'');
   if(LINEAS_REP.filter(function(l){return l.desc===nom}).length){
     aviso('Ese aceite ya está en el presupuesto.');return;
   }
@@ -2783,8 +2811,14 @@ function bloqueAceite(){
   ACE_LINEA=i;
   var h='<div class="cajaAce"><div class="tt">Elige el aceite para «'+esc(LINEAS_SERV[i].desc)+'»</div>'+
     '<div class="hint" style="margin:0 0 9px">Entra en <b>repuestos</b> con su precio, que ya incluye '+
-    'aceite y filtro. Es <b>referencial</b>: ajústalo si corresponde. '+
-    'Camioneta que solo usa 4/4: suma S/ 10.</div>'+
+    'aceite y filtro. Es <b>referencial</b>: ajústalo si corresponde.</div>'+
+    '<div class="modo" style="max-width:260px;margin:0 0 10px">'+
+      '<button type="button" class="'+(ACE_TIPO==='auto'?'on':'')+'" onclick="aceTipo(&quot;auto&quot;)">Auto</button>'+
+      '<button type="button" class="'+(ACE_TIPO==='camioneta'?'on':'')+'" onclick="aceTipo(&quot;camioneta&quot;)">Camioneta</button>'+
+    '</div>'+
+    (ACE_TIPO==='camioneta'
+      ? '<div class="hint" style="margin:-4px 0 9px;color:#8A5A00"><b>Camioneta:</b> el 4/4 '+
+        'tiene S/ '+ACE_RECARGO_4_4+' más en todas las marcas.</div>' : '')+
     '<div class="marcas">'+ACEITES.map(function(m,k){
       return '<button class="mk'+(ACE_MARCA===k?' on':'')+'" onclick="aceMarca('+k+')">'+m.m+'</button>';
     }).join('')+'</div>';
@@ -2795,10 +2829,11 @@ function bloqueAceite(){
       m.l.map(function(a,li){
         return '<tr><td>'+esc(a[0])+'</td>'+
           [1,2,3].map(function(c){
-            var v=a[c];
+            var v=acePrecio(a[c],c-1);
             return '<td class="der">'+(v===null||v===undefined
               ? '<span class="nd">—</span>'
-              : '<button class="pz" onclick="aceElegir('+ACE_MARCA+','+li+','+(c-1)+')">'+S(v)+'</button>')+'</td>';
+              : '<button class="pz'+(ACE_TIPO==='camioneta'&&esMedida44(c-1)?' rec':'')+'" '+
+                'onclick="aceElegir('+ACE_MARCA+','+li+','+(c-1)+')">'+S(v)+'</button>')+'</td>';
           }).join('')+'</tr>';
       }).join('')+'</table></div>';
   }
@@ -2925,11 +2960,17 @@ function otYaAprobada(){
   return ['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA','PAGADA'].indexOf(EST_OT_ACT)>-1;
 }
 function botonLinea(tipo,i){
+  var l=(tipo==='MO'?LINEAS_SERV:LINEAS_REP)[i];
+  /* Lo que acabo de agregar y todavía no salió de acá lo quito yo
+     mismo: pedir permiso para borrar un error propio no tiene sentido. */
+  if(l&&l.adic==='PEND'&&!l.de_vent)
+    return '<button class="btn chico peligro" onclick="'+
+      (tipo==='MO'?'quitarServicio':'quitarRepuesto')+'('+i+')">✕</button>';
   if(!otYaAprobada()||esAdminTaller())
     return '<button class="btn chico peligro" onclick="'+
       (tipo==='MO'?'quitarServicio':'quitarRepuesto')+'('+i+')">✕</button>';
   if(puedeSolicitar(EST_OT_ACT,EST_TALLER))
-    return '<button class="btn chico sec" style="color:var(--rojo);white-space:nowrap" '+
+    return '<button class="btn chico sec anch" style="color:var(--rojo);white-space:nowrap" '+
       'onclick="solicitarAnulacionLinea(&quot;'+tipo+'&quot;,'+i+')" '+
       'title="Pide a ventanilla que lo quite">pedir ✕</button>';
   return '';
@@ -3904,7 +3945,7 @@ function subirFotoFlota(clienteId,cb){
 }
 function flotaGuardar(clienteId){
   var msg=document.getElementById('flotaMsg');
-  if(!FLOTA_FOTO){msg.innerHTML='<div class="aviso rojo" style="margin:0">Toma la foto antes de guardar.</div>';return}
+  if(!FLOTA_FOTO){msg.innerHTML='<div class="hint">Sin foto: se guarda igual.</div>'}
   msg.innerHTML='<div class="hint">Subiendo…</div>';
   var nombre='flota/'+clienteId+'-'+Date.now()+'.jpg';
   var bin=atob(FLOTA_FOTO.split(',')[1]);
@@ -4242,10 +4283,15 @@ function renderEditar(){
   z.innerHTML=
     (aprobada?'<div class="aviso rojo" style="font-size:12.5px">El cliente ya aprobó el servicio. '+
       'Cualquier cambio en servicios o repuestos queda marcado en la bitácora como posterior a la aprobación.</div>':'')+
-    '<label>Nota interna del taller</label>'+
-    '<textarea id="edSint" rows="2" placeholder="No se envía al cliente. La ven ventanilla, el asesor y caja.">'+
+    '<label>Observación del taller</label>'+
+    '<textarea id="edSint" rows="2" placeholder="Ej. falta el filtro, se pidió al proveedor">'+
       esc(NOTA_INT)+'</textarea>'+
-    '<div class="hint" style="margin:4px 0 0">Aparece en la lista de ventanilla, asesor y caja, y queda en la bitácora.</div>'+
+    '<div class="hint" style="margin:4px 0 8px">Siempre se ve dentro de la OT y en la bandeja de ventanilla.</div>'+
+    '<label>¿El cliente la ve en su link?</label>'+
+    '<div class="modo" style="max-width:240px" id="edPubBox">'+
+      '<button type="button" id="edPubSi" class="'+(NOTA_PUB?'on':'')+'" onclick="notaPub(true)">Sí</button>'+
+      '<button type="button" id="edPubNo" class="'+(NOTA_PUB?'':'on')+'" onclick="notaPub(false)">No · privada</button>'+
+    '</div>'+
     '<div class="fila" style="margin-top:12px">'+
       '<button class="btn chico sec" onclick="guardarCorreccion()">Guardar comentario</button>'+
 
@@ -4254,14 +4300,15 @@ function renderEditar(){
 }
 function guardarCorreccion(){
   var sint=$('edSint').value.trim();
-  if(sint===NOTA_INT){
-    $('editMsg').innerHTML='<div class="hint">La nota no cambió.</div>';return;
+  if(sint===NOTA_INT&&NOTA_PUB===NOTA_PUB_BD){
+    $('editMsg').innerHTML='<div class="hint">La observación no cambió.</div>';return;
   }
   var marca=(['POR_APROBAR','EN_PROCESO','LISTO'].indexOf(OT_EST)>-1)?' · POSTERIOR A LA APROBACIÓN':'';
   var antes=NOTA_INT;
   NOTA_INT=sint;
+  NOTA_PUB_BD=NOTA_PUB;
   if(sb&&OT_NUM)
-    sb.from('ordenes').update({nota_interna:sint||null,
+    sb.from('ordenes').update({nota_interna:sint||null,nota_publica:NOTA_PUB,
         nota_interna_el:sint?new Date().toISOString():null}).eq('numero',OT_NUM)
       .then(function(r){
         if(r&&r.error)$('editMsg').innerHTML='<div class="aviso rojo" style="margin:0">'+
@@ -4269,10 +4316,13 @@ function guardarCorreccion(){
           (/column|does not exist/i.test(r.error.message||'')?'<br><b>Falta correr el paso 39 en Supabase.</b>':'')+'</div>';
       },function(){});
   auditar('NOTA_INTERNA','orden',OT_NUM,
-          (sint?sint:'(nota borrada)')+(antes?' · antes: '+antes:'')+marca);
+          (sint?sint:'(nota borrada)')+(NOTA_PUB?' · visible al cliente':' · privada')+
+          (antes?' · antes: '+antes:'')+marca);
   BITACORA['_edit_'+Date.now()]=null;
   $('editMsg').innerHTML='<div class="aviso ok" style="margin:0">'+
-    (sint?'Nota guardada. La ven ventanilla, el asesor y caja.':'Nota borrada.')+'</div>';
+    (sint?'Observación guardada · '+(NOTA_PUB?'el cliente también la ve':'privada del taller')
+         :'Observación borrada.')+'</div>';
+  renderFlujos();
 }
 /* La copia local hace que una orden borrada de la base reaparezca
    marcada como "solo en este equipo". Esto la borra del navegador. */
@@ -4350,7 +4400,14 @@ function auditar(accion,entidad,ref,detalle,monto){
     monto:(monto===undefined?null:monto)
   }).then(function(){},function(){});
 }
-var NOTA_INT='';
+var NOTA_INT='',NOTA_PUB=false;
+function notaPub(v){
+  NOTA_PUB=!!v;
+  var a=document.getElementById('edPubSi'),b=document.getElementById('edPubNo');
+  if(a)a.classList.toggle('on',NOTA_PUB);
+  if(b)b.classList.toggle('on',!NOTA_PUB);
+}
+var NOTA_PUB_BD=false,NOTA_ATN={};
 var AUD=[],BIT_TAB='trans',ANUL_TAB='PENDIENTE',ANUL=[],ANUL_ABIERTA=null;
 
 /* Las acciones agrupadas por área del taller: así se busca cuando se
@@ -4778,10 +4835,8 @@ function guardarClienteNuevo(volverA){
   else{reg.nombres=$('nvNombres').value.trim();reg.apellidos=$('nvApellidos').value.trim()}
   var fl=$('nvFlota')?$('nvFlota').value:'';
   if(fl){
-    if(!FLOTA_FOTO){
-      msg.innerHTML='<div class="aviso rojo">Declaraste una flota: toma la foto de validación antes de guardar.</div>';
-      return;
-    }
+    /* La foto de validación queda opcional por ahora: frenaba altas en
+       el mostrador. Si la toman, se sube igual. */
     reg.flota_id=Number(fl);
     reg.flota_declarada_el=new Date().toISOString();
   }
@@ -5025,6 +5080,9 @@ function sincronizarDesdeBase(){
         cambioComprobante();
       }
       if(d.diagnostico&&$('sintoma')&&!$('sintoma').value)$('sintoma').value=d.diagnostico;
+      NOTA_PUB=!!d.nota_publica;NOTA_PUB_BD=NOTA_PUB;
+      NOTA_ATN={el:d.nota_atendida_el||null,por:d.nota_atendida_por||'',
+                com:d.nota_atendida_coment||'',puesta:d.nota_interna_el||null};
       if(typeof d.nota_interna==='string'||d.nota_interna===null){
         NOTA_INT=d.nota_interna||'';
         var en=$('edSint');if(en&&document.activeElement!==en)en.value=NOTA_INT;
@@ -6267,6 +6325,17 @@ var RESP={
 };
 var RESP_NOMBRE={jefe_taller:'el jefe de taller',recepcion:'recepción',mecanico:'el mecánico',
   ventanilla:'ventanilla',asesor:'el asesor de servicio',caja:'caja',cliente:'el cliente'};
+/* Agregar adicionales no es "ser responsable de la etapa": el jefe de
+   taller sigue trabajando el vehículo mientras ventanilla, el asesor y
+   caja mueven la OT. Puede sumar trabajo hasta que se cobre o se anule. */
+function puedeAgregarAdic(){
+  if(!SESION)return false;
+  if(['jefe_taller','admin_general','admin_local'].indexOf(SESION.rol)<0)return false;
+  if(!hayPrelimAprobada())return false;
+  if(EST_OT_ACT==='PAGADA'||EST_OT_ACT==='ANULADA')return false;
+  if(OT_EST==='ANULADO')return false;
+  return true;
+}
 function puedeEjecutar(paso){
   if(!SESION)return false;
   if(SESION.rol==='admin_general'||SESION.rol==='admin_local')return true;
@@ -6494,7 +6563,10 @@ function renderFlujos(){
   c.innerHTML=
     menu('taller','Vehículo · taller','🔧',F_TALLER,tallerAct,'T_')+
     menu('ot','Orden de trabajo','📄',F_OT,otAct,'O_')+
-    bloqueAdicFlujo();
+    bloqueAdicFlujo()+
+    notaEnOT({nota:NOTA_INT,nota_publica:NOTA_PUB_BD,
+              nota_interna_el:NOTA_ATN.puesta,nota_atendida_el:NOTA_ATN.el,
+              nota_atendida_por:NOTA_ATN.por,nota_atendida_coment:NOTA_ATN.com});
   if(!PANEL_SEL)PANEL_SEL=pasoPendiente();
   renderPanel();
 }
@@ -6504,6 +6576,10 @@ function renderFlujos(){
    adicionales, aunque después se haya enviado una versión nueva. */
 function hayPrelimAprobada(){
   if(HITOS['O_PRELIM_APROBADA']||HITOS['O_PRELIM2_APROBADA'])return true;
+  /* Los pasos de la preliminar 2 solo entran a F_OT cuando la orden tiene
+     una, así que no se puede depender del índice: se nombran. */
+  if(['PRELIM_APROBADA','PRELIM2_ENVIADA','PRELIM2_APROBADA',
+      'DEF_ENVIADA','DEF_APROBADA','PAGADA'].indexOf(EST_OT_ACT)>-1)return true;
   var i=idxOT(EST_OT_ACT);
   return i>-1 && i>=idxOT('PRELIM_APROBADA');
 }
@@ -6656,9 +6732,11 @@ function renderPanel(){
   var tocaPres = (!EST_OT_ACT && EST_TALLER==='EN_DIAGNOSTICO' &&
                  ((sel.f==='ot'&&sel.k==='PRELIM_ENVIADA')||(sel.f==='taller'&&sel.k==='EN_DIAGNOSTICO')))
                  || EDITANDO_OT || AGREGANDO;
-  $('gPres').style.display=(tocaPres&&puede)?'block':'none';
-  if(tocaPres&&puede&&!SERVICIOS.length)cargarCatalogoV2();
-  if(tocaPres&&puede)setTimeout(pintarPresupuesto,60);
+  var presAdic=AGREGANDO&&puedeAgregarAdic();
+  var verPres=(tocaPres&&puede)||presAdic;
+  $('gPres').style.display=verPres?'block':'none';
+  if(verPres&&!SERVICIOS.length)cargarCatalogoV2();
+  if(verPres)setTimeout(pintarPresupuesto,60);
   $('gAvance').style.display=(esAccion&&puede)?'block':'none';
   $('gEditar').style.display=(esAccion&&puede)?'block':'none';
 
@@ -6671,9 +6749,14 @@ function renderPanel(){
   }
 
   if(esAccion&&!puede){
+    /* No le toca mover la OT, pero sí puede seguir agregando trabajo. */
+    var adic=puedeAgregarAdic();
     p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
       '<div class="aviso info" style="margin:0"><b>Esta etapa le corresponde a '+responsableDe(sel.k)+'.</b><br>'+
-      'Tú solo puedes consultarla desde acá.</div></div>';
+      (adic?'Tú no la mueves, pero puedes seguir agregando servicios y repuestos.'
+           :'Tú solo puedes consultarla desde acá.')+'</div></div>'+
+      (adic?'<div id="gAccPanel" style="margin-top:12px"></div>':'');
+    if(adic)renderAcciones(true);
     return;
   }
   if(iSel<iAct){ p.innerHTML=datosDelPaso(sel.f,sel.k,paso); return; }
@@ -6835,7 +6918,7 @@ function renderBitacora(){
   if(lg)lg.innerHTML=filas||'';
 }
 function renderGestion(){ renderFlujos(); }
-function renderAcciones(){
+function renderAcciones(soloAdic){
   var avisos='',botones='',docBtn='';
   if(EST_TALLER==='RECIBIDO'){
     avisos='<div class="aviso info"><b>Mecánico pendiente de asignar.</b><br>'+
@@ -6881,8 +6964,10 @@ function renderAcciones(){
      No rehace la preliminar, le cuelga adicionales. */
   if(AGREGANDO){
     docBtn+='<button class="btn chico ok" onclick="terminarAdicionales()">✓ Terminar de agregar</button>';
-  }else if(hayPrelimAprobada()&&EST_OT_ACT!=='PAGADA'&&
+  }else if(hayPrelimAprobada()&&EST_OT_ACT!=='PAGADA'&&EST_OT_ACT!=='ANULADA'&&
      !EDITANDO_OT&&OT_EST!=='ANULADO'){
+    /* Sigue abierto después del despacho de ventanilla y hasta que el
+       asesor o caja cobren: ahí recién se cierra la orden. */
     docBtn+='<button class="btn chico sec" onclick="agregarAOT()">+ Agregar</button>';
   }
   if(EST_OT_ACT==='DEF_ENVIADA'){
@@ -6917,7 +7002,14 @@ function renderAcciones(){
   else if(puedeSolicitar(EST_OT_ACT,EST_TALLER))
     botones+=' <button class="btn chico sec" style="color:var(--rojo)" onclick="solicitarAnulacionOrden()">Solicitar anulación</button>';
 
-  $('gAvisos').innerHTML=avisos;
+  if(soloAdic){
+    /* Solo lo de agregar: aprobar, cobrar o anular no le corresponden. */
+    botones='';
+    docBtn=docBtn.split('<button').filter(function(t){
+      return /agregarAOT\(\)|terminarAdicionales\(\)/.test(t);
+    }).map(function(t){return '<button'+t}).join('');
+  }
+  $('gAvisos').innerHTML=soloAdic?'':avisos;
   $('gBotones').innerHTML='';
   var acc=document.getElementById('gAccPanel');
   if(acc)acc.innerHTML=(docBtn||botones)
@@ -8743,25 +8835,41 @@ function guardarDetalleBD(){
       else seguir();
     },seguir);
     function seguir(){
-      var filas=[];
+      var filas=[],nuevas=[];
+      /* Sin el detalle completo delante solo se manda lo que todavía no
+         existe allá; con él, se reescribe todo como siempre. */
+      function toca(l){
+        if(l.de_vent&&l.id_bd)return false;
+        if(!LINEAS_CARGADAS&&l.id_bd)return false;   /* ya está en la base */
+        return true;
+      }
       /* Los códigos, la marca y la ubicación viajan con la línea:
          ventanilla los necesita y antes llegaban vacíos. */
       LINEAS_SERV.forEach(function(l){
-        if(l.de_vent&&l.id_bd)return;
+        if(!toca(l))return;
+        nuevas.push(l);
         filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
                     precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
                     adicional:l.adic||null,
                     codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
       });
       LINEAS_REP.forEach(function(l){
-        if(l.de_vent&&l.id_bd)return;
+        if(!toca(l))return;
+        nuevas.push(l);
         filas.push({orden_id:oid,tipo:'REP',descripcion:l.desc,cantidad:l.cant,
                     precio_taller:l.precio,stock_ok:null,agregado_por:'taller',
                     adicional:l.adic||null,
                     codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
                     ubicacion:l.ubicacion||null,marca:l.marca||null,modelo:l.modelo||null});
       });
-      if(filas.length)sb.from('orden_detalle').insert(filas).then(function(){},function(){});
+      if(LINEAS_CARGADAS)nuevas.forEach(function(l){ l.id_bd=null });
+      if(filas.length)
+        sb.from('orden_detalle').insert(filas).select('id').then(function(ins){
+          /* cada línea se queda con su id: así el próximo guardado no la
+             vuelve a insertar */
+          var ids=(ins&&ins.data)||[];
+          nuevas.forEach(function(l,k){ if(ids[k])l.id_bd=ids[k].id });
+        },function(){});
       sb.from('ordenes').update({total_taller:t.tot,
         comprobante_tipo:($('gComprobante')?($('gComprobante').value||null):null),
         comprobante_ruc:($('gRuc')?($('gRuc').value.trim()||null):null),
@@ -8818,7 +8926,9 @@ function facturaNegra(snap,titulo){
    (en diagnóstico, sin mecánico asignado). Van en una consulta aparte
    porque el filtro es por estado de taller, no por estado de OT. */
 var SIN_OT_TALLER=['RECIBIDO','EN_DIAGNOSTICO'];
-var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,nota_interna,vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)';
+var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,nota_interna,nota_interna_el,nota_atendida_el,'+
+  'nota_atendida_por,nota_atendida_coment,nota_publica,'+
+  'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)';
 function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   if(!sb){cb([]);return}
   /* sedeOpt: sin pasar = el local activo · null = todos · número = ese local */
@@ -8907,6 +9017,26 @@ function bloqueAprob(o,lineas){
        '</ul></div>';
   return h+'</div>';
 }
+/* La observación del jefe de taller, dentro de la OT: en la lista se
+   veía, pero al abrirla desaparecía. */
+function notaEnOT(o){
+  var t=String((o&&(o.nota||o.nota_interna))||'').trim();
+  if(!t)return '';
+  var atendida=o.nota_atendida_el&&(!o.nota_interna_el||
+      new Date(o.nota_atendida_el)>=new Date(o.nota_interna_el));
+  return '<div class="notaOT'+(atendida?' ok':'')+'">'+
+    '<div class="t">📝 Observación del taller'+
+      (atendida?' <span class="eti e4">revisada</span>'
+               :' <span class="eti e3">por atender</span>')+'</div>'+
+    '<div class="x">'+esc(t)+'</div>'+
+    (atendida&&o.nota_atendida_por
+      ? '<div class="q">✓ '+esc(o.nota_atendida_por)+
+        (o.nota_atendida_el?' · '+selloHora(o.nota_atendida_el):'')+
+        (o.nota_atendida_coment?' · '+esc(o.nota_atendida_coment):'')+'</div>'
+      : '')+
+    (o.nota_publica?'<div class="q">El cliente también la ve en su link.</div>':'')+
+  '</div>';
+}
 function notaFila(o){
   return o&&o.nota ? '<span class="notaInt">📝 '+esc(o.nota)+'</span>' : '';
 }
@@ -8922,6 +9052,9 @@ function mapearOrden(o){
           tarjeta_el:o.pago_tarjeta_el||null,comp:o.comprobante_tipo||'boleta',ruc:o.comprobante_ruc||'',
           aprob:o.ot_prelim2_aprobada||o.ot_prelim_aprobada||null,def_aprob:o.ot_def_aprobada||null,
           mec:o.mecanico_nombre||'',nota:o.nota_interna||'',
+          nota_interna_el:o.nota_interna_el||null,nota_atendida_el:o.nota_atendida_el||null,
+          nota_atendida_por:o.nota_atendida_por||'',nota_atendida_coment:o.nota_atendida_coment||'',
+          nota_publica:!!o.nota_publica,
           ingreso:o.ingreso,mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
   })();
 }
@@ -9349,11 +9482,15 @@ function ventRender(){
   var sinCod=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'&&!l.cod_alm}).length;
   $('ventDetalle').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
-    '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    '<span class="donde">'+otCorto(o.ot)+' · <b>'+esc(o.placa)+'</b></span></div>'+
+    '<div class="fichaVeh"><div class="pl">'+esc(o.placa)+'</div>'+
+      '<div class="dd"><b>'+esc(o.veh||'Vehículo sin datos')+'</b><br>'+esc(o.cliente||'')+
+      (o.mec?'<br><span class="hint" style="margin:0">Mecánico: '+esc(o.mec)+'</span>':'')+'</div></div>'+
+    notaEnOT(o)+
     '<h3>Orden de trabajo · '+otCorto(o.ot)+'</h3>'+
     bloqueAprob(o,VENT_LIN)+
-    '<div class="hint" style="margin:-4px 0 12px">Repuestos: código de stock y precio. Servicios: solo precio. '+
-      'Si algo no hay, retíralo (✕) y agrega el sustituto.</div>'+
+    '<div class="hint" style="margin:-4px 0 12px">Toca una línea para ajustar cantidad y precio. '+
+      'En repuestos, además, el código de stock. Si algo no hay, retíralo (✕) y agrega el sustituto.</div>'+
     (!o.estado_ot
       ? '<div class="aviso info"><b>El auto está '+
         (o.estado_taller==='EN_DIAGNOSTICO'?'en diagnóstico':'recibido, sin mecánico asignado')+
@@ -10065,6 +10202,7 @@ function aseGuardarLineas(cb){
   ASE_LIN.forEach(function(l){
     if(!l.id)return;
     sb.from('orden_detalle').update({descripcion:l.desc,precio_caja:l.final,
+      cantidad:l.cant||1,
       codigo_almacen:l.cod_alm||null,codigo2:l.cod2||null,cobrado:l.incluir})
       .eq('id',l.id).select('id')
       .then(function(r){ if(r.error)err++; if(--pend===0)cb(err) },
@@ -10211,6 +10349,7 @@ function aseCerrarCobro(){
       if($('aseClave'))$('aseClave').value='';return;
     }
     function cerrar(url){
+      aseGuardarLineas(function(){});
       var patch={estado_ot:'PAGADA',total_cobrado:t.tot,comprobante:fact,
         forma_pago:ASE_CIERRE,pago_validado_por:SESION.nombre,asesor_id:SESION.id,
         est_asesor:new Date().toISOString(),est_caja:new Date().toISOString(),
@@ -10481,7 +10620,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=164;
+var APP_VER=165;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
