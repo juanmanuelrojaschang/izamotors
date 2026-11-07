@@ -1,4 +1,4 @@
-<!--IZAV:170-->
+<!--IZAV:171-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2670,7 +2670,14 @@ function srvFamilias(){
 function srvDeFamilia(fam){
   if(!fam)return SERVICIOS.slice();
   if(fam===FAM_RECURRENTE)return SERVICIOS.filter(function(s){return s.frecuente});
-  return SERVICIOS.filter(function(s){return s.categoria===fam});
+  var l=SERVICIOS.filter(function(s){return s.categoria===fam});
+  /* Dentro de Mantenimiento, el mayor es el que más se pide: va
+     arriba. En Frecuentes se queda donde el catálogo lo ponga. */
+  if(/mantenimiento/i.test(String(fam)))
+    l.sort(function(a,b){
+      return (mmEsServicio(b.descripcion)?1:0)-(mmEsServicio(a.descripcion)?1:0);
+    });
+  return l;
 }
 /* La familia que manda para este servicio. */
 /* "MANTENIMIENTO" -> "Mantenimiento" */
@@ -2776,6 +2783,13 @@ function srvElegir(cod){
 function srvFamilia(fam){
   var d=$('servDesc');
   if(d&&SRV_SEL&&srvFamiliaDe(SRV_SEL)!==fam&&SRV_SEL.categoria!==fam){d.value='';SRV_SEL=null;srvDato()}
+  /* Al entrar a Mantenimiento queda puesto el mayor, que es el caso
+     normal. No dispara el precargado: eso pasa al tocarlo en la lista
+     o al dar Agregar, para no sorprender a nadie. */
+  if(d&&!d.value&&/mantenimiento/i.test(String(fam))){
+    var mm=srvDeFamilia(fam).filter(function(x){return mmEsServicio(x.descripcion)})[0];
+    if(mm){ SRV_SEL=mm; d.value=mm.descripcion; srvDato() }
+  }
   SRV_ABIERTA=true;
   srvPintarLista(fam,d?d.value:'');
   if(d)d.focus();
@@ -3012,11 +3026,25 @@ function mmPuntaje(fila,modelo,anio){
 /* Marcas que todavía no tienen ficha propia en el preciario y se
    atienden con la de su marca madre. */
 var MM_EQUIV={'LEXUS':'TOYOTA'};
+/* Modelos que todavía no tienen ficha y se atienden con la de otro.
+   Se evalúan en orden: el primero que calza manda. */
+var MM_EQUIV_MODELO=[
+  {marca:'LEXUS', re:/^RX\b/, modelo:'LAND CRUISER PRADO'}
+];
+function mmModeloBuscar(marca,modelo){
+  var ma=mmLlano(marca), mo=mmLlano(modelo);
+  for(var i=0;i<MM_EQUIV_MODELO.length;i++){
+    var e=MM_EQUIV_MODELO[i];
+    if(mmLlano(e.marca)===ma&&e.re.test(mo))return e.modelo;
+  }
+  return modelo;
+}
 function mmMarcaBuscar(marca){
   var m=mmLlano(marca);
   return MM_EQUIV[m]||marca;
 }
 function mmBuscar(marca,modelo,anio,cb){
+  modelo=mmModeloBuscar(marca,modelo);
   marca=mmMarcaBuscar(marca);
   var ma=mmLlano(marca);
   if(!ma){cb(null,'sin-marca');return}
@@ -3122,13 +3150,17 @@ function mmAplicar(v){
   var est=(v.confianza==='B')?' Los datos técnicos de este vehículo son estimados: valida litros y filtros antes de enviar.':'';
   conex('Mantenimiento mayor cargado · '+n+' repuesto'+(n===1?'':'s')+
         (v.litros_aceite?' · '+v.litros_aceite+' L de '+(v.grado_recomendado||'aceite'):''));
-  if(aprox||est)aviso('Cargado como <b>'+v.marca+' '+v.modelo+(v.motor?' '+v.motor:'')+'</b>.'+aprox+est);
+  if(aprox||est)
+    pregunta('IZA Motors','Cargado como <b>'+esc(v.marca+' '+v.modelo+(v.motor?' '+v.motor:''))+
+             '</b>.'+aprox+est,[{t:'Entendido'}]);
 }
 /* Cuando no hay calce, se elige a mano de la lista de esa marca. */
 function mmPedirModelo(marca,modelo,filas){
   if(!filas.length){
-    aviso('El preciario de mantenimiento mayor no tiene la marca <b>'+esc(marca)+'</b>. '+
-          'Carga el servicio y sus repuestos a mano, o sube el Excel actualizado desde Datos maestros.');
+    pregunta('IZA Motors',
+      'El preciario de mantenimiento mayor no tiene la marca <b>'+esc(marca)+'</b>. '+
+      'Carga el servicio y sus repuestos a mano, o sube el Excel actualizado desde Datos maestros.',
+      [{t:'Entendido'}]);
     return;
   }
   var ops=filas.slice().sort(function(a,b){
@@ -3157,6 +3189,7 @@ function agregarServicio(){
            :'Escribe o elige un servicio.');
     return;
   }
+  if(mmEsServicio(s.descripcion)){ mmPrecargar(); return }
   if(LINEAS_SERV.filter(function(l){return l.codigo===s.codigo}).length){
     aviso('Ese servicio ya está en el presupuesto.');return;
   }
@@ -11249,7 +11282,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=170;
+var APP_VER=171;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
