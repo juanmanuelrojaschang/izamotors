@@ -1,4 +1,4 @@
-<!--IZAV:159-->
+<!--IZAV:161-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -288,6 +288,18 @@ body.sinScroll{overflow:hidden}
 .invMarcas .et{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:2px}
 .invMarcas.sub .mc.on{background:var(--tinta);border-color:var(--tinta)}
+.cantBox{display:inline-flex;align-items:center;gap:0;border:1px solid var(--borde);
+  border-radius:9px;overflow:hidden;background:#fff}
+.cantBox input{border:0;border-radius:0;text-align:center;padding:6px 0;min-height:34px;
+  font-weight:700;-moz-appearance:textfield}
+.cantBox input::-webkit-outer-spin-button,.cantBox input::-webkit-inner-spin-button{
+  -webkit-appearance:none;margin:0}
+.cantBox .cmas{width:32px;min-height:34px;border:0;background:var(--gris);color:var(--tinta);
+  font-size:17px;font-weight:700;line-height:1;padding:0}
+.cantBox .cmas:active{background:var(--rojo);color:#fff}
+.bloque-pres .cantBox{border-color:rgba(255,255,255,.22);background:transparent}
+.bloque-pres .cantBox input{background:transparent;color:#fff}
+.bloque-pres .cantBox .cmas{background:rgba(255,255,255,.1);color:#fff}
 .atajos{display:flex;gap:7px;overflow-x:auto;padding:0 0 9px;-webkit-overflow-scrolling:touch}
 .atajos::-webkit-scrollbar{display:none}
 .atajo{flex:0 0 auto;background:#fff;border:1px solid var(--borde);border-radius:999px;
@@ -901,7 +913,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 159</span>
+  <span class="demo-tag">versión 161</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -2579,6 +2591,11 @@ function srvDeFamilia(fam){
   return SERVICIOS.filter(function(s){return s.categoria===fam});
 }
 /* La familia que manda para este servicio. */
+/* "MANTENIMIENTO" -> "Mantenimiento" */
+function famBonita(f){
+  var t=String(f||'').trim().toLowerCase();
+  return t?t.charAt(0).toUpperCase()+t.slice(1):'';
+}
 function srvFamiliaDe(s){
   return (s&&s.frecuente)?FAM_RECURRENTE:((s&&s.categoria)||'');
 }
@@ -2703,19 +2720,26 @@ function desglosarIGV(total){
   var sub=Math.round(total/1.18);
   return {sub:sub,igv:total-sub,tot:total};
 }
-/* Cambio de aceite y afinamiento: los dos consumen aceite, así que
-   los dos abren el preciario. */
-function esCambioAceite(t){ return /aceite|afinamiento|afinaci[oó]n/i.test(t||'') }
+/* Solo estos dos trabajos consumen aceite, y el preciario aparece
+   únicamente si uno de ellos está en el presupuesto. "Cambio de
+   aceite" entra por nombre propio; un "filtro de aceite" no. */
+function esCambioAceite(t){
+  var s=String(t||'');
+  return /mantenimiento|afinamiento|afinaci[oó]n|cambio\s+de\s+aceite/i.test(s);
+}
 /* El aceite ya no cuelga del servicio: entra al bloque de repuestos
    como una línea más, con su precio. El servicio de cambio de aceite
    queda en cero porque el precio del preciario ya lo incluye todo. */
 function hayAceiteEnRepuestos(){
   return LINEAS_REP.some(function(l){return l.es_aceite});
 }
+function usaAceite(l){
+  return esCambioAceite(l&&l.desc)||esCambioAceite(l&&l.categoria);
+}
 function lineaAceitePendiente(){
   if(hayAceiteEnRepuestos())return -1;
   for(var i=0;i<LINEAS_SERV.length;i++)
-    if(esCambioAceite(LINEAS_SERV[i].desc))return i;
+    if(usaAceite(LINEAS_SERV[i]))return i;
   return -1;
 }
 function aceMarca(i){ ACE_MARCA=(ACE_MARCA===i)?null:i; pintarPresupuestoLista() }
@@ -2815,8 +2839,16 @@ function agregarServicio(){
     aviso('Ese servicio ya está en el presupuesto.');return;
   }
   var pe=$('servPrecio'),pr=pe&&pe.value!==''?Number(pe.value):Number(s.prec1||s.precio||0);
-  LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:s.descripcion,
-    precio:pr,precio_base:pr,cant:1,categoria:srvFamiliaDe(s)||s.categoria||''});
+  var fam=srvFamiliaDe(s)||s.categoria||'';
+  /* La familia viaja en la descripción para que se lea igual en la
+     boleta, en ventanilla y en caja. Los frecuentes van sin ella:
+     ahí el nombre ya se entiende solo. */
+  var elegida=($('servFam')&&$('servFam').value)||'';
+  var conFam=(elegida&&!/frecuente/i.test(elegida)&&fam&&
+              String(s.descripcion||'').toLowerCase().indexOf(String(fam).toLowerCase())<0)
+             ? famBonita(fam)+' · '+s.descripcion : s.descripcion;
+  LINEAS_SERV.push({codigo:s.codigo,codigo2:s.codigo2||'',desc:conFam,
+    precio:pr,precio_base:pr,cant:1,categoria:fam});
   SEL_SERV[s.codigo]=true;
   SRV_SEL=null;
   if($('servDesc'))$('servDesc').value='';
@@ -2832,6 +2864,26 @@ function precioServicio(i,v){
 function cantServicio(i,v){
   LINEAS_SERV[i].cant=Math.max(1,Number(v)||1);
   refrescarTotalesPres();
+}
+/* Subir y bajar sin teclado: en el mostrador se va mucho más rápido. */
+function pasoCant(fn,i,valor,ancho){
+  var v=Math.max(1,Number(valor)||1);
+  return '<span class="cantBox">'+
+    '<button type="button" class="cmas" onclick="'+fn+'('+i+',-1,true)" aria-label="menos">−</button>'+
+    '<input type="number" min="1" value="'+v+'" style="width:'+(ancho||38)+'px" '+
+      'oninput="'+fn+'('+i+',this.value)">'+
+    '<button type="button" class="cmas" onclick="'+fn+'('+i+',1,true)" aria-label="más">+</button>'+
+  '</span>';
+}
+function cantServicioPaso(i,d,esPaso){
+  var n=esPaso?Math.max(1,(Number(LINEAS_SERV[i].cant)||1)+d):Math.max(1,Number(d)||1);
+  LINEAS_SERV[i].cant=n;
+  pintarPresupuestoLista();
+}
+function cantRepuestoPaso(i,d,esPaso){
+  var n=esPaso?Math.max(1,(Number(LINEAS_REP[i].cant)||1)+d):Math.max(1,Number(d)||1);
+  LINEAS_REP[i].cant=n;
+  pintarPresupuestoLista();
 }
 function precioRepuesto(i,v){
   LINEAS_REP[i].precio=Number(v)||0;
@@ -2883,8 +2935,7 @@ function pintarPresupuestoLista(){
     filas+='<tr><td colspan="5" style="padding-top:10px"><b class="cond" style="font-size:14px">Servicios</b></td></tr>';
     filas+=LINEAS_SERV.map(function(l,i){
       return '<tr><td>'+l.desc+'</td>'+
-      '<td class="der"><input type="number" min="1" value="'+(l.cant||1)+'" style="width:60px;text-align:right;padding:6px" '+
-        'oninput="cantServicio('+i+',this.value)"></td>'+
+      '<td class="der">'+pasoCant('cantServicioPaso',i,l.cant||1)+'</td>'+
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioServicio('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*(l.cant||1))+'</b></td>'+
@@ -2897,8 +2948,7 @@ function pintarPresupuestoLista(){
     filas+=LINEAS_REP.map(function(l,i){
       return '<tr><td>'+l.desc+
       ((l.marca||l.modelo)?'<div class="hint" style="margin:2px 0 0">'+[l.marca,l.modelo].filter(Boolean).join(' · ')+'</div>':'')+'</td>'+
-      '<td class="der"><input type="number" min="1" value="'+l.cant+'" style="width:64px;text-align:right;padding:6px" '+
-        'oninput="cantRepuesto('+i+',this.value)"></td>'+
+      '<td class="der">'+pasoCant('cantRepuestoPaso',i,l.cant)+'</td>'+
       '<td class="der"><input type="number" min="0" step="0.01" value="'+l.precio+'" style="width:88px;text-align:right;padding:6px" '+
         'oninput="precioRepuesto('+i+',this.value)"></td>'+
       '<td class="num der"><b class="psub">'+S(l.precio*l.cant)+'</b></td>'+
@@ -9555,8 +9605,8 @@ function ventFila(l,i){
           '<label>Marca<input value="'+String(l.marca||'').replace(/"/g,'&quot;')+
             '" placeholder="marca" style="'+mini+'" '+off+'oninput="ventMarca('+i+',this.value)"></label>'
         : '')+
-      '<label>Cantidad<input type="number" min="1" value="'+l.cant+'" style="'+mini+'" '+off+
-        'oninput="ventCant('+i+',this.value)"></label>'+
+      '<label>Cantidad'+(off?'<input type="number" value="'+l.cant+'" style="'+mini+'" disabled>'
+                             :pasoCant('ventCantPaso',i,l.cant,42))+'</label>'+
       '<label>Precio<input type="number" min="0" value="'+l.final+'" style="'+mini+'" '+off+
         'oninput="ventPrecio('+i+',this.value)"></label>'+
       '<div class="ancho vl-pie">'+
@@ -9587,6 +9637,10 @@ function ventCod2(i,v){VENT_LIN[i].cod2=v.trim()}
 function ventUbic(i,v){VENT_LIN[i].ubic=v.trim()}
 function ventMarca(i,v){VENT_LIN[i].marca=v.trim()}
 function ventCant(i,v){VENT_LIN[i].cant=Math.max(1,Number(v)||1);ventRefrescarTotales()}
+function ventCantPaso(i,d,esPaso){
+  VENT_LIN[i].cant=esPaso?Math.max(1,(Number(VENT_LIN[i].cant)||1)+d):Math.max(1,Number(d)||1);
+  if(esPaso)ventRender(); else ventRefrescarTotales();
+}
 function ventPrecio(i,v){VENT_LIN[i].final=Number(v)||0;ventRefrescarTotales()}
 function ventRefrescarTotales(){
   /* solo los totales, para no perder el foco del campo que se está escribiendo */
@@ -9897,8 +9951,8 @@ function aseFila(l,i){
           '<label>Código 2<input value="'+(l.cod2||'')+'" placeholder="cód. 2" style="'+mini+'" '+off+
             'oninput="aseCod2('+i+',this.value)"></label>'
         : '')+
-      '<label>Cantidad<input type="number" min="1" step="1" value="'+(l.cant||1)+'" style="'+mini+'" '+off+
-        'oninput="aseCant('+i+',this.value)"></label>'+
+      '<label>Cantidad'+(off?'<input type="number" value="'+(l.cant||1)+'" style="'+mini+'" disabled>'
+                             :pasoCant('aseCantPaso',i,l.cant||1,42))+'</label>'+
       '<label>Precio<input type="number" min="0" value="'+l.final+'" style="'+mini+'" '+off+
         'oninput="asePrecio('+i+',this.value)"></label>'+
       '<div class="ancho vl-pie">'+
@@ -9921,6 +9975,10 @@ function aseFilas(){
 function aseDesc(i,v){ASE_LIN[i].desc=v}
 function aseCod(i,v){ASE_LIN[i].cod_alm=v.trim()}
 function aseCod2(i,v){ASE_LIN[i].cod2=v.trim()}
+function aseCantPaso(i,d,esPaso){
+  ASE_LIN[i].cant=esPaso?Math.max(1,(Number(ASE_LIN[i].cant)||1)+d):Math.max(1,Number(d)||1);
+  if(esPaso)aseRender(); else aseCant(i,ASE_LIN[i].cant);
+}
 function aseCant(i,v){
   ASE_LIN[i].cant=Math.max(1,Math.round(Number(v)||1));
   var c=document.querySelectorAll('#asesorLista .vl-cant')[i];
@@ -10410,7 +10468,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=159;
+var APP_VER=161;
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
