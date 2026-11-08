@@ -1,4 +1,4 @@
-<!--IZAV:186-->
+<!--IZAV:188-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -143,6 +143,12 @@ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
 .cen{text-align:center}
+/* Bloque de "no hay nada": el título iba pegado al texto porque esta
+   clase se usaba sin tener ningún estilo definido. */
+.vacio{background:var(--gris);border:1px dashed var(--gris2);border-radius:10px;
+  padding:18px 16px;text-align:center;color:var(--mudo);font-size:12.5px;line-height:1.45}
+.vacio b{display:block;color:var(--tinta);font-size:14px;margin-bottom:5px}
+.vacio b:only-child{margin-bottom:0}
 /* Pendientes del taller */
 .pteF{border:1px solid var(--gris2);border-radius:10px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
 .pteF:hover{border-color:var(--mudo)}
@@ -7460,10 +7466,12 @@ function renderPanel(){
   /* Como el mecánico puede quedar pendiente, el bloque sigue a mano
      mientras el trabajo avanza: es el único lugar donde asignarlo. */
   var tocaMec = (EST_TALLER==='RECIBIDO'||EST_TALLER==='EN_DIAGNOSTICO'||EST_TALLER==='EN_PROCESO');
-  /* Volver al paso de recepción con el mecánico pendiente abre solo el
-     bloque de asignación: no rehace el inicio del diagnóstico. */
-  var reabrirMec=(sel.f==='taller'&&sel.k==='RECIBIDO'&&!MECANICO_OT&&
-                  ['EN_DIAGNOSTICO','EN_PROCESO'].indexOf(EST_TALLER)>-1);
+  /* Volver a Recibido o a Diagnóstico abre el bloque del mecánico,
+     esté asignado o no: ahí se cambia. El botón solo guarda el nombre,
+     no rehace el inicio del diagnóstico. */
+  var reabrirMec=(sel.f==='taller'&&
+                  ['RECIBIDO','EN_DIAGNOSTICO'].indexOf(sel.k)>-1&&
+                  ['EN_DIAGNOSTICO','EN_PROCESO','LISTO'].indexOf(EST_TALLER)>-1);
   $('gAsig').style.display=
     (((esAccion&&sel.f==='taller'&&tocaMec)||reabrirMec)&&puede)?'block':'none';
   var hMec=document.getElementById('tituloMec');
@@ -8316,7 +8324,7 @@ function pintarPendientes(){
   if(fz)fz.innerHTML=
     ptBoton('mec','Sin mecánico',nMec)+
     ptBoton('ent','Pendiente entregar',nEnt)+
-    ptBoton('amb','Entregar y sin mecánico',nAmb)+
+    ptBoton('amb','Pendiente entregar y sin mecánico',nAmb)+
     '<button class="pteTodos'+(PTE_FILTRO==='todo'?' on':'')+'" onclick="ptFiltro(\'todo\')">'+
       'Todos · '+PTE.length+'</button>';
   var lista=PTE.filter(function(o){
@@ -8332,8 +8340,10 @@ function pintarPendientes(){
     return new Date(a.ingreso)-new Date(b.ingreso);
   });
   if(!lista.length){
-    z.innerHTML='<div class="vacio"><b>Nada pendiente acá</b>'+
-      'Los vehículos de los últimos '+PTE_DIAS+' días están con su mecánico y su entrega al día.</div>';
+    z.innerHTML='<div class="vacio"><b>Nada pendiente aquí</b>'+
+      (PTE_FILTRO==='todo'
+        ? 'Los vehículos de los últimos '+PTE_DIAS+' días están con su mecánico y su entrega al día.'
+        : '')+'</div>';
     return;
   }
   z.innerHTML=lista.map(function(o){
@@ -10606,7 +10616,37 @@ function ventToggleDetalle(){VENT_DET_ABIERTO=!VENT_DET_ABIERTO;ventRender()}
 /* Ventanilla también ve los autos recién recibidos que siguen en
    diagnóstico: pasa poco, pero cuando pasa los repuestos los carga
    ventanilla porque todavía no hay OT. */
-var VENT_ESTADOS=['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','SIN_OT'];
+/* Ventanilla veía la orden solo mientras el presupuesto estaba en
+   curso. Al aprobarse la definitiva (o al mandar una preliminar 2) la
+   orden desaparecía de su bandeja, así que un repuesto agregado
+   después ya no tenía cómo despacharse: el taller lo veía, el asesor
+   lo veía, ventanilla no. Ahora esas etapas también entran, pero solo
+   mientras quede algo que despachar. */
+var VENT_ESTADOS=['PRELIM_APROBADA','PRELIM2_ENVIADA','PRELIM2_APROBADA',
+                  'DEF_ENVIADA','DEF_APROBADA','SIN_OT'];
+/* Etapas donde la orden ya no es trabajo de presupuesto: se queda en
+   la bandeja únicamente si tiene repuestos sin bajar al piso. */
+var VENT_SOLO_SI_FALTA_DESPACHO=['DEF_APROBADA'];
+var VENT_PEND_DESP={};
+function cargarPendDespacho(lista,cb){
+  VENT_PEND_DESP={};
+  var ids=lista.map(function(o){return o.id}).filter(Boolean);
+  if(!sb||!ids.length){cb();return}
+  sb.from('orden_detalle').select('orden_id,tipo,cobrado,despachado_el,anulada')
+    .in('orden_id',ids)
+    .then(function(r){
+      (r.data||[]).forEach(function(l){
+        if(l.tipo!=='REP'||l.cobrado===false||l.anulada)return;
+        var a=VENT_PEND_DESP[l.orden_id]||(VENT_PEND_DESP[l.orden_id]={t:0,d:0});
+        a.t++; if(l.despachado_el)a.d++;
+      });
+      cb();
+    },function(){cb()});
+}
+function ventFaltaDespacho(o){
+  var a=VENT_PEND_DESP[o.id];
+  return !!(a&&a.t>a.d);
+}
 
 function enviarAVentanilla(){
   setTaller('LISTO','Trabajo terminado · pasa a ventanilla');
@@ -10659,14 +10699,23 @@ function ventLista(){
       if(!txt)return true;
       return ((o.ot||'')+(o.placa||'')+(o.cliente||'')).toLowerCase().replace(/-/g,'').indexOf(txt)>-1;
     });
-    cargarAdicPend(lista,function(){ ventPintarLista(res,lista) });
+    cargarPendDespacho(lista,function(){
+      /* Las etapas tardías solo siguen en la bandeja si de verdad
+         queda algo por despachar; si no, son trabajo de caja. */
+      if(!fe)lista=lista.filter(function(o){
+        return VENT_SOLO_SI_FALTA_DESPACHO.indexOf(o.estado_ot)<0 || ventFaltaDespacho(o);
+      });
+      cargarAdicPend(lista,function(){ ventPintarLista(res,lista) });
+    });
   });
 }
 function ventPintarLista(res,lista){
     res.innerHTML='<div style="overflow-x:auto"><table class="lista"><tr><th>OT</th><th>Placa</th><th>Cliente</th>'+
       '<th>Estado</th><th class="der">En taller</th><th></th></tr>'+
       (lista.length?lista.map(function(o){
-        var chip='<span class="chipsPago">'+chipAprob(o)+avisoAdicLista(o)+'</span>';
+        var chip='<span class="chipsPago">'+chipAprob(o)+avisoAdicLista(o)+
+          (ventFaltaDespacho(o)?'<span class="adicChip desp">📦 repuestos por despachar</span>':'')+
+          '</span>';
         var pend=solicPendienteDe(o.ot);
         return '<tr'+(pend?' style="background:var(--rojo-cl)"':'')+'>'+
         '<td class="num" data-l="OT" style="white-space:nowrap">'+otCorto(o.ot)+
@@ -11074,6 +11123,13 @@ function ventRender(){
     (!o.estado_ot
       ? '<div class="aviso info" style="margin-top:14px">Guarda los repuestos con 💾 <b>Guardar avance</b>. '+
         'La OT se envía al cliente desde el taller, una vez que el jefe arme la preliminar.</div>'
+      /* La OT final ya está aprobada: estos dos botones intentarían
+         retroceder el flujo y solo devolvían "la OT solo avanza".
+         Acá ya no hay nada que enviar, solo despachar. */
+      : o.estado_ot==='DEF_APROBADA'
+      ? '<div class="aviso ok" style="margin-top:14px"><b>OT final ya aprobada.</b><br>'+
+        'Lo que falta acá es bajar los repuestos al taller con 📦 <b>Despachar</b>. '+
+        'El cobro lo cierran el asesor o caja.</div>'
       : '<div class="dos-vias">'+
       '<div class="via">'+
         '<label>A · Enviar OT final al cliente</label>'+
@@ -12140,7 +12196,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=186;
+var APP_VER=188;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
