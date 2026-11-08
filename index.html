@@ -1,4 +1,4 @@
-<!--IZAV:182-->
+<!--IZAV:183-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1633,7 +1633,9 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= TALLER ================= -->
 <section class="vista" id="v-tienda">
   <div class="card">
-    <h3 id="tiendaTitulo">Tienda · órdenes por estación</h3>
+    <h3 id="tiendaTitulo">Tienda · órdenes pendientes por estación</h3>
+    <div class="hint" style="margin:-6px 0 10px">Lo que cada estación tiene en cola, no lo que ya hizo.
+      Los montos son dinero por cobrar.</div>
     <div id="tiendaSedeSel"></div>
     <div class="fila" style="align-items:flex-end;margin-bottom:12px">
       <div style="min-width:170px"><label>Rango</label>
@@ -8687,10 +8689,10 @@ function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarKanbanTaller();
 
 /* ---- Tienda: ventanilla despacho, ventanilla ppto aprobado, asesor, caja ---- */
 var ETAPAS_TIENDA=[
- {k:'despacho',  t:'Ventanilla · despacho',      ic:'📦', d:'Tiempo desde prelim. aprobada hasta el despacho'},
- {k:'ppto',      t:'Ventanilla · ppto aprobado', ic:'🏷️', d:'Tiempo desde prelim. aprobada hasta la final aprobada'},
- {k:'asesor',    t:'Asesor',                     ic:'🤝', d:'Tiempo desde final aprobada hasta el cierre'},
- {k:'caja',      t:'Caja · cobro',               ic:'💳', d:'Tiempo desde final aprobada hasta el pago'}
+ {k:'despacho',  t:'Ventanilla · por despachar', ic:'📦', d:'Esperando despacho desde que se aprobó la preliminar'},
+ {k:'ppto',      t:'Ventanilla · por armar la final', ic:'🏷️', d:'Esperando la OT definitiva desde que se aprobó la preliminar'},
+ {k:'asesor',    t:'Asesor · por cerrar',        ic:'🤝', d:'Esperando cierre desde que se aprobó la definitiva'},
+ {k:'caja',      t:'Caja · por cobrar',          ic:'💳', d:'Esperando cobro desde que se aprobó la definitiva'}
 ];
 var TIENDA_SEDE='ACTUAL';
 function cambioRangoTienda(){
@@ -8733,7 +8735,7 @@ function pintarTienda(){
   if(zs)zs.innerHTML=selectorSedeHTML(TIENDA_SEDE,'tiendaCambiaSede');
   var tt=document.getElementById('tiendaTitulo');
   if(tt)tt.textContent='Tienda '+(tiendaTodos()?'· todos los locales':'· '+sedeNombrePorId(sedeElegida(TIENDA_SEDE)))+
-    ' · órdenes por estación';
+    ' · órdenes pendientes por estación';
   cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA'],function(lista){
     var ids=lista.map(function(o){return o.id});
     if(!ids.length){KAN_TIENDA=[];pintarKanbanTienda();return}
@@ -11961,7 +11963,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=182;
+var APP_VER=183;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
