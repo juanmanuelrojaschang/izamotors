@@ -1,4 +1,4 @@
-<!--IZAV:173-->
+<!--IZAV:174-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3158,9 +3158,12 @@ function mmAplicar(v){
      no los que agregó la persona a mano. */
   LINEAS_REP=LINEAS_REP.filter(function(l){return !l.mm});
   mmLineas(v).forEach(function(l){ LINEAS_REP.push(l) });
-  SRV_SEL=null;
-  if($('servDesc'))$('servDesc').value='';
-  if($('servPrecio'))$('servPrecio').value='';
+  /* El nombre se queda escrito en la caja. Vaciarla era lo que hace
+     cualquier servicio DESPUÉS de Agregar, pero acá basta con elegirlo
+     y parecía que no había pasado nada. */
+  SRV_ABIERTA=false;
+  var dl=$('servLista');if(dl)dl.classList.remove('on');
+  if($('servDesc'))$('servDesc').value=linea.desc;
   srvDato();
   pintarPresupuestoLista();
   var n=mmLineas(v).length;
@@ -11319,7 +11322,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=173;
+var APP_VER=174;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
