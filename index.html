@@ -1,4 +1,4 @@
-<!--IZAV:185-->
+<!--IZAV:186-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -154,7 +154,19 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .pteL3{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .pteL4{font-size:11px;color:var(--mudo);margin-top:7px}
 .pteF>div[onclick]{cursor:pointer}
-.pteBtn{width:100%;margin-top:10px}
+.pteBtn{width:100%;margin-top:8px}
+/* Filtros: el número es el botón */
+.pteFiltros{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+.pteK{background:var(--gris);border:1px solid var(--gris2);border-radius:10px;
+  padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.pteK b{font-size:21px;line-height:1;color:var(--tinta)}
+.pteK span{font-size:10px;line-height:1.15;color:var(--mudo);text-align:center}
+.pteK.on{border-color:var(--rojo);background:rgba(214,58,58,.07)}
+.pteK.on b{color:var(--rojo)}
+.pteK.alerta b{color:var(--rojo)}
+.pteTodos{grid-column:1 / -1;background:transparent;border:1px solid var(--gris2);
+  border-radius:8px;padding:7px;font-size:12px;color:var(--mudo);cursor:pointer}
+.pteTodos.on{border-color:var(--rojo);color:var(--rojo);font-weight:700}
 .cnt.alerta{background:var(--rojo);color:#fff}
 /* Lo más solicitado: barras horizontales, se leen en el celular */
 .demTit{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);
@@ -1104,13 +1116,7 @@ tr.sel td{background:var(--rojo-cl)}
       <div class="hint" style="margin:0 0 10px">Vehículos en flujo con algo sin registrar.
         Un mismo carro puede tener los dos pendientes.</div>
       <div id="pteSedeSel"></div>
-      <div class="modo modo4" style="margin:10px 0 0">
-        <button id="ptTodo" class="on" onclick="ptFiltro('todo')">Todos</button>
-        <button id="ptMec" onclick="ptFiltro('mec')">Sin mecánico</button>
-        <button id="ptEnt" onclick="ptFiltro('ent')">Sin entregar</button>
-        <button id="ptCrit" onclick="ptFiltro('crit')">Pagados sin mecánico</button>
-      </div>
-      <div class="kpiFila" id="pteKpis" style="margin:12px 0"></div>
+      <div class="pteFiltros" id="pteFiltros"></div>
       <div id="pteLista"></div>
     </div>
 
@@ -2566,8 +2572,12 @@ function confirmarEntrada(){
   cargarFlotas();
   /* El contador siempre; la ventana solo para lo que se puede perder,
      y con un respiro para no tapar la entrada. */
-  try{ ptContador() }catch(e){}
-  setTimeout(function(){ try{ revisarPagadasSinMecanico() }catch(e){} },1800);
+  /* Primero se averigua si la base distingue vehículos de prueba:
+     sin eso el contador incluiría las órdenes de administrador. */
+  try{ detectarEsPrueba(function(){
+    try{ ptContador() }catch(e){}
+    setTimeout(function(){ try{ revisarPagadasSinMecanico() }catch(e){} },1800);
+  }) }catch(e){ try{ ptContador() }catch(e2){} }
 }
 function pintarCabecera(rol){
   var n=document.getElementById('usrNom'),r=document.getElementById('usrRol');
@@ -7129,7 +7139,10 @@ function setTaller(k,nota){
   if(idxTaller(k)<idxTaller(EST_TALLER)){aviso('El flujo del taller solo avanza.');return}
   /* Antes de dar el auto por listo tiene que haber responsable. El
      lavador solo si el trabajo incluyó lavado. */
-  if(idxTaller(k)>=idxTaller('LISTO')&&idxTaller(EST_TALLER)<idxTaller('LISTO')){
+  /* Antes solo se pedía al cruzar de EN_PROCESO a LISTO. Un carro que
+     ya estaba LISTO sin mecánico se podía entregar sin más, y ahí se
+     perdía el dato para siempre. Ahora se pide en los dos saltos. */
+  if(idxTaller(k)>=idxTaller('LISTO')&&idxTaller(EST_TALLER)<idxTaller(k)){
     var faltaMec=!MECANICO_OT&&!(($('gMec')&&$('gMec').value)||'').trim(),
         faltaLav=faltaLavador();
     if(faltaMec||faltaLav){ pedirResponsables(faltaMec,faltaLav,k,nota); return }
@@ -8193,9 +8206,16 @@ function cerrarPendientes(){
 function ptContador(){
   if(!sb||!SESION)return;
   var desde=new Date(); desde.setDate(desde.getDate()-PTE_DIAS); desde.setHours(0,0,0,0);
-  var q=sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre')
+  var q=sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre'+
+      (HAY_ES_PRUEBA?',es_prueba':''))
     .not('estado_taller','eq','ANULADO').gte('ingreso',desde.toISOString());
-  if(SESION.rol!=='admin_general')q=q.eq('sede_id',SESION.sede_id);
+  /* El contador tiene que contar lo mismo que muestra la bandeja al
+     abrirla: su local y sin vehículos de prueba. Contaba todos los
+     locales y además incluía las pruebas, así que el número del menú
+     no cuadraba con la lista. */
+  var sid=(PTE_SEDE==='TODOS')?null:sedeElegida(PTE_SEDE);
+  if(sid!==null)q=q.eq('sede_id',sid);
+  q=sinPruebas(q);
   q.limit(600).then(function(r){
     if(r.error)return;
     var l=(r.data||[]).filter(function(o){return ptPendMec(o)||ptPendEnt(o)});
@@ -8207,20 +8227,21 @@ function ptContador(){
     }
   },function(){});
 }
-function ptCambiaSede(v){ PTE_SEDE=v; cargarPendientes() }
+function ptCambiaSede(v){ PTE_SEDE=v; cargarPendientes(); ptContador() }
 function ptFiltro(f){
   PTE_FILTRO=f;
-  [['todo','ptTodo'],['mec','ptMec'],['ent','ptEnt'],['crit','ptCrit']].forEach(function(x){
-    var b=document.getElementById(x[1]); if(b)b.classList.toggle('on',x[0]===f);
-  });
   pintarPendientes();
 }
 function ptSinMecanico(o){ return !String(o.mecanico_nombre||'').trim() }
 function ptPagada(o){ return o.estado_ot==='PAGADA' }
 function ptEntregada(o){ return o.estado_taller==='ENTREGADO' }
 function ptPendMec(o){ return ptSinMecanico(o) && (!ptEntregada(o)||ptPagada(o)) }
-function ptPendEnt(o){ return ptPagada(o) && !ptEntregada(o) }
-function ptCritico(o){ return ptPagada(o) && ptSinMecanico(o) }
+/* Pendiente de entregar es solo lo que está cobrado por completo: una
+   orden a la que le falta plata o tiene adicionales sin aprobar no es
+   tarea del jefe de taller, es de caja. */
+function ptPendEnt(o){ return ptPagada(o) && !ptEntregada(o) && ptCobro(o).limpia }
+function ptAmbos(o){ return ptPendEnt(o) && ptPendMec(o) }
+function ptCritico(o){ return ptPagada(o) && ptSinMecanico(o) && !ptEntregada(o) }
 function cargarPendientes(){
   if(!sb)return;
   var zs=document.getElementById('pteSedeSel');
@@ -8276,6 +8297,10 @@ function ptCobroTexto(c){
                ' sin aprobar · '+S(Math.round(c.montoAdic))+'</span> ';
   return p||'<span class="eti e2">Revisar cobro</span>';
 }
+function ptBoton(k,t,n){
+  return '<button class="pteK'+(PTE_FILTRO===k?' on':'')+(n&&k==='amb'?' alerta':'')+'" '+
+    'onclick="ptFiltro(\''+k+'\')"><b>'+n+'</b><span>'+t+'</span></button>';
+}
 function ptDias(iso){
   if(!iso)return 0;
   return Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));
@@ -8284,17 +8309,20 @@ function pintarPendientes(){
   var z=document.getElementById('pteLista'); if(!z)return;
   var nMec=PTE.filter(ptPendMec).length,
       nEnt=PTE.filter(ptPendEnt).length,
-      nCri=PTE.filter(ptCritico).length;
-  var k=document.getElementById('pteKpis');
-  if(k)k.innerHTML=
-    kpi(PTE.length,'vehículos con pendientes')+
-    kpi(nMec,'sin mecánico')+
-    kpi(nEnt,'sin registrar entrega')+
-    kpi(nCri,'pagados sin mecánico',nCri?'rojo':'');
+      nAmb=PTE.filter(ptAmbos).length;
+  /* El recuadro con el número es el botón: repetir el título arriba y
+     abajo ocupaba media pantalla en el celular. */
+  var fz=document.getElementById('pteFiltros');
+  if(fz)fz.innerHTML=
+    ptBoton('mec','Sin mecánico',nMec)+
+    ptBoton('ent','Pendiente entregar',nEnt)+
+    ptBoton('amb','Entregar y sin mecánico',nAmb)+
+    '<button class="pteTodos'+(PTE_FILTRO==='todo'?' on':'')+'" onclick="ptFiltro(\'todo\')">'+
+      'Todos · '+PTE.length+'</button>';
   var lista=PTE.filter(function(o){
     if(PTE_FILTRO==='mec')return ptPendMec(o);
     if(PTE_FILTRO==='ent')return ptPendEnt(o);
-    if(PTE_FILTRO==='crit')return ptCritico(o);
+    if(PTE_FILTRO==='amb')return ptAmbos(o);
     return true;
   });
   /* Primero lo que se puede perder, después lo más viejo */
@@ -8325,12 +8353,52 @@ function pintarPendientes(){
         '<div class="pteL4">'+esc(estadoBonito(o.estado_taller))+' · '+
           d+' día'+(d===1?'':'s')+' en taller</div>'+
       '</div>'+
+      (ptPendMec(o)
+        ? '<button class="btn chico sec pteBtn" '+
+          'onclick="event.stopPropagation();ptAsignarMec('+ix+')">👤 Asignar mecánico</button>'
+        : '')+
       (ptPendEnt(o)
-        ? '<button class="btn chico '+(cob.limpia?'ok':'sec')+' pteBtn" '+
+        ? '<button class="btn chico ok pteBtn" '+
           'onclick="event.stopPropagation();ptEntregar('+ix+')">🚗 Entregar</button>'
         : '')+
     '</div>';
   }).join('');
+}
+/* Asignar mecánico sin entrar a la OT: en esta bandeja hay decenas de
+   carros a los que solo les falta eso, y abrir cada orden para un dato
+   de un toque era el motivo de que nadie lo hiciera. */
+function ptAsignarMec(i,luego){
+  var o=PTE[i]; if(!o)return;
+  var v=o.vehiculos||{};
+  function abrir(){
+    if(!MECS.length){
+      aviso('No hay mecánicos cargados para este local. Súbelos desde Datos maestros.');
+      return;
+    }
+    pregunta('Asignar mecánico',
+      '<b>'+esc(v.placa||'—')+'</b> · '+esc(otCorto(o.numero))+'<br>'+
+      esc([v.marca,v.modelo].filter(Boolean).join(' '))+
+      '<div style="margin-top:12px"><select id="ptMecSel" style="width:100%">'+
+        mecOpciones('MECANICO',o.mecanico_nombre||'')+'</select></div>',
+      [{t:'Guardar',p:true,cierra:false,fn:function(){
+          var val=((document.getElementById('ptMecSel')||{}).value||'').trim();
+          if(!val){aviso('Elige un mecánico de la lista.');return}
+          pregCerrar();
+          sb.from('ordenes').update({mecanico_nombre:val}).eq('id',o.id)
+            .then(function(r){
+              if(r.error){aviso('No se pudo guardar: '+r.error.message);return}
+              o.mecanico_nombre=val;
+              /* que un fallo de bitácora no corte la cadena */
+              try{ auditar('MECANICO','orden',o.numero,'Asignado desde pendientes · '+val,0) }catch(e){}
+              try{ conex('Mecánico asignado · '+(v.placa||o.numero)) }catch(e){}
+              if(luego)luego();
+              else{ pintarPendientes(); ptContador() }
+            },function(){aviso('Sin conexión: no se guardó.')});
+        }},
+       {t:'Cancelar'}]);
+  }
+  if(MECS.length&&MECS_SEDE===SEDE_ACTIVA)abrir();
+  else cargarMecanicos(abrir);
 }
 /* Entrega rápida desde el reporte. Si algo quedó sin cobrar, el aviso
    lo dice con todas sus letras antes de soltar el carro: una vez
@@ -8338,6 +8406,8 @@ function pintarPendientes(){
 function ptEntregar(i){
   var o=PTE[i]; if(!o)return;
   var v=o.vehiculos||{}, c=ptCobro(o);
+  /* Sin mecánico no se entrega: se pide ahí mismo y se sigue. */
+  if(ptSinMecanico(o)){ ptAsignarMec(i,function(){ pintarPendientes(); ptEntregar(i) }); return }
   var cuerpo='<b>'+esc(v.placa||'—')+'</b> · '+esc(otCorto(o.numero))+'<br>'+
     esc([v.marca,v.modelo].filter(Boolean).join(' '))+'<br><br>';
   /* Con algo sin cobrar no se entrega: solo se dice qué falta. */
@@ -8361,9 +8431,9 @@ function ptEntregar(i){
           .eq('id',o.id)
           .then(function(r){
             if(r.error){aviso('No se pudo registrar la entrega: '+r.error.message);return}
-            auditar('TALLER_ENTREGADO','orden',o.numero,
-              'Entregado desde el reporte de pendientes · '+SESION.nombre,0);
-            conex('Entregado · '+(v.placa||o.numero));
+            try{ auditar('TALLER_ENTREGADO','orden',o.numero,
+              'Entregado desde el reporte de pendientes · '+SESION.nombre,0) }catch(e){}
+            try{ conex('Entregado · '+(v.placa||o.numero)) }catch(e){}
             cargarPendientes();
           },function(){aviso('Sin conexión: la entrega no se registró.')});
       }},
@@ -8386,11 +8456,13 @@ function revisarPagadasSinMecanico(){
   /* El mecánico vacío puede estar como null o como cadena vacía, y
      filtrar eso en PostgREST es frágil: se trae lo pagado del periodo
      y se cuenta acá, que no falla. */
-  var q=sb.from('ordenes').select('id,mecanico_nombre')
+  var q=sb.from('ordenes').select('id,mecanico_nombre'+(HAY_ES_PRUEBA?',es_prueba':''))
     .eq('estado_ot','PAGADA')
     .not('estado_taller','eq','ANULADO')
     .gte('ingreso',desde.toISOString());
-  if(SESION.rol!=='admin_general')q=q.eq('sede_id',SESION.sede_id);
+  var sid=(PTE_SEDE==='TODOS')?null:sedeElegida(PTE_SEDE);
+  if(sid!==null)q=q.eq('sede_id',sid);
+  q=sinPruebas(q);
   q.limit(600).then(function(r){
     if(r.error||!r.data)return;
     var n=r.data.filter(ptSinMecanico).length;
@@ -12068,7 +12140,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=185;
+var APP_VER=186;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
