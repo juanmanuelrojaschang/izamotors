@@ -1,4 +1,4 @@
-<!--IZAV:181-->
+<!--IZAV:182-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1641,6 +1641,8 @@ tr.sel td{background:var(--rojo-cl)}
           <option value="1">Hoy (1 día)</option>
           <option value="7">Últimos 7 días</option>
           <option value="30" selected>Últimos 30 días</option>
+          <option value="semprev">Semana pasada completa</option>
+          <option value="mesprev">Mes pasado completo</option>
           <option value="0">Todo</option>
           <option value="custom">Fechas…</option>
         </select></div>
@@ -1677,6 +1679,8 @@ tr.sel td{background:var(--rojo-cl)}
           <option value="1" selected>Hoy (1 día)</option>
           <option value="7">Últimos 7 días</option>
           <option value="30">Últimos 30 días</option>
+          <option value="semprev">Semana pasada completa</option>
+          <option value="mesprev">Mes pasado completo</option>
           <option value="0">Todo</option>
           <option value="custom">Fechas…</option>
         </select></div>
@@ -8112,6 +8116,12 @@ function rangoTaller(){
   var v=(document.getElementById('tallerRango')||{}).value||'1';
   var d=new Date(),h=null;d.setHours(0,0,0,0);
   if(v==='0')return {desde:null,hasta:null};
+  /* Semana y mes cerrados: el mismo cálculo que en productividad, con
+     rangos de fecha para que diciembre-enero no se rompa. */
+  if(v==='semprev'||v==='mesprev'){
+    var r=rangoProd(v);
+    return {desde:r.desde,hasta:r.hasta};
+  }
   if(v==='custom'){
     var a=document.getElementById('tallerDesde').value,b=document.getElementById('tallerHasta').value;
     if(!a)return {desde:null,hasta:null};
@@ -8655,7 +8665,12 @@ function pintarKanbanTaller(){
       '<b class="cond" style="font-size:20px">'+enPiso+' vehículos ocupando el taller</b>'+
       '<span class="hint" style="margin:0">Los entregados no ocupan espacio · '+
         (function(){var v=document.getElementById('tallerRango').value;
-          return v==='1'?'ingresos de hoy':v==='0'?'todo el histórico':v==='custom'?'rango elegido':'últimos '+v+' días'})()+'</span></div>';
+          return v==='1'?'ingresos de hoy'
+               :v==='0'?'todo el histórico'
+               :v==='custom'?'rango elegido'
+               :v==='semprev'?'semana pasada · '+prodRangoTexto('semprev')
+               :v==='mesprev'?'mes pasado · '+prodRangoTexto('mesprev')
+               :'últimos '+v+' días'})()+'</span></div>';
   }
   var ly=document.getElementById('leyTaller');
   if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_T.map(function(o){return o.sede})):'');
@@ -8687,6 +8702,10 @@ function rangoTienda(){
   var v=(document.getElementById('tiendaRango')||{}).value||'30';
   var d=new Date();d.setHours(0,0,0,0);
   if(v==='0')return {desde:null,hasta:null};
+  if(v==='semprev'||v==='mesprev'){
+    var r=rangoProd(v);
+    return {desde:r.desde,hasta:r.hasta};
+  }
   if(v==='custom'){
     var a=document.getElementById('tiendaDesde').value,b=document.getElementById('tiendaHasta').value;
     if(!a)return {desde:null,hasta:null};
@@ -11942,7 +11961,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=181;
+var APP_VER=182;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
