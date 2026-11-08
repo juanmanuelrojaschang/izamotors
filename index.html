@@ -1,4 +1,4 @@
-<!--IZAV:171-->
+<!--IZAV:172-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -960,7 +960,7 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="wordmark" id="wm"><div class="barra-r"></div>
       <div class="txt">IZA<b>MOTORS</b></div></div>
   </button>
-  <span class="demo-tag">versión 164</span>
+  <span class="demo-tag" id="verTag">versión …</span>
   <div class="cab-acc">
     <button class="btn-salir" id="btnAtras" onclick="irAtras()" style="display:none"
             aria-label="Volver"><span class="v-txt">← Volver</span><span class="v-ico">←</span></button>
@@ -3052,15 +3052,23 @@ function mmBuscar(marca,modelo,anio,cb){
   if(!sb){cb(null,'sin-base');return}
   sb.from('mm_vehiculos').select('*').ilike('marca','%'+marca.trim()+'%').limit(300)
     .then(function(r){
-      if(r.error){cb(null,'error:'+r.error.message);return}
+      if(r.error){cb(null,'error:'+(r.error.message||'sin detalle'));return}
       var filas=r.data||[];
       /* El ilike puede traer otra marca que la contenga: se afina acá. */
       filas=filas.filter(function(f){
         var fm=mmLlano(f.marca);
         return fm===ma||fm.indexOf(ma)===0||ma.indexOf(fm)===0;
       });
+      if(!filas.length){
+        /* Decir "no está la marca" cuando en realidad el preciario
+           nunca se cargó manda a buscar donde no es. */
+        sb.from('mm_vehiculos').select('id_vehiculo').limit(1).then(function(r2){
+          if(r2.error){cb(null,'error:'+(r2.error.message||'sin detalle'));return}
+          cb(null,(r2.data&&r2.data.length)?'sin-marca':'vacio');
+        },function(){cb(null,'sin-base')});
+        return;
+      }
       MM_CACHE[ma]=filas;
-      if(!filas.length){cb(null,'sin-marca');return}
       cb(mmElegir(filas,modelo,anio),null,filas);
     },function(){cb(null,'sin-base')});
 }
@@ -3120,7 +3128,17 @@ function mmPrecargar(){
   }
   conex('Buscando '+marca+' '+modelo+' en el preciario…');
   mmBuscar(marca,modelo,anio,function(v,err,todas){
-    if(err==='sin-base'){ aviso('No se pudo leer el preciario de mantenimiento mayor. Revisa la conexión.'); return }
+    if(err==='sin-base'){
+      aviso('No se pudo leer el preciario de mantenimiento mayor. Revisa la conexión.');return;
+    }
+    if(err==='vacio'){
+      aviso('El preciario de mantenimiento mayor está vacío.\n\n'+
+            'Sube el Excel desde Configuración → Datos maestros → Mantenimiento mayor.');return;
+    }
+    if(err&&err.indexOf('error:')===0){
+      aviso('No pude leer la tabla del preciario de mantenimiento mayor.\n\n'+
+            err.slice(6)+'\n\nSi dice que la tabla no existe, falta correr el paso 45.');return;
+    }
     if(!v){ mmPedirModelo(marca,modelo,todas||[]); return }
     mmAplicar(v);
   });
@@ -11282,7 +11300,13 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=171;
+var APP_VER=172;
+/* El número se escribe solo: cuando estaba a mano en el HTML se quedó
+   clavado en 164 mientras el código ya iba por la 171. */
+try{
+  var _vt=document.getElementById('verTag');
+  if(_vt)_vt.textContent='versión '+APP_VER;
+}catch(e){}
 function revisarVersion(){
   if(location.protocol==='file:')return;                 /* en disco no aplica */
   var base=location.pathname;
