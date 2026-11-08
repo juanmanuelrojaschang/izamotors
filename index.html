@@ -1,4 +1,4 @@
-<!--IZAV:176-->
+<!--IZAV:181-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -143,6 +143,19 @@ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
 .cen{text-align:center}
+/* Pendientes del taller */
+.pteF{border:1px solid var(--gris2);border-radius:10px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
+.pteF:hover{border-color:var(--mudo)}
+.pteF.critico{border-color:var(--rojo);background:rgba(214,58,58,.06)}
+.pteL1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.pteL1 b{font-size:15px;letter-spacing:.02em}
+.pteL1 span{font-size:11px;color:var(--mudo)}
+.pteL2{font-size:12px;color:var(--mudo);margin-top:1px}
+.pteL3{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
+.pteL4{font-size:11px;color:var(--mudo);margin-top:7px}
+.pteF>div[onclick]{cursor:pointer}
+.pteBtn{width:100%;margin-top:10px}
+.cnt.alerta{background:var(--rojo);color:#fff}
 /* Lo más solicitado: barras horizontales, se leen en el celular */
 .demTit{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);
   font-weight:700;margin-bottom:9px}
@@ -1080,7 +1093,26 @@ tr.sel td{background:var(--rojo-cl)}
         <button class="btn full sec" onclick="abrirListado()">🔍 Buscar cliente</button>
         <button class="btn full sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
         <button class="btn full sec" onclick="abrirNuevoCliente()">👤 Crear cliente</button>
+        <button class="btn full sec" onclick="abrirPendientes()">🔧 Pendientes del taller<span class="cnt" id="cntPte"></span></button>
       </div>
+    </div>
+
+    <div class="card oculto" id="panelPendientes">
+      <div class="navproc">
+        <button class="atras" onclick="cerrarPendientes()">← Volver</button>
+        <span class="donde" id="pteTitulo">Pendientes del taller</span>
+      </div>
+      <div class="hint" style="margin:0 0 10px">Vehículos en flujo con algo sin registrar.
+        Un mismo carro puede tener los dos pendientes.</div>
+      <div id="pteSedeSel"></div>
+      <div class="modo modo4" style="margin:10px 0 0">
+        <button id="ptTodo" class="on" onclick="ptFiltro('todo')">Todos</button>
+        <button id="ptMec" onclick="ptFiltro('mec')">Sin mecánico</button>
+        <button id="ptEnt" onclick="ptFiltro('ent')">Sin entregar</button>
+        <button id="ptCrit" onclick="ptFiltro('crit')">Pagados sin mecánico</button>
+      </div>
+      <div class="kpiFila" id="pteKpis" style="margin:12px 0"></div>
+      <div id="pteLista"></div>
     </div>
 
     <div class="card oculto" id="panelCrear">
@@ -2510,6 +2542,10 @@ function confirmarEntrada(){
   conex('Conectado · '+rol.t);
   cargarCatalogoV2();
   cargarFlotas();
+  /* El contador siempre; la ventana solo para lo que se puede perder,
+     y con un respiro para no tapar la entrada. */
+  try{ ptContador() }catch(e){}
+  setTimeout(function(){ try{ revisarPagadasSinMecanico() }catch(e){} },1800);
 }
 function pintarCabecera(rol){
   var n=document.getElementById('usrNom'),r=document.getElementById('usrRol');
@@ -7360,7 +7396,8 @@ function terminarAdicionales(){
 }
 function avisoCruce(){
   if(EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO')
-    return '<div class="aviso ok">OT pagada: el cliente puede recoger el vehículo cuando el taller lo marque listo.</div>';
+    return '<div class="aviso ok">OT pagada. Registra la entrega cuando el cliente se lleve el vehículo: '+
+           'mientras tanto sigue contando como ocupando el taller.</div>';
   if(EST_TALLER==='LISTO'&&EST_OT_ACT!=='PAGADA')
     return '<div class="aviso rojo">Vehículo listo pero la OT no está pagada: no se entrega hasta el cobro.</div>';
   return '';
@@ -7655,7 +7692,10 @@ function renderAcciones(soloAdic){
       '.</b> Con el asesor de servicio para el cobro.</div>';
   }
   if(EST_OT_ACT==='PAGADA'){
-    avisos='<div class="aviso ok"><b>OT pagada.</b> El cliente puede recoger el vehículo.</div>';
+    avisos=(EST_TALLER==='ENTREGADO')
+      ? '<div class="aviso ok"><b>OT pagada y vehículo entregado.</b> La orden está cerrada.</div>'
+      : '<div class="aviso ok"><b>OT pagada.</b> El cliente puede llevarse el vehículo; '+
+        'registra la entrega para que deje de contar como ocupando el taller.</div>';
   }
 
   /* --- flujo del taller --- */
@@ -7665,11 +7705,13 @@ function renderAcciones(soloAdic){
         'Hay que asignarlo antes de marcar el vehículo listo.</div>';
     botones+='<button class="btn chico" onclick="setTaller(&quot;LISTO&quot;,&quot;Trabajo terminado&quot;)">Marcar vehículo LISTO</button>';
   }
-  if(EST_TALLER==='LISTO'){
-    botones+= (EST_OT_ACT==='PAGADA')
-      ? '<button class="btn chico ok" onclick="setTaller(&quot;ENTREGADO&quot;,&quot;Vehículo entregado&quot;)">🚗 Registrar entrega</button>'
-      : '<span class="hint" style="align-self:center">No se entrega hasta que la OT esté pagada.</span>';
-  }
+  if(EST_TALLER==='LISTO'&&EST_OT_ACT!=='PAGADA')
+    botones+='<span class="hint" style="align-self:center">No se entrega hasta que la OT esté pagada.</span>';
+  /* Pagada y sin entregar: el botón sale aunque el taller no haya
+     pasado por LISTO. Exigir ese paso dejaba órdenes cobradas
+     contando como vehículos dentro del taller para siempre. */
+  if(EST_OT_ACT==='PAGADA'&&EST_TALLER!=='ENTREGADO')
+    botones+='<button class="btn chico ok" onclick="setTaller(&quot;ENTREGADO&quot;,&quot;Vehículo entregado&quot;)">🚗 Registrar entrega</button>';
 
   /* Anular o pedir que anulen, según el perfil. Pagada no se toca, y
      un auto recién recibido tampoco: todavía no hay nada que anular. */
@@ -8093,6 +8135,248 @@ var HOJA_SEDE='ACTUAL', HOJA=[], HOJA_FECHA='';
 function hojaHoyISO(){
   var d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+
+/* ===================== PENDIENTES DEL TALLER =====================
+   Lo que el jefe de taller tiene que cerrar: carros sin mecánico y
+   carros ya cobrados que nadie marcó como entregados. Un mismo
+   vehículo puede arrastrar los dos.
+
+   El caso grave es el cruce: pagado y sin mecánico. Ahí el trabajo ya
+   salió del taller y si nadie anota quién lo hizo, ese dato se pierde
+   para siempre. Por eso solo ese avisa con una ventana.
+   ================================================================= */
+var PTE_SEDE='ACTUAL', PTE=[], PTE_FILTRO='todo', PTE_DIAS=60;
+function abrirPendientes(){
+  var m=document.getElementById('menuEntrada');if(m)m.classList.add('oculto');
+  var pc=document.getElementById('panelCrear');if(pc)pc.classList.add('oculto');
+  var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
+  var pp=document.getElementById('panelPendientes');if(pp)pp.classList.remove('oculto');
+  cargarSedesTodas(function(){ detectarEsPrueba(function(){ cargarPendientes() }) });
+  if(pp)pp.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cerrarPendientes(){
+  var pp=document.getElementById('panelPendientes');if(pp)pp.classList.add('oculto');
+  var m=document.getElementById('menuEntrada');if(m)m.classList.remove('oculto');
+  try{ ptContador() }catch(e){}
+}
+/* El contador del botón, como el de las bandejas de ventanilla */
+function ptContador(){
+  if(!sb||!SESION)return;
+  var desde=new Date(); desde.setDate(desde.getDate()-PTE_DIAS); desde.setHours(0,0,0,0);
+  var q=sb.from('ordenes').select('id,estado_taller,estado_ot,mecanico_nombre')
+    .not('estado_taller','eq','ANULADO').gte('ingreso',desde.toISOString());
+  if(SESION.rol!=='admin_general')q=q.eq('sede_id',SESION.sede_id);
+  q.limit(600).then(function(r){
+    if(r.error)return;
+    var l=(r.data||[]).filter(function(o){return ptPendMec(o)||ptPendEnt(o)});
+    var cri=l.filter(ptCritico).length;
+    var e=document.getElementById('cntPte');
+    if(e){
+      e.textContent=l.length?String(l.length):'';
+      e.classList.toggle('alerta',cri>0);
+    }
+  },function(){});
+}
+function ptCambiaSede(v){ PTE_SEDE=v; cargarPendientes() }
+function ptFiltro(f){
+  PTE_FILTRO=f;
+  [['todo','ptTodo'],['mec','ptMec'],['ent','ptEnt'],['crit','ptCrit']].forEach(function(x){
+    var b=document.getElementById(x[1]); if(b)b.classList.toggle('on',x[0]===f);
+  });
+  pintarPendientes();
+}
+function ptSinMecanico(o){ return !String(o.mecanico_nombre||'').trim() }
+function ptPagada(o){ return o.estado_ot==='PAGADA' }
+function ptEntregada(o){ return o.estado_taller==='ENTREGADO' }
+function ptPendMec(o){ return ptSinMecanico(o) && (!ptEntregada(o)||ptPagada(o)) }
+function ptPendEnt(o){ return ptPagada(o) && !ptEntregada(o) }
+function ptCritico(o){ return ptPagada(o) && ptSinMecanico(o) }
+function cargarPendientes(){
+  if(!sb)return;
+  var zs=document.getElementById('pteSedeSel');
+  if(zs)zs.innerHTML=selectorSedeHTML(PTE_SEDE,'ptCambiaSede');
+  var tt=document.getElementById('pteTitulo');
+  if(tt)tt.textContent='Pendientes del taller · '+
+    (PTE_SEDE==='TODOS'?'todos los locales':sedeNombrePorId(sedeElegida(PTE_SEDE)));
+  var z=document.getElementById('pteLista');
+  if(z)z.innerHTML='<div class="hint">Consultando la base…</div>';
+  var desde=new Date(); desde.setDate(desde.getDate()-PTE_DIAS); desde.setHours(0,0,0,0);
+  var q=sb.from('ordenes')
+    .select('id,numero,sede_id,ingreso,estado_taller,estado_ot,ot_pagada,total_taller,'+
+            'total_cobrado,mecanico_nombre,'+(HAY_ES_PRUEBA?'es_prueba,':'')+
+            'vehiculos(placa,marca,modelo),clientes(nombre),'+
+            'orden_detalle(adicional,precio_taller,cantidad,anulada)')
+    .not('estado_taller','eq','ANULADO')
+    .gte('ingreso',desde.toISOString());
+  var sid=(PTE_SEDE==='TODOS')?null:sedeElegida(PTE_SEDE);
+  if(sid!==null)q=q.eq('sede_id',sid);
+  q=sinPruebas(q);
+  q.order('ingreso',{ascending:true}).limit(600).then(function(r){
+    if(r.error){
+      if(z)z.innerHTML='<div class="aviso rojo" style="margin:0">No se pudo leer: '+esc(r.error.message)+'</div>';
+      return;
+    }
+    PTE=(r.data||[]).filter(function(o){ return ptPendMec(o)||ptPendEnt(o) });
+    pintarPendientes();
+  },function(){
+    if(z)z.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión con la base.</div>';
+  });
+}
+/* Qué le falta cobrar a la orden: lo que quedó sin pagar del total y
+   los adicionales que se sumaron después y nadie aprobó. Es lo que el
+   jefe de taller necesita ver antes de soltar el carro. */
+function ptCobro(o){
+  var tot=Number(o.total_taller||0), cob=Number(o.total_cobrado||0);
+  var pend=(o.orden_detalle||[]).filter(function(l){
+    return !l.anulada && l.adicional==='PEND';
+  });
+  var montoPend=0;
+  pend.forEach(function(l){ montoPend+=(Number(l.precio_taller)||0)*(Number(l.cantidad)||1) });
+  var falta=Math.max(0, Math.round((tot-cob)*100)/100);
+  return {pagada:o.estado_ot==='PAGADA', total:tot, cobrado:cob,
+          falta:falta, adic:pend.length, montoAdic:montoPend,
+          limpia:(o.estado_ot==='PAGADA' && falta<=0 && pend.length===0)};
+}
+function ptCobroTexto(c){
+  if(c.limpia)return '<span class="eti e4">OT cobrada · '+S(Math.round(c.cobrado||c.total))+'</span>';
+  var p='';
+  if(!c.pagada)p+='<span class="eti e1">OT sin cobrar</span> ';
+  else if(c.falta>0)p+='<span class="eti e1">Falta cobrar '+S(Math.round(c.falta))+'</span> ';
+  if(c.adic)p+='<span class="eti e3">'+c.adic+' adicional'+(c.adic===1?'':'es')+
+               ' sin aprobar · '+S(Math.round(c.montoAdic))+'</span> ';
+  return p||'<span class="eti e2">Revisar cobro</span>';
+}
+function ptDias(iso){
+  if(!iso)return 0;
+  return Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));
+}
+function pintarPendientes(){
+  var z=document.getElementById('pteLista'); if(!z)return;
+  var nMec=PTE.filter(ptPendMec).length,
+      nEnt=PTE.filter(ptPendEnt).length,
+      nCri=PTE.filter(ptCritico).length;
+  var k=document.getElementById('pteKpis');
+  if(k)k.innerHTML=
+    kpi(PTE.length,'vehículos con pendientes')+
+    kpi(nMec,'sin mecánico')+
+    kpi(nEnt,'sin registrar entrega')+
+    kpi(nCri,'pagados sin mecánico',nCri?'rojo':'');
+  var lista=PTE.filter(function(o){
+    if(PTE_FILTRO==='mec')return ptPendMec(o);
+    if(PTE_FILTRO==='ent')return ptPendEnt(o);
+    if(PTE_FILTRO==='crit')return ptCritico(o);
+    return true;
+  });
+  /* Primero lo que se puede perder, después lo más viejo */
+  lista.sort(function(a,b){
+    var ca=ptCritico(a)?0:1, cb=ptCritico(b)?0:1;
+    if(ca!==cb)return ca-cb;
+    return new Date(a.ingreso)-new Date(b.ingreso);
+  });
+  if(!lista.length){
+    z.innerHTML='<div class="vacio"><b>Nada pendiente acá</b>'+
+      'Los vehículos de los últimos '+PTE_DIAS+' días están con su mecánico y su entrega al día.</div>';
+    return;
+  }
+  z.innerHTML=lista.map(function(o){
+    var v=o.vehiculos||{}, c=o.clientes||{};
+    var et='';
+    if(ptPendMec(o))et+='<span class="eti e3">Falta mecánico</span> ';
+    if(ptPendEnt(o))et+='<span class="eti e2">Falta registrar entrega</span> ';
+    var d=ptDias(o.ingreso), cob=ptCobro(o), ix=PTE.indexOf(o);
+    return '<div class="pteF'+(ptCritico(o)?' critico':'')+'">'+
+      '<div onclick="ptAbrir(\''+String(o.numero).replace(/'/g,'')+'\')">'+
+        '<div class="pteL1"><b>'+esc(v.placa||'—')+'</b>'+
+          '<span>'+esc(otCorto(o.numero))+'</span></div>'+
+        '<div class="pteL2">'+esc([v.marca,v.modelo].filter(Boolean).join(' ')||'—')+
+          ' · '+esc(c.nombre||'—')+'</div>'+
+        '<div class="pteL3">'+et+'</div>'+
+        '<div class="pteL3">'+ptCobroTexto(cob)+'</div>'+
+        '<div class="pteL4">'+esc(estadoBonito(o.estado_taller))+' · '+
+          d+' día'+(d===1?'':'s')+' en taller</div>'+
+      '</div>'+
+      (ptPendEnt(o)
+        ? '<button class="btn chico '+(cob.limpia?'ok':'sec')+' pteBtn" '+
+          'onclick="event.stopPropagation();ptEntregar('+ix+')">🚗 Entregar</button>'
+        : '')+
+    '</div>';
+  }).join('');
+}
+/* Entrega rápida desde el reporte. Si algo quedó sin cobrar, el aviso
+   lo dice con todas sus letras antes de soltar el carro: una vez
+   entregado, cobrar lo que falta es correr detrás del cliente. */
+function ptEntregar(i){
+  var o=PTE[i]; if(!o)return;
+  var v=o.vehiculos||{}, c=ptCobro(o);
+  var cuerpo='<b>'+esc(v.placa||'—')+'</b> · '+esc(otCorto(o.numero))+'<br>'+
+    esc([v.marca,v.modelo].filter(Boolean).join(' '))+'<br><br>';
+  /* Con algo sin cobrar no se entrega: solo se dice qué falta. */
+  if(!c.limpia){
+    cuerpo+='<span style="color:var(--rojo)"><b>No se puede entregar todavía.</b></span><br><br>';
+    if(!c.pagada)cuerpo+='· La OT <b>no está cobrada</b>. Total '+S(Math.round(c.total))+'.<br>';
+    else if(c.falta>0)cuerpo+='· Falta cobrar <b>'+S(Math.round(c.falta))+'</b> de '+
+                              S(Math.round(c.total))+'.<br>';
+    if(c.adic)cuerpo+='· Hay <b>'+c.adic+' adicional'+(c.adic===1?'':'es')+
+                      '</b> sin aprobar por '+S(Math.round(c.montoAdic))+'.<br>';
+    cuerpo+='<br>Que caja o el asesor cierren el cobro y vuelve a intentarlo.';
+    pregunta('Falta cerrar el cobro',cuerpo,[{t:'Entendido'}]);
+    return;
+  }
+  cuerpo+='La OT está <b>cobrada por completo</b> ('+S(Math.round(c.cobrado||c.total))+
+          '). No queda nada pendiente.';
+  pregunta('¿Entregar el vehículo?',cuerpo,
+    [{t:'Sí, entregar',p:true,fn:function(){
+        var ahora=new Date().toISOString();
+        sb.from('ordenes').update({estado_taller:'ENTREGADO',entregado_el:ahora})
+          .eq('id',o.id)
+          .then(function(r){
+            if(r.error){aviso('No se pudo registrar la entrega: '+r.error.message);return}
+            auditar('TALLER_ENTREGADO','orden',o.numero,
+              'Entregado desde el reporte de pendientes · '+SESION.nombre,0);
+            conex('Entregado · '+(v.placa||o.numero));
+            cargarPendientes();
+          },function(){aviso('Sin conexión: la entrega no se registró.')});
+      }},
+     {t:'Cancelar'}]);
+}
+function estadoBonito(k){
+  var m={RECIBIDO:'Recibido',EN_DIAGNOSTICO:'En diagnóstico',EN_PROCESO:'En proceso',
+         LISTO:'Listo',ENTREGADO:'Entregado'};
+  return m[k]||k||'—';
+}
+function ptAbrir(num){ if(typeof abrirOrden==='function')abrirOrden(num) }
+
+/* ---- el aviso de lo que sí se puede perder ---- */
+var AVISO_PAGADAS_VISTO=false;
+function revisarPagadasSinMecanico(){
+  if(AVISO_PAGADAS_VISTO)return;
+  if(!sb||!SESION)return;
+  if(['jefe_taller','admin_general','admin_local'].indexOf(SESION.rol)<0)return;
+  var desde=new Date(); desde.setDate(desde.getDate()-PTE_DIAS); desde.setHours(0,0,0,0);
+  /* El mecánico vacío puede estar como null o como cadena vacía, y
+     filtrar eso en PostgREST es frágil: se trae lo pagado del periodo
+     y se cuenta acá, que no falla. */
+  var q=sb.from('ordenes').select('id,mecanico_nombre')
+    .eq('estado_ot','PAGADA')
+    .not('estado_taller','eq','ANULADO')
+    .gte('ingreso',desde.toISOString());
+  if(SESION.rol!=='admin_general')q=q.eq('sede_id',SESION.sede_id);
+  q.limit(600).then(function(r){
+    if(r.error||!r.data)return;
+    var n=r.data.filter(ptSinMecanico).length;
+    if(!n)return;
+    AVISO_PAGADAS_VISTO=true;
+    pregunta('Mecánico sin registrar',
+      'Tienes <b>'+n+'</b> servicio'+(n===1?'':'s')+' pagado'+(n===1?'':'s')+
+      ' sin mecánico asignado.<br><br>'+
+      'El trabajo ya se cobró, así que si no se anota ahora quién lo hizo, ese dato se pierde.',
+      [{t:'Ver cuáles son',p:true,fn:function(){
+          if(typeof irA==='function')irA('recepcion');
+          setTimeout(function(){ abrirPendientes(); setTimeout(function(){ptFiltro('crit')},500) },250);
+        }},
+       {t:'Después'}]);
+  },function(){});
 }
 function abrirHoja(){
   if(!HOJA_FECHA)HOJA_FECHA=hojaHoyISO();
@@ -11401,7 +11685,7 @@ function aseCerrarCobro(){
         guardarSnapshot(o.id,'PAGADA',ASE_LIN,t.tot,ASE_CIERRE+' · comprobante '+fact+' · '+SESION.nombre);
         $('asesorLista').innerHTML='<div class="aviso ok"><b>Pago registrado · '+otCorto(o.ot)+'</b><br>'+
           'Comprobante <b>'+esc(fact)+'</b> · '+ASE_CIERRE+' · '+esc(SESION.nombre)+' · '+S(t.tot)+'<br>'+
-          'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>'+
+          'La OT queda <b>PAGADA</b>. El taller registra la entrega cuando el cliente se lleve el vehículo.</div>'+
           '<button class="btn chico sec" style="margin-top:12px" onclick="pintarAsesor()">← Volver a la lista</button>';
         ASE_CIERRE='';ASE_VOUCHER=null;
       },function(){msg.innerHTML='<div class="aviso rojo" style="margin:0">Sin conexión al guardar.</div>'});
@@ -11634,8 +11918,8 @@ function confirmarCobro(modo){
       auditar('COBRA','orden',o.ot,'Comprobante '+fact+' · '+forma+(modo==='tarjeta_validada'?' (validado voucher del asesor)':'')+' · '+caj.n,tot);
       guardarSnapshot(o.id,'PAGADA',CAJA_LIN,tot,forma+' · comprobante '+fact+' · '+caj.n);
       $('cajaZona').innerHTML='<div class="aviso ok"><b>Pago registrado · '+otCorto(o.ot)+'</b><br>'+
-        'Comprobante <b>'+fact+'</b> · '+forma+' · '+caj.n+' · '+S(tot)+'<br>'+
-        'La OT queda PAGADA: el vehículo puede entregarse cuando el taller lo marque listo.</div>'+
+        'Comprobante <b>'+esc(fact)+'</b> · '+forma+' · '+esc(caj.n)+' · '+S(tot)+'<br>'+
+        'La OT queda <b>PAGADA</b>. El taller registra la entrega cuando el cliente se lleve el vehículo.</div>'+
         '<button class="btn chico sec" style="margin-top:12px" onclick="pintarCaja()">← Volver a la lista</button>';
     },function(){});
   }
@@ -11658,7 +11942,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=176;
+var APP_VER=181;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
