@@ -1,4 +1,4 @@
-<!--IZAV:174-->
+<!--IZAV:175-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -143,6 +143,30 @@ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
 .cen{text-align:center}
+/* Lista de usuarios: cabe en el celular y se abre al tocarla */
+.usrFila{border:1px solid var(--gris2);border-radius:10px;margin-bottom:7px;overflow:hidden}
+.usrFila.enEdicion{border-color:var(--rojo)}
+.usrCab{display:flex;align-items:center;gap:9px;padding:10px 11px;cursor:pointer}
+.usrCab .pin{flex:0 0 auto;width:8px;height:8px;border-radius:50%}
+.usrCab .pin.ok{background:var(--verde)}
+.usrCab .pin.no{background:var(--mudo)}
+.usrCab .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.usrCab .txt b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.usrCab .txt i{font-style:normal;font-size:11px;color:var(--mudo);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.usrCab .fl{flex:0 0 auto;color:var(--mudo);font-size:11px}
+.usrDet{padding:0 11px 11px;border-top:1px solid var(--gris2)}
+.usrDet>div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13px}
+.usrDet>div+div{border-top:1px solid rgba(255,255,255,.06)}
+.usrDet>div span{color:var(--mudo);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.usrDet .btn{width:100%;margin-top:10px}
+/* La ✕ para vaciar la caja de servicio sin borrar letra por letra */
+.limpiaX{position:absolute;right:7px;top:50%;transform:translateY(-50%);display:none;
+  width:24px;height:24px;border:0;border-radius:50%;background:var(--gris2);color:var(--mudo);
+  font-size:12px;line-height:1;cursor:pointer;padding:0;z-index:2}
+.limpiaX:hover{background:var(--rojo);color:#fff}
+.limpiaX.on{display:flex;align-items:center;justify-content:center}
+#servDesc{padding-right:34px}
 /* Rótulo de grupo dentro de la lista de repuestos */
 .invGrupo{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mudo);
   font-weight:700;padding:11px 4px 5px;border-top:1px solid var(--gris2);margin-top:4px}
@@ -1254,6 +1278,8 @@ tr.sel td{background:var(--rojo-cl)}
             <div style="flex:2;min-width:200px;position:relative">
               <input id="servDesc" autocomplete="off" placeholder="Toca para ver la lista o escribe"
                      oninput="srvEscribe(this.value)" onfocus="srvAbrir()" onblur="srvCerrar()">
+              <button type="button" class="limpiaX" id="servX" title="Borrar"
+                      onmousedown="event.preventDefault()" onclick="srvLimpiar()">✕</button>
               <div class="srvLista" id="servLista" onmousedown="event.preventDefault()"></div>
             </div>
             <div style="flex:0 1 110px;min-width:92px"><label style="margin:0 0 4px">Precio</label>
@@ -1459,10 +1485,11 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-usuarios">
   <div class="card">
     <h3>👥 Usuarios y permisos</h3>
-    <div style="overflow-x:auto"><table id="usrTabla"></table></div>
+    <div id="usrTabla"></div>
   </div>
   <div class="card">
-    <h3>Crear o actualizar usuario</h3>
+    <h3 id="usrFormTit">Crear usuario</h3>
+    <div class="hint" id="usrFormSub" style="margin:0 0 10px">Toca una fila de arriba para editarla.</div>
     <div class="grid g3">
       <div><label>Usuario (sin espacios)</label><input id="nuUsuario" placeholder="jperez"></div>
       <div><label>Nombre completo</label><input id="nuNombre" placeholder="Juan Pérez"></div>
@@ -1475,14 +1502,18 @@ tr.sel td{background:var(--rojo-cl)}
         <option value="admin_local">Administrador Local</option>
         <option value="admin_general">Administrador General</option>
       </select></div>
-      <div><label>Local</label><select id="nuSede">
-        <option value="1">Las Américas</option><option value="2">Óvalo</option></select></div>
-      <div><label>PIN (4 dígitos)</label><input id="nuPin" maxlength="6" inputmode="numeric" placeholder="0000"></div>
+      <div><label>Local</label><select id="nuSede"></select></div>
+      <div><label id="nuPinLbl">PIN (4 dígitos)</label>
+        <input id="nuPin" maxlength="6" inputmode="numeric" placeholder="0000"></div>
+      <div id="nuActivoCaja" style="display:none"><label>Estado</label>
+        <select id="nuActivo"><option value="1">Activo</option><option value="0">Inactivo</option></select></div>
     </div>
     <div class="aviso rojo" style="margin-top:14px">Para crear un usuario debes confirmar con tu propio PIN de administrador general.</div>
     <div class="fila">
       <div style="min-width:170px"><label>Tu PIN</label><input id="nuAdminPin" type="password" maxlength="6" inputmode="numeric"></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><button class="btn chico" onclick="crearUsuario()">Guardar usuario</button></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><button class="btn chico" id="usrGuardar" onclick="guardarUsuario()">Guardar usuario</button></div>
+      <div id="usrCancelaCaja" style="flex:0 0 auto;align-self:flex-end;display:none">
+        <button class="btn chico sec" onclick="usrNuevo()">Cancelar edición</button></div>
     </div>
     <div id="usrMsg" style="margin-top:12px"></div>
   </div>
@@ -2756,8 +2787,31 @@ if(window.visualViewport){
 window.addEventListener('resize',srvAcomodarLista);
 function srvAbrir(){
   SRV_ABIERTA=true;
+  var c=$('servFam'), d=$('servDesc'), v=d?d.value:'';
+  /* Si lo que está escrito es un servicio ya elegido, filtrar por ese
+     texto deja la lista vacía y no hay cómo cambiar de opción sin
+     borrar letra por letra. En ese caso se abre la familia completa. */
+  if(SRV_SEL||srvDeFamilia(c?c.value:'').filter(function(x){
+       return String(x.descripcion).toLowerCase()
+              .indexOf(String(v).trim().toLowerCase())>-1;
+     }).length===0) v='';
+  srvPintarLista(c?c.value:'', v);
+}
+function srvLimpiar(){
+  var d=$('servDesc');
+  if(d)d.value='';
+  SRV_SEL=null;
+  var pr=$('servPrecio'); if(pr)pr.value='';
+  srvDato();
+  SRV_ABIERTA=true;
   var c=$('servFam');
-  srvPintarLista(c?c.value:'', $('servDesc')?$('servDesc').value:'');
+  srvPintarLista(c?c.value:'','');
+  if(d)d.focus();
+}
+/* La ✕ solo cuando hay algo que borrar */
+function srvXver(){
+  var d=$('servDesc'), x=$('servX');
+  if(x)x.classList.toggle('on',!!(d&&d.value));
 }
 function srvCerrar(){
   /* margen para que el clic en una opción alcance a registrarse */
@@ -2815,6 +2869,7 @@ function srvEscribe(v){
   srvDato();
 }
 function srvDato(){
+  srvXver();
   var z=$('servDato');if(!z)return;
   var p=$('servPrecio');
   if(p)p.value=SRV_SEL?Number(SRV_SEL.prec1||SRV_SEL.precio||0):'';
@@ -5309,16 +5364,120 @@ function bdAgregarAuto(clienteId){
 /* ============================================================
    USUARIOS Y PERMISOS
    ============================================================ */
+var USUARIOS_LISTA=[], USR_EDITANDO=null, USR_ABIERTO=null;
+function usrDesplegar(i){
+  var u=USUARIOS_LISTA[i]; if(!u)return;
+  USR_ABIERTO=(USR_ABIERTO===u.usuario)?null:u.usuario;
+  cargarUsuarios();
+}
 function cargarUsuarios(){
   if(!sb)return;
+  usrLlenarSedes();
   sb.rpc('listar_usuarios').then(function(r){
     var d=r.data||[];
-    $('usrTabla').innerHTML='<tr><th>Usuario</th><th>Nombre</th><th>Perfil</th><th>Local</th><th>Estado</th></tr>'+
-      d.map(function(u){
-        return '<tr><td class="num">'+u.usuario+'</td><td><b>'+u.nombre+'</b></td>'+
-        '<td>'+((ROLES[u.rol]||{}).t||u.rol)+'</td><td>'+u.sede+'</td>'+
-        '<td>'+(u.activo?'<span class="eti e4">Activo</span>':'<span class="eti e1">Inactivo</span>')+'</td></tr>';
-      }).join('');
+    USUARIOS_LISTA=d;
+    /* En el celular una tabla de seis columnas obliga a arrastrar de
+       lado. Cada persona ocupa una fila corta y se despliega al tocarla. */
+    $('usrTabla').innerHTML=d.map(function(u,i){
+      var abierta=(USR_ABIERTO===u.usuario);
+      return '<div class="usrFila'+(abierta?' abierta':'')+
+        (USR_EDITANDO===u.usuario?' enEdicion':'')+'">'+
+        '<div class="usrCab" onclick="usrDesplegar('+i+')">'+
+          '<span class="pin '+(u.activo?'ok':'no')+'"></span>'+
+          '<span class="txt"><b>'+esc(u.nombre)+'</b>'+
+            '<i>'+esc(((ROLES[u.rol]||{}).t||u.rol)+' · '+(u.sede||''))+'</i></span>'+
+          '<span class="fl">'+(abierta?'▴':'▾')+'</span>'+
+        '</div>'+
+        (abierta?'<div class="usrDet">'+
+          '<div><span>Usuario</span><b>'+esc(u.usuario)+'</b></div>'+
+          '<div><span>Perfil</span><b>'+esc((ROLES[u.rol]||{}).t||u.rol)+'</b></div>'+
+          '<div><span>Local</span><b>'+esc(u.sede||'—')+'</b></div>'+
+          '<div><span>Estado</span>'+(u.activo
+              ?'<span class="eti e4">Activo</span>'
+              :'<span class="eti e1">Inactivo</span>')+'</div>'+
+          '<button class="btn chico sec" onclick="usrEditar('+i+')">Editar</button>'+
+        '</div>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+/* El desplegable traía dos locales escritos a mano: con cinco en
+   operación no se podía dar de alta a nadie en los otros tres. */
+function usrLlenarSedes(){
+  var sel=$('nuSede'); if(!sel)return;
+  function pintar(lista){
+    var v=sel.value;
+    sel.innerHTML=lista.map(function(s){
+      return '<option value="'+s.id+'">'+esc(s.nombre)+'</option>';
+    }).join('');
+    if(v)sel.value=v;
+  }
+  if(SEDES_TODAS&&SEDES_TODAS.length){pintar(SEDES_TODAS);return}
+  if(typeof cargarSedesTodas==='function')
+    cargarSedesTodas(function(){ if(SEDES_TODAS&&SEDES_TODAS.length)pintar(SEDES_TODAS) });
+}
+function usrEditar(i){
+  var u=USUARIOS_LISTA[i]; if(!u)return;
+  USR_EDITANDO=u.usuario;
+  usrLlenarSedes();
+  $('nuUsuario').value=u.usuario; $('nuUsuario').disabled=true;
+  $('nuNombre').value=u.nombre||'';
+  $('nuRol').value=u.rol||'jefe_taller';
+  /* listar_usuarios puede devolver el nombre del local y no su id */
+  var sid=u.sede_id;
+  if(!sid&&u.sede&&SEDES_TODAS)
+    (SEDES_TODAS.filter(function(x){return x.nombre===u.sede})[0]||{}).id!==undefined&&
+      (sid=(SEDES_TODAS.filter(function(x){return x.nombre===u.sede})[0]||{}).id);
+  if(sid)$('nuSede').value=sid;
+  $('nuPin').value='';
+  $('nuPinLbl').textContent='PIN nuevo (en blanco = no se cambia)';
+  $('nuActivoCaja').style.display='';
+  $('nuActivo').value=u.activo?'1':'0';
+  $('usrCancelaCaja').style.display='';
+  $('usrFormTit').textContent='Editar a '+(u.nombre||u.usuario);
+  $('usrFormSub').textContent='El usuario no se puede renombrar. Deja el PIN en blanco para conservarlo.';
+  $('usrGuardar').textContent='Guardar cambios';
+  $('usrMsg').innerHTML='';
+  cargarUsuarios();
+  $('nuNombre').focus();
+}
+function usrNuevo(){
+  USR_EDITANDO=null;
+  $('nuUsuario').value='';$('nuUsuario').disabled=false;
+  $('nuNombre').value='';$('nuPin').value='';$('nuAdminPin').value='';
+  $('nuPinLbl').textContent='PIN (4 dígitos)';
+  $('nuActivoCaja').style.display='none';
+  $('usrCancelaCaja').style.display='none';
+  $('usrFormTit').textContent='Crear usuario';
+  $('usrFormSub').textContent='Toca Editar en una fila de arriba para modificarla.';
+  $('usrGuardar').textContent='Guardar usuario';
+  $('usrMsg').innerHTML='';
+  cargarUsuarios();
+}
+function guardarUsuario(){ USR_EDITANDO?editarUsuario():crearUsuario() }
+function editarUsuario(){
+  var msg=$('usrMsg');
+  var n=$('nuNombre').value.trim(), pin=$('nuPin').value.trim(),
+      apin=$('nuAdminPin').value.trim();
+  if(!n){msg.innerHTML='<div class="aviso rojo">El nombre no puede quedar vacío.</div>';return}
+  if(apin.length<4){msg.innerHTML='<div class="aviso rojo">Confirma con tu PIN.</div>';return}
+  if(pin&&pin.length<4){msg.innerHTML='<div class="aviso rojo">El PIN nuevo debe tener 4 dígitos. Déjalo en blanco para no cambiarlo.</div>';return}
+  msg.innerHTML='<div class="hint">Guardando…</div>';
+  sb.rpc('editar_usuario_app',{
+    p_admin:SESION.usuario,p_admin_pin:apin,p_usuario:USR_EDITANDO,
+    p_nombre:n,p_rol:$('nuRol').value,p_sede:Number($('nuSede').value),
+    p_activo:$('nuActivo').value==='1',p_pin:pin||null
+  }).then(function(r){
+    if(r.error){
+      msg.innerHTML='<div class="aviso rojo">'+esc(r.error.message)+
+        (/function .*does not exist/i.test(r.error.message)?'<br>Falta correr el paso 46.':'')+'</div>';
+      return;
+    }
+    if(String(r.data).indexOf('ERROR')===0){
+      msg.innerHTML='<div class="aviso rojo">'+esc(r.data)+'</div>';return;
+    }
+    msg.innerHTML='<div class="aviso ok">Cambios guardados.</div>';
+    usrNuevo();
   });
 }
 function crearUsuario(){
@@ -5337,8 +5496,7 @@ function crearUsuario(){
       msg.innerHTML='<div class="aviso rojo">'+r.data+'</div>';return;
     }
     msg.innerHTML='<div class="aviso ok">Usuario guardado.</div>';
-    $('nuUsuario').value='';$('nuNombre').value='';$('nuPin').value='';$('nuAdminPin').value='';
-    cargarUsuarios();
+    usrNuevo();
   });
 }
 
@@ -11322,7 +11480,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=174;
+var APP_VER=175;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
