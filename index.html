@@ -1,4 +1,4 @@
-<!--IZAV:183-->
+<!--IZAV:184-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1633,16 +1633,15 @@ tr.sel td{background:var(--rojo-cl)}
 <!-- ================= TALLER ================= -->
 <section class="vista" id="v-tienda">
   <div class="card">
-    <h3 id="tiendaTitulo">Tienda · órdenes pendientes por estación</h3>
-    <div class="hint" style="margin:-6px 0 10px">Lo que cada estación tiene en cola, no lo que ya hizo.
-      Los montos son dinero por cobrar.</div>
+    <h3 id="tiendaTitulo">Ventanilla</h3>
+    <div class="hint" id="tiendaSub" style="margin:-6px 0 10px"></div>
     <div id="tiendaSedeSel"></div>
     <div class="fila" style="align-items:flex-end;margin-bottom:12px">
       <div style="min-width:170px"><label>Rango</label>
         <select id="tiendaRango" onchange="cambioRangoTienda()">
-          <option value="1">Hoy (1 día)</option>
+          <option value="1" selected>Hoy (1 día)</option>
           <option value="7">Últimos 7 días</option>
-          <option value="30" selected>Últimos 30 días</option>
+          <option value="30">Últimos 30 días</option>
           <option value="semprev">Semana pasada completa</option>
           <option value="mesprev">Mes pasado completo</option>
           <option value="0">Todo</option>
@@ -1655,6 +1654,10 @@ tr.sel td{background:var(--rojo-cl)}
     </div>
     <div id="leyTienda"></div>
     <div class="flujoE" id="kanbanTienda"></div>
+  </div>
+  <div class="card" id="cardEvoVent">
+    <h3 id="tituloEvoVent" style="margin:0 0 10px">OT cerradas · evolución</h3>
+    <div id="grafEvoVent"></div>
   </div>
   <div class="card">
     <h3>Detalle de la estación</h3>
@@ -1999,7 +2002,7 @@ var MODULOS={
     {v:'ventanilla',t:'Anulaciones',tab:'anul'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'tienda',t:'Tienda'},{v:'productividad',t:'Productividad'},
+    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Productividad'},
     {v:'bitacora',t:'Bitácora y transacciones'},{v:'hoja',t:'Hoja de servicios'}]},
   configuracion:{t:'Configuración',vistas:[
     {v:'usuarios',t:'Usuarios y permisos'},
@@ -8105,7 +8108,7 @@ var ETAPAS_T=[
  {k:'LISTO',         t:'Listo',          ic:'✨'},
  {k:'ENTREGADO',     t:'Entregado',      ic:'🚗'}
 ];
-var KAN_T=[],KAN_TIENDA=[],ETAPA_SEL='RECIBIDO',OT_SEL=null,TIENDA_SEL='despacho';
+var KAN_T=[],KAN_TIENDA=[],ETAPA_SEL='RECIBIDO',OT_SEL=null,TIENDA_SEL='ppto';
 function minsDesde(iso){ return iso?Math.round((Date.now()-new Date(iso))/60000):null }
 
 function cambioRangoTaller(){
@@ -8689,10 +8692,12 @@ function elegirOT(k,ot){ETAPA_SEL=k;OT_SEL=ot;pintarKanbanTaller();
 
 /* ---- Tienda: ventanilla despacho, ventanilla ppto aprobado, asesor, caja ---- */
 var ETAPAS_TIENDA=[
- {k:'despacho',  t:'Ventanilla · por despachar', ic:'📦', d:'Esperando despacho desde que se aprobó la preliminar'},
- {k:'ppto',      t:'Ventanilla · por armar la final', ic:'🏷️', d:'Esperando la OT definitiva desde que se aprobó la preliminar'},
- {k:'asesor',    t:'Asesor · por cerrar',        ic:'🤝', d:'Esperando cierre desde que se aprobó la definitiva'},
- {k:'caja',      t:'Caja · por cobrar',          ic:'💳', d:'Esperando cobro desde que se aprobó la definitiva'}
+ {k:'ppto',     t:'OT pendientes en ventanilla', ic:'🏷️',
+  d:'Preliminar aprobada, definitiva sin aprobar'},
+ {k:'despacho', t:'OT con despacho pendiente',   ic:'📦',
+  d:'De las anteriores, las que aún tienen repuestos sin bajar al piso'},
+ {k:'cerradas', t:'OT cerradas',                 ic:'✅',
+  d:'Cobradas en el periodo elegido'}
 ];
 var TIENDA_SEDE='ACTUAL';
 function cambioRangoTienda(){
@@ -8701,7 +8706,7 @@ function cambioRangoTienda(){
   if(v!=='custom')pintarTienda();
 }
 function rangoTienda(){
-  var v=(document.getElementById('tiendaRango')||{}).value||'30';
+  var v=(document.getElementById('tiendaRango')||{}).value||'1';
   var d=new Date();d.setHours(0,0,0,0);
   if(v==='0')return {desde:null,hasta:null};
   if(v==='semprev'||v==='mesprev'){
@@ -8734,9 +8739,11 @@ function pintarTienda(){
   var zs=document.getElementById('tiendaSedeSel');
   if(zs)zs.innerHTML=selectorSedeHTML(TIENDA_SEDE,'tiendaCambiaSede');
   var tt=document.getElementById('tiendaTitulo');
-  if(tt)tt.textContent='Tienda '+(tiendaTodos()?'· todos los locales':'· '+sedeNombrePorId(sedeElegida(TIENDA_SEDE)))+
-    ' · órdenes pendientes por estación';
-  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','DEF_APROBADA'],function(lista){
+  if(tt)tt.textContent='Ventanilla '+(tiendaTodos()?'· todos los locales':'· '+sedeNombrePorId(sedeElegida(TIENDA_SEDE)));
+  var sub=document.getElementById('tiendaSub');
+  if(sub)sub.textContent='Las dos primeras son trabajo en cola; las cerradas son lo ya cobrado. '+
+    'Las de despacho pendiente están dentro de las pendientes en ventanilla, no se suman aparte.';
+  cargarOrdenesBD(['PRELIM_APROBADA','PRELIM2_APROBADA','DEF_ENVIADA','PAGADA'],function(lista){
     var ids=lista.map(function(o){return o.id});
     if(!ids.length){KAN_TIENDA=[];pintarKanbanTienda();return}
     sb.from('orden_detalle').select('orden_id,tipo,cobrado,despachado_el').in('orden_id',ids).then(function(r){
@@ -8750,19 +8757,99 @@ function pintarTienda(){
       lista.filter(function(o){return tiendaEnRango(o.ingreso)}).forEach(function(o){
         var c=por[o.id]||{t:0,d:0};
         var enPpto=(o.estado_ot==='PRELIM_APROBADA'||o.estado_ot==='PRELIM2_APROBADA'||o.estado_ot==='DEF_ENVIADA');
-        if(enPpto&&c.t>c.d)KAN_TIENDA.push(Object.assign({},o,{est:'despacho',mins:minsDesde(o.aprob)||0,extra:c.d+'/'+c.t+' despachados'}));
         if(enPpto)KAN_TIENDA.push(Object.assign({},o,{est:'ppto',mins:minsDesde(o.aprob)||0,
           extra:o.estado_ot==='DEF_ENVIADA'?'final enviada':'por armar final'}));
-        if(o.estado_ot==='DEF_APROBADA'&&!o.voucher)KAN_TIENDA.push(Object.assign({},o,{est:'asesor',mins:minsDesde(o.def_aprob)||0,extra:'por cerrar'}));
-        if(o.estado_ot==='DEF_APROBADA')KAN_TIENDA.push(Object.assign({},o,{est:'caja',mins:minsDesde(o.def_aprob)||0,
-          extra:o.voucher?'validar voucher':'por cobrar'}));
+        if(enPpto&&c.t>c.d)KAN_TIENDA.push(Object.assign({},o,{est:'despacho',mins:minsDesde(o.aprob)||0,
+          extra:c.d+' de '+c.t+' repuestos despachados'}));
+        if(o.estado_ot==='PAGADA')KAN_TIENDA.push(Object.assign({},o,{est:'cerradas',
+          mins:minsDesde(o.def_aprob||o.aprob)||0,extra:'cobrada'}));
       });
       pintarKanbanTienda();
     },function(){});
   },tiendaTodos()?null:sedeElegida(TIENDA_SEDE));
 }
+
+/* ---- Evolución de las OT cerradas ----
+   Un cajón por día cuando el rango es corto, por mes cuando es largo.
+   El rango de un solo día no tiene evolución que mostrar: se dice. */
+function ventCajones(){
+  var v=(document.getElementById('tiendaRango')||{}).value||'1';
+  var r=rangoTienda();
+  var hoy=new Date(); hoy.setHours(23,59,59,999);
+  var desde=r.desde, hasta=r.hasta||hoy;
+  if(!desde){
+    /* "Todo": se arranca en el ingreso más viejo que haya cargado */
+    var min=null;
+    KAN_TIENDA.forEach(function(o){
+      var f=new Date(o.ingreso); if(!min||f<min)min=f;
+    });
+    desde=min||new Date(hoy.getFullYear(),0,1);
+  }
+  var dias=Math.round((hasta-desde)/86400000)+1;
+  var porMes=dias>70;
+  var cajones=[],idx={},k=0;
+  if(porMes){
+    var c=new Date(desde.getFullYear(),desde.getMonth(),1);
+    var M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+    while(c<=hasta){
+      cajones.push({lab:M[c.getMonth()]+' '+String(c.getFullYear()).slice(2),n:0,monto:0});
+      idx[c.getFullYear()+'-'+c.getMonth()]=k++;
+      c=new Date(c.getFullYear(),c.getMonth()+1,1);
+    }
+  }else{
+    var D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    var d=new Date(desde.getFullYear(),desde.getMonth(),desde.getDate());
+    while(d<=hasta){
+      cajones.push({lab:D[d.getDay()]+' '+d.getDate(),n:0,monto:0});
+      idx[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]=k++;
+      d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);
+    }
+  }
+  deTienda('cerradas').forEach(function(o){
+    var f=new Date(o.ingreso);
+    var key=porMes?(f.getFullYear()+'-'+f.getMonth())
+                  :(f.getFullYear()+'-'+f.getMonth()+'-'+f.getDate());
+    var j=idx[key];
+    if(j!==undefined){ cajones[j].n++; cajones[j].monto+=Number(o.total||0) }
+  });
+  return {cajones:cajones,porMes:porMes};
+}
+function pintarEvoVentanilla(){
+  var z=document.getElementById('grafEvoVent');
+  if(!z)return;
+  var cerr=deTienda('cerradas');
+  var tt=document.getElementById('tituloEvoVent');
+  var monto=cerr.reduce(function(a,o){return a+Number(o.total||0)},0);
+  if(tt)tt.textContent='OT cerradas · '+cerr.length+
+    (cerr.length===1?' orden · ':' órdenes · ')+S(Math.round(monto))+
+    ' · ticket '+S(cerr.length?Math.round(monto/cerr.length):0);
+  var v=(document.getElementById('tiendaRango')||{}).value||'1';
+  if(v==='1'){
+    z.innerHTML='<div class="hint" style="margin:0">Un solo día no tiene evolución. '+
+      'Elige un rango más largo arriba para ver las barras.</div>';
+    return;
+  }
+  if(!cerr.length){
+    z.innerHTML='<div class="vacio"><b>Sin OT cerradas en este rango</b>'+
+      'Aparecen cuando caja o el asesor marcan la orden como pagada.</div>';
+    return;
+  }
+  var d=ventCajones(), B=d.cajones;
+  var max=Math.max.apply(null,B.map(function(b){return b.monto}).concat([1]));
+  var muchos=B.length>14;
+  z.innerHTML='<div class="gb" style="height:190px'+(muchos?';gap:3px':'')+'">'+
+    B.map(function(b){
+      return '<div class="col"><div class="vv">'+(b.n?b.n:'—')+'</div>'+
+        '<div class="bar'+(b.monto===0?' sec':'')+'" style="height:'+
+          Math.round(b.monto/max*100)+'%"></div>'+
+        '<div class="ll"'+(muchos?' style="font-size:8.5px;line-height:1.1"':'')+'>'+
+        (muchos?String(b.lab).replace(' ','<br>'):b.lab)+'</div></div>';
+    }).join('')+'</div>'+
+    '<div class="hint">Alto de la barra: facturado. Número encima: cuántas OT. Por '+
+    (d.porMes?'mes':'día')+'.</div>';
+}
 function deTienda(k){return KAN_TIENDA.filter(function(o){return o.est===k})}
-var ETAPA_T_ABIERTA='despacho';
+var ETAPA_T_ABIERTA='ppto';
 function toggleEtapaT(k){
   ETAPA_T_ABIERTA=(ETAPA_T_ABIERTA===k)?null:k;
   pintarKanbanTienda();
@@ -8770,6 +8857,7 @@ function toggleEtapaT(k){
 function pintarKanbanTienda(){
   var todos=tiendaTodos();
   document.getElementById('kanbanTienda').innerHTML=ETAPAS_TIENDA.map(function(e){
+    /* marca para distinguir este kanban del de taller al pintar */
     var ots=deTienda(e.k).slice().sort(function(a,b){return b.mins-a.mins}),
         imp=ots.reduce(function(a,o){return a+o.total},0),
         ab=(ETAPA_T_ABIERTA===e.k),cuerpo='';
@@ -8789,7 +8877,9 @@ function pintarKanbanTienda(){
     return '<div class="eFila'+(ab?' on':'')+'" onclick="toggleEtapaT(&quot;'+e.k+'&quot;)">'+
       '<div class="cabE">'+
         '<span class="ic">'+e.ic+'</span>'+
-        '<span class="tt">'+e.t+'<i>'+S(imp)+' · '+promMins(ots)+' promedio</i></span>'+
+        '<span class="tt">'+e.t+'<i>'+S(imp)+' · ticket '+
+          S(ots.length?Math.round(imp/ots.length):0)+
+          (e.k==='cerradas'?'':' · '+promMins(ots)+' en cola')+'</i></span>'+
         '<span class="nn">'+ots.length+'</span>'+
         '<span class="fl">'+(ab?'▲':'▼')+'</span>'+
       '</div>'+cuerpo+'</div>';
@@ -8802,6 +8892,7 @@ function pintarKanbanTienda(){
   else ots.sort(function(a,b){return b.mins-a.mins});
   var ly=document.getElementById('leyTienda');
   if(ly)ly.innerHTML=avisoPaso30()+(todos?leyendaSedes(KAN_TIENDA.map(function(o){return o.sede})):'');
+  pintarEvoVentanilla();
   document.getElementById('tablaTienda').innerHTML=
     '<div style="margin-bottom:12px"><span style="font-size:19px">'+e.ic+'</span> '+
       '<b class="cond" style="font-size:19px">'+e.t+'</b> · '+ots.length+(ots.length===1?' orden':' órdenes')+
@@ -11963,7 +12054,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=183;
+var APP_VER=184;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
