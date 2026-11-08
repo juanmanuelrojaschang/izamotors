@@ -1,4 +1,4 @@
-<!--IZAV:184-->
+<!--IZAV:185-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1093,7 +1093,6 @@ tr.sel td{background:var(--rojo-cl)}
         <button class="btn full sec" onclick="abrirListado()">🔍 Buscar cliente</button>
         <button class="btn full sec" onclick="abrirCrearCliente()">✎ Editar cliente</button>
         <button class="btn full sec" onclick="abrirNuevoCliente()">👤 Crear cliente</button>
-        <button class="btn full sec" onclick="abrirPendientes()">🔧 Pendientes del taller<span class="cnt" id="cntPte"></span></button>
       </div>
     </div>
 
@@ -2000,6 +1999,7 @@ var MODULOS={
     {v:'ventanilla',t:'Ventanilla'},
     {v:'ventanilla',t:'Observaciones',tab:'observ'},
     {v:'ventanilla',t:'Anulaciones',tab:'anul'},
+    {v:'recepcion',t:'Pendientes del taller',tab:'pendientes'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
     {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Productividad'},
@@ -2030,11 +2030,18 @@ function pintarDrawer(){
     html+='<div class="mod-t">'+MODULOS[m].t+'</div>';
     subs.forEach(function(x){
       /* algunas entradas abren una bandeja dentro de su vista */
-      var on=(VISTA_ACT===x.v)&&(x.tab?VENT_TAB===x.tab:(x.v!=='ventanilla'||VENT_TAB==='ordenes'));
+      var on;
+      if(x.tab==='pendientes')
+        on=(VISTA_ACT===x.v)&&pteAbierto();
+      else if(x.v==='recepcion')
+        on=(VISTA_ACT===x.v)&&!pteAbierto();
+      else
+        on=(VISTA_ACT===x.v)&&(x.tab?VENT_TAB===x.tab:(x.v!=='ventanilla'||VENT_TAB==='ordenes'));
       html+='<button class="mod-i'+(on?' on':'')+'" '+
         'onclick="irDesdeMenu(\''+m+'\',\''+x.v+'\','+(x.tab?'\''+x.tab+'\'':'null')+')">'+x.t+
         (x.tab==='observ'?'<span class="cnt" id="cntObsMenu"></span>':'')+
-        (x.tab==='anul'?'<span class="cnt" id="cntAnuMenu"></span>':'')+'</button>';
+        (x.tab==='anul'?'<span class="cnt" id="cntAnuMenu"></span>':'')+
+        (x.tab==='pendientes'?'<span class="cnt" id="cntPteMenu"></span>':'')+'</button>';
     });
   });
   document.getElementById('drawerMenu').innerHTML=html;
@@ -2043,7 +2050,13 @@ function irDesdeMenu(m,v,tab){
   MODULO_ACT=m;
   document.getElementById('drawer').classList.remove('on');
   ir(v);
+  if(tab==='pendientes'){ try{ abrirPendientes() }catch(e){} return }
+  if(v==='recepcion'){ try{ cerrarPendientes() }catch(e){} return }
   if(tab)try{ ventTab(tab) }catch(e){}
+}
+function pteAbierto(){
+  var pp=document.getElementById('panelPendientes');
+  return !!(pp&&!pp.classList.contains('oculto'));
 }
 function vistasPermitidas(){
   return (ROLES[SESION?SESION.rol:'']||{}).vistas||['recepcion'];
@@ -8168,6 +8181,7 @@ function abrirPendientes(){
   var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
   var pp=document.getElementById('panelPendientes');if(pp)pp.classList.remove('oculto');
   cargarSedesTodas(function(){ detectarEsPrueba(function(){ cargarPendientes() }) });
+  try{ ptContador() }catch(e){}
   if(pp)pp.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function cerrarPendientes(){
@@ -8186,7 +8200,7 @@ function ptContador(){
     if(r.error)return;
     var l=(r.data||[]).filter(function(o){return ptPendMec(o)||ptPendEnt(o)});
     var cri=l.filter(ptCritico).length;
-    var e=document.getElementById('cntPte');
+    var e=document.getElementById('cntPteMenu');
     if(e){
       e.textContent=l.length?String(l.length):'';
       e.classList.toggle('alerta',cri>0);
@@ -12054,7 +12068,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=184;
+var APP_VER=185;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
