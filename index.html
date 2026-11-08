@@ -1,4 +1,4 @@
-<!--IZAV:172-->
+<!--IZAV:173-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6423,6 +6423,25 @@ function impBajarDatos(que,entregar){
     },function(){impMsg('No pude leer los mecánicos.',true)});
     return;
   }
+  if(que==='mm'){
+    /* Sale con los mismos nombres de columna y en una hoja VEHICULOS,
+       para poder bajarlo, corregirlo y volverlo a subir tal cual. */
+    sb.from('mm_vehiculos').select('*').order('marca').order('modelo').limit(2000)
+      .then(function(r){
+        if(r.error){
+          impMsg('No pude leer el preciario de mantenimiento mayor: '+r.error.message+
+                 (/does not exist/i.test(r.error.message)?' · Falta correr el paso 45.':''),true);
+          return;
+        }
+        var d=r.data||[];
+        if(!d.length){impMsg('El preciario de mantenimiento mayor está vacío: todavía no se ha subido el Excel.',true);return}
+        entregar(d.map(function(v){
+          var o={};MM_COLS.forEach(function(c){o[c]=(v[c]===null||v[c]===undefined)?'':v[c]});
+          return o;
+        }),'VEHICULOS');
+      },function(){impMsg('No pude leer el preciario de mantenimiento mayor.',true)});
+    return;
+  }
   /* stock: son 35.000 filas, van por páginas */
   impPaginar('catalogo_stock',
     'stock,ubicacion,sedes(nombre),catalogo!inner(codigo,descripcion,codigo2,marca,modelo,prec1,prec2,prec3,prec4,activo)',
@@ -11300,7 +11319,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=172;
+var APP_VER=173;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
