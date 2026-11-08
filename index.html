@@ -1,4 +1,4 @@
-<!--IZAV:175-->
+<!--IZAV:176-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -143,6 +143,15 @@ th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
 td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .der{text-align:right}
 .cen{text-align:center}
+/* Lo más solicitado: barras horizontales, se leen en el celular */
+.demTit{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);
+  font-weight:700;margin-bottom:9px}
+.demF{margin-bottom:10px}
+.demT{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:4px}
+.demT b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.demT span{flex:0 0 auto;color:var(--mudo);font-size:11px}
+.demB{height:7px;background:var(--gris2);border-radius:4px;overflow:hidden}
+.demB i{display:block;height:100%;background:var(--rojo);border-radius:4px}
 /* Lista de usuarios: cabe en el celular y se abre al tocarla */
 .usrFila{border:1px solid var(--gris2);border-radius:10px;margin-bottom:7px;overflow:hidden}
 .usrFila.enEdicion{border-color:var(--rojo)}
@@ -1676,8 +1685,10 @@ tr.sel td{background:var(--rojo-cl)}
       <h3 style="margin:0" id="prodTitulo">Productividad</h3>
       <div class="modo" style="margin:0 0 0 auto;max-width:380px">
         <button id="mDia" onclick="setPeriodo('dia')">Hoy</button>
+        <button id="mSemPrev" onclick="setPeriodo('semprev')">Semana pasada</button>
         <button id="mMes" onclick="setPeriodo('mes')">Mes</button>
-        <button id="mAnio" class="on" onclick="setPeriodo('anio')">Año acumulado</button>
+        <button id="mMesPrev" onclick="setPeriodo('mesprev')">Mes pasado</button>
+        <button id="mAnio" class="on" onclick="setPeriodo('anio')">Año</button>
       </div>
     </div>
     <div id="prodFiltroZona"></div>
@@ -1702,6 +1713,18 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="kpiFila" id="flujoKpis" style="margin-bottom:12px"></div>
     <div id="grafFlujo"></div>
     <div id="flujoTabla" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h3 id="tituloTicket" style="margin:0 0 10px">Ticket promedio</h3>
+    <div id="grafTicket"></div>
+  </div>
+
+  <div class="card">
+    <h3 id="tituloDemanda" style="margin:0 0 4px">Lo más solicitado</h3>
+    <div class="hint" id="demandaSub" style="margin:0 0 12px"></div>
+    <div id="demandaServ"></div>
+    <div id="demandaRep" style="margin-top:18px"></div>
   </div>
 
   <div class="card">
@@ -8969,13 +8992,15 @@ function prodSedeNombre(id){
   if(id===null)return 'Todos los locales';
   return sedeNombrePorId(id);
 }
+var PROD_BOTON={dia:'mDia',semprev:'mSemPrev',mes:'mMes',mesprev:'mMesPrev',anio:'mAnio'};
 function setPeriodo(p){
   PERIODO=p;
-  ['dia','mes','anio'].forEach(function(x){
-    var b=document.getElementById(x==='dia'?'mDia':(x==='mes'?'mMes':'mAnio'));
+  for(var x in PROD_BOTON){
+    var b=document.getElementById(PROD_BOTON[x]);
     if(b)b.classList.toggle('on',x===p);
-  });
+  }
   pintarProd();
+  cargarDemanda();
 }
 function setSerie(s){
   SERIE=s;
@@ -9031,16 +9056,44 @@ function cargarProdBD(){
     PROD_ORD=[];pintarProd();
   });
 }
-/* ¿la fecha cae en el periodo elegido? */
+/* El periodo es un rango con fechas de verdad. Comparar año y mes por
+   separado fallaba en los cruces: "mes pasado" en enero es diciembre
+   del año anterior, y una semana puede quedar partida entre dos años. */
+function rangoProd(p){
+  p=p||PERIODO;
+  var h=new Date(), a=h.getFullYear(), m=h.getMonth(), d=h.getDate();
+  function ini(y,mm,dd){return new Date(y,mm,dd,0,0,0,0)}
+  function fin(y,mm,dd){return new Date(y,mm,dd,23,59,59,999)}
+  if(p==='dia')     return {desde:ini(a,m,d), hasta:fin(a,m,d), t:'hoy'};
+  if(p==='mes')     return {desde:ini(a,m,1), hasta:fin(a,m+1,0), t:'mes en curso'};
+  if(p==='mesprev') return {desde:ini(a,m-1,1), hasta:fin(a,m,0), t:'mes pasado'};
+  if(p==='semprev'){
+    /* lunes de la semana pasada a domingo de la semana pasada */
+    var lunEsta=ini(a,m,d-((h.getDay()+6)%7));
+    var lunPrev=new Date(lunEsta); lunPrev.setDate(lunPrev.getDate()-7);
+    var domPrev=new Date(lunPrev); domPrev.setDate(domPrev.getDate()+6);
+    domPrev.setHours(23,59,59,999);
+    return {desde:lunPrev, hasta:domPrev, t:'semana pasada'};
+  }
+  return {desde:ini(a,0,1), hasta:fin(a,11,31), t:'año acumulado'};
+}
 function prodEnPeriodo(f,p){
   if(!f)return false;
-  p=p||PERIODO;
-  var h=new Date();
-  if(f.getFullYear()!==h.getFullYear())return false;
-  if(p==='anio')return true;
-  if(f.getMonth()!==h.getMonth())return false;
-  if(p==='mes')return true;
-  return f.getDate()===h.getDate();
+  var r=rangoProd(p);
+  return f>=r.desde && f<=r.hasta;
+}
+/* Rótulos, para no repetir ternarios por toda la pantalla */
+function prodEtq(p){
+  var t=rangoProd(p).t;
+  return t==='hoy'?'hoy'
+       :t==='mes en curso'?'del mes'
+       :t==='mes pasado'?'del mes pasado'
+       :t==='semana pasada'?'de la semana pasada':'del año';
+}
+function prodRangoTexto(p){
+  var r=rangoProd(p);
+  function f(x){return x.getDate()+'/'+(x.getMonth()+1)}
+  return (p||PERIODO)==='dia' ? f(r.desde) : f(r.desde)+' al '+f(r.hasta);
 }
 function prodLista(p){
   return (PROD_ORD||[]).filter(function(o){ return o.pag&&prodEnPeriodo(o.pag,p) });
@@ -9053,14 +9106,18 @@ function prodSeries(){
       var k=o.pag.getHours()-8; if(k<0)k=0; if(k>10)k=10;
       autos[k]++;monto[k]+=o.monto;
     });
-  } else if(PERIODO==='mes'){
-    var D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],dias=h.getDate();
-    for(i=1;i<=dias;i++){
-      var f=new Date(h.getFullYear(),h.getMonth(),i);
-      lab.push(D[f.getDay()]+' '+i);autos.push(0);monto.push(0);
+  } else if(PERIODO==='mes'||PERIODO==='mesprev'||PERIODO==='semprev'){
+    /* un cajón por día del rango, sea una semana o un mes entero */
+    var D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],rg=rangoProd(),idx={};
+    var cur=new Date(rg.desde),tope=(PERIODO==='mes')?h:rg.hasta,k=0;
+    while(cur<=tope){
+      lab.push(D[cur.getDay()]+' '+cur.getDate());autos.push(0);monto.push(0);
+      idx[cur.getFullYear()+'-'+cur.getMonth()+'-'+cur.getDate()]=k++;
+      cur=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()+1);
     }
     lista.forEach(function(o){
-      var k=o.pag.getDate()-1; if(k>=0&&k<autos.length){autos[k]++;monto[k]+=o.monto}
+      var j=idx[o.pag.getFullYear()+'-'+o.pag.getMonth()+'-'+o.pag.getDate()];
+      if(j!==undefined){autos[j]++;monto[j]+=o.monto}
     });
   } else {
     var M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
@@ -9203,9 +9260,129 @@ function pintarEvo(){
       (muchos?d.lab[i].replace(' ','<br>'):d.lab[i])+'</div></div>'}).join('')+'</div>'+
     '<div class="hint">'+titulo+' · '+
     (PERIODO==='dia'?'por hora, de 8 a.m. a 6 p.m.':
-     PERIODO==='mes'?'por día del mes, hasta hoy':'por mes del año')+'</div>';
-  $('tituloEvo').textContent='Evolución · '+
-    (PERIODO==='dia'?'hoy':PERIODO==='mes'?'mes en curso':'año acumulado');
+     PERIODO==='anio'?'por mes del año':'por día · '+prodRangoTexto())+'</div>';
+  $('tituloEvo').textContent='Evolución · '+rangoProd().t;
+}
+
+/* ============ TICKET PROMEDIO, PERIODO A PERIODO ============
+   Sale de los mismos cajones del gráfico de arriba: lo facturado
+   dividido entre las órdenes cobradas. Un periodo sin cobros no tiene
+   ticket, y se deja en blanco en vez de poner cero, que mentiría. */
+function pintarTicket(){
+  var z=document.getElementById('grafTicket');
+  if(!z)return;
+  var g=flujoGranularidad(),B=flujoDatos(g);
+  var vals=B.map(function(b){ return b.pag?Math.round(b.monto/b.pag):0 });
+  var max=Math.max.apply(null,vals.concat([1]));
+  var hay=vals.some(function(v){return v>0});
+  var tt=document.getElementById('tituloTicket');
+  if(tt)tt.textContent='Ticket promedio · '+GRANS[g].t.toLowerCase();
+  if(!hay){
+    z.innerHTML='<div class="vacio"><b>Sin órdenes cobradas en estos periodos</b>'+
+      'El ticket aparece cuando caja marque la primera orden como pagada.</div>';
+    return;
+  }
+  var muchos=B.length>14;
+  z.innerHTML='<div class="gb" style="height:190px'+(muchos?';gap:3px':'')+'">'+
+    B.map(function(b,i){
+      var v=vals[i];
+      return '<div class="col"><div class="vv">'+(v?S(v):'—')+'</div>'+
+        '<div class="bar'+(v===0?' sec':'')+'" style="height:'+Math.round(v/max*100)+'%"></div>'+
+        '<div class="ll"'+(muchos?' style="font-size:8.5px;line-height:1.1"':'')+'>'+
+        (muchos?String(b.lab).replace(' ','<br>'):b.lab)+'</div></div>';
+    }).join('')+'</div>'+
+    '<div class="hint">Facturado entre órdenes cobradas, por '+GRANS[g].t.toLowerCase()+'. '+
+    'Los periodos sin cobros salen con raya.</div>';
+}
+
+/* ============ LO MÁS SOLICITADO ============
+   Se leen las líneas del detalle del periodo elegido. Los servicios se
+   agrupan en las familias que el taller usa de verdad; los repuestos
+   se agrupan por su nombre, que es como se piden en mostrador. */
+var DEM=null, DEM_ERR='', DEM_CARGANDO=false, DEM_CLAVE='';
+var FAM_SERV=[
+  {k:'Mantenimiento mayor', re:/mantenimiento\s+mayor/},
+  {k:'Afinamiento',         re:/afinamiento|afinacion/},
+  {k:'Cambio de aceite',    re:/cambio de aceite|^ca[ ·-]/},
+  {k:'Frenos',              re:/freno/},
+  {k:'Trío electrónico',    re:/trio/},
+  {k:'Mantenimiento',       re:/mantenimiento/},
+  {k:'Lavado',              re:/lavado/},
+  {k:'Motor',               re:/motor/}
+];
+function demFamilia(d){
+  var t=hojaLlano(d);
+  for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
+  return 'Otros servicios';
+}
+/* "MOBIL 5W30 · 4/4" y "Mobil 5w30 4/4" son el mismo producto */
+function demNombre(d){
+  return String(d||'').replace(/\s*·\s*/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+}
+function cargarDemanda(){
+  var r=rangoProd(), sid=prodSedeId();
+  var clave=PERIODO+'|'+sid+'|'+r.desde.getTime();
+  if(clave===DEM_CLAVE&&DEM)return pintarDemanda();
+  DEM_CLAVE=clave;
+  if(!sb){DEM=[];DEM_ERR='sin conexión con la base';return pintarDemanda()}
+  DEM_CARGANDO=true;DEM_ERR='';pintarDemanda();
+  var q=sb.from('orden_detalle')
+    .select('tipo,descripcion,cantidad,precio_taller,anulada,'+
+            'ordenes!inner(ingreso,sede_id,estado_taller)')
+    .gte('ordenes.ingreso',r.desde.toISOString())
+    .lte('ordenes.ingreso',r.hasta.toISOString())
+    .not('ordenes.estado_taller','eq','ANULADO');
+  if(sid!==null)q=q.eq('ordenes.sede_id',sid);
+  q.limit(5000).then(function(res){
+    DEM_CARGANDO=false;
+    if(res.error){DEM=[];DEM_ERR=res.error.message;return pintarDemanda()}
+    DEM=(res.data||[]).filter(function(l){return !l.anulada});
+    pintarDemanda();
+  },function(e){
+    DEM_CARGANDO=false;DEM=[];DEM_ERR=(e&&e.message)||'no se pudo consultar';
+    pintarDemanda();
+  });
+}
+function demAgrupar(lineas,clave){
+  var m={};
+  lineas.forEach(function(l){
+    var k=clave(l.descripcion); if(!k)return;
+    if(!m[k])m[k]={k:k,n:0,monto:0};
+    var c=Number(l.cantidad)||1;
+    m[k].n+=c;
+    m[k].monto+=(Number(l.precio_taller)||0)*c;
+  });
+  return Object.keys(m).map(function(k){return m[k]})
+    .sort(function(a,b){return b.n-a.n||b.monto-a.monto});
+}
+function demBarras(filas,vacio){
+  if(!filas.length)return '<div class="vacio"><b>'+vacio+'</b></div>';
+  var max=filas[0].n||1;
+  return '<div class="demLista">'+filas.map(function(f){
+    return '<div class="demF">'+
+      '<div class="demT"><b>'+esc(f.k)+'</b><span>'+f.n+' · '+S(Math.round(f.monto))+'</span></div>'+
+      '<div class="demB"><i style="width:'+Math.max(3,Math.round(f.n/max*100))+'%"></i></div>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+function pintarDemanda(){
+  var zs=document.getElementById('demandaServ'), zr=document.getElementById('demandaRep'),
+      sub=document.getElementById('demandaSub'), tt=document.getElementById('tituloDemanda');
+  if(!zs)return;
+  if(tt)tt.textContent='Lo más solicitado · '+rangoProd().t;
+  if(sub)sub.textContent=prodRangoTexto()+' · por cantidad pedida';
+  if(DEM_CARGANDO){zs.innerHTML='<div class="hint">Consultando la base…</div>';zr.innerHTML='';return}
+  if(DEM_ERR){
+    zs.innerHTML='<div class="aviso rojo" style="margin:0">No se pudo leer el detalle: '+esc(DEM_ERR)+'</div>';
+    zr.innerHTML='';return;
+  }
+  if(!DEM){zs.innerHTML='';zr.innerHTML='';return}
+  var serv=DEM.filter(function(l){return l.tipo==='MO'}),
+      reps=DEM.filter(function(l){return l.tipo!=='MO'});
+  zs.innerHTML='<div class="demTit">Servicios</div>'+
+    demBarras(demAgrupar(serv,demFamilia).slice(0,10),'Sin servicios en este periodo');
+  zr.innerHTML='<div class="demTit">Repuestos</div>'+
+    demBarras(demAgrupar(reps,demNombre).slice(0,12),'Sin repuestos en este periodo');
 }
 function pintarProd(){
   if(!$('kpisProd'))return;
@@ -9217,7 +9394,7 @@ function pintarProd(){
     : (PROD_CARGANDO?'<div class="hint" style="margin-top:10px">Consultando la base…</div>':''))+avisoPaso30();
 
   var lista=prodLista(),
-      etq=PERIODO==='dia'?'hoy':(PERIODO==='mes'?'del mes':'del año'),
+      etq=prodEtq(),
       fact=lista.reduce(function(a,o){return a+o.monto},0),
       autos=lista.length;
 
@@ -9229,11 +9406,12 @@ function pintarProd(){
 
   pintarEvo();
   pintarFlujo();
+  pintarTicket();
+  cargarDemanda();
 
   /* ---- ranking de mecánicos ---- */
   var rank=prodAgrupar(lista,function(o){return o.mec}).sort(function(a,b){return b.fac-a.fac});
-  $('tituloGraf').textContent='Ranking de mecánicos por facturación · '+
-    (PERIODO==='dia'?'hoy':PERIODO==='mes'?'mes acumulado':'año acumulado');
+  $('tituloGraf').textContent='Ranking de mecánicos por facturación · '+rangoProd().t;
   if(!rank.length){
     $('grafMec').innerHTML='<div class="vacio"><b>Sin órdenes pagadas '+etq+'</b>'+
       'El ranking aparece cuando caja marque la primera orden como pagada.</div>';
@@ -11480,7 +11658,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=175;
+var APP_VER=176;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
