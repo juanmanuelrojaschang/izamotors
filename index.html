@@ -1,4 +1,4 @@
-<!--IZAV:191-->
+<!--IZAV:193-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -683,6 +683,21 @@ body.sinScroll{overflow:hidden}
   padding:4px 0;color:var(--tinta)}
 .adicLista .it.ok{color:#0B6E3F}
 .adicLista .it.tot{margin-top:6px;padding-top:7px;border-top:1px dashed var(--borde);font-weight:700}
+.fichaOT{background:var(--gris);border-radius:11px;padding:11px 13px;margin:0 0 12px}
+.fichaOT .cab{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fichaOT .cab .pl{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;color:var(--rojo)}
+.fichaOT .cab .vh{font-size:13.5px;font-weight:600;color:var(--tinta)}
+.fichaOT .nm{font-size:13.5px;margin-top:3px;color:var(--tinta)}
+.fichaOT .dt{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:8px 14px;margin-top:9px;border-top:1px solid var(--borde);padding-top:9px}
+/* Etiqueta arriba y dato abajo: un "DNI 09876543" al costado de su
+   rótulo no entra en el ancho de un celular y se parte en dos. */
+.fichaOT .ln{display:flex;flex-direction:column;gap:1px;min-width:0}
+.fichaOT .ln span{color:var(--mudo);font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em}
+.fichaOT .ln b{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere}
+.fichaOT .falta{color:var(--rojo);font-weight:700}
 .fichaVeh{display:flex;align-items:center;gap:12px;background:var(--gris);border-radius:11px;
   padding:11px 13px;margin:0 0 12px}
 .fichaVeh .pl{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;color:var(--rojo);
@@ -744,8 +759,10 @@ body.sinScroll{overflow:hidden}
 .cajaAdic{border:1px solid var(--borde);border-radius:11px;padding:12px;margin-top:14px;background:var(--gris)}
 
 
-#avisoSolic{position:fixed;left:10px;right:10px;bottom:14px;z-index:900;max-width:460px;margin:0 auto}
-#avisoSolic.oculto{display:none}
+#avisosFlot{position:fixed;left:10px;right:10px;bottom:14px;z-index:900;max-width:460px;
+  margin:0 auto;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+#avisosFlot>div{pointer-events:auto}
+#avisoSolic.oculto,#avisoAdic.oculto{display:none}
 .popSolic{background:var(--tinta);color:#E8ECF1;border-radius:14px;padding:12px 13px;
   box-shadow:0 14px 40px rgba(0,0,0,.34);max-height:62vh;overflow:auto}
 .popSolic.nueva{animation:solicEntra .3s ease}
@@ -1430,7 +1447,10 @@ tr.sel td{background:var(--rojo-cl)}
 
 
 <!-- ================= BITÁCORA DE TRANSACCIONES ================= -->
-<div id="avisoSolic" class="oculto"></div>
+<div id="avisosFlot">
+  <div id="avisoAdic" class="oculto"></div>
+  <div id="avisoSolic" class="oculto"></div>
+</div>
 
 <section class="vista" id="v-bitacora">
   <div class="card">
@@ -4937,8 +4957,11 @@ function puedeEditar(){
   return ['CANCELADO','ENTREGADO','ANULADO'].indexOf(OT_EST)===-1;
 }
 function puedeAnular(){
-  /* Un solo criterio para los dos canales: administrador y no pagada. */
-  return puedeAnularDirecto(EST_OT_ACT,EST_TALLER) && OT_EST!=='ANULADO';
+  /* El mismo criterio con el que se dibuja el botón. Antes acá se
+     miraba además OT_EST, que es otra copia del estado y podía
+     quedarse con el valor de la orden anterior: el botón salía y al
+     tocarlo el aviso decía que no se podía. */
+  return puedeAnularDirecto(EST_OT_ACT,EST_TALLER);
 }
 function renderEditar(){
   var z=document.getElementById('editZona');if(!z)return;
@@ -5013,8 +5036,11 @@ function olvidarLocalYa(ot){
 }
 function anularDesdeLista(ot){
   if(!esAdminTaller()){
-    aviso('La anulación es exclusiva del administrador del taller. '+
-          'El jefe de taller puede solicitarla desde la orden.');return;
+    pregunta('No se puede anular',
+      'Solo un administrador puede anular una orden. Tu perfil es <b>'+
+      esc((ROLES[rolEs()]&&ROLES[rolEs()].t)||rolEs()||'sin perfil')+
+      '</b>. El jefe de taller puede solicitarla desde la orden.',
+      [{t:'Entendido'}]);return;
   }
   var o=null;SEG_BD.forEach(function(x){if(x.ot===ot)o=x});
   if(o&&ordenPagada(o.estado_ot,o.estado)){
@@ -5037,7 +5063,7 @@ function anularDesdeListaYa(ot,motivo){
   segLista();
 }
 function anularOrden(){
-  if(!puedeAnular()){aviso('Solo el administrador del taller puede anular una orden.');return}
+  if(!puedeAnular()){pregunta('No se puede anular',motivoNoAnula(),[{t:'Entendido'}]);return}
   pedirTexto('Anular la '+otCorto(OT_NUM),
     'La orden quedará <b>anulada</b>. No se borra: queda registrada con tu nombre y el motivo.',
     function(motivo){ anularOrdenYa(motivo) },{ok:'Anular la orden',ph:'Ej. el cliente desistió'});
@@ -5900,6 +5926,7 @@ setInterval(function(){
 
 /* Ventanilla y administradores: revisar si hay anulaciones pedidas. */
 setInterval(function(){ try{ revisarSolicitudes() }catch(e){} },20000);
+setInterval(function(){ try{ revisarAdicVent() }catch(e){} },20000);
 
 setInterval(function(){
   if(!OT_NUM||!OT_EST)return;
@@ -9330,8 +9357,27 @@ function esJefeTaller(){ return rolEs()==='jefe_taller' }
 function ordenPagada(est_ot,est_taller){
   return est_ot==='PAGADA'||est_taller==='CANCELADO';
 }
+function ordenAnulada(est_ot,est_taller){
+  return est_ot==='ANULADA'||est_taller==='ANULADO';
+}
 function puedeAnularDirecto(est_ot,est_taller){
-  return esAdminTaller()&&!ordenPagada(est_ot,est_taller);
+  return esAdminTaller()&&
+         !ordenPagada(est_ot,est_taller)&&
+         !ordenAnulada(est_ot,est_taller);
+}
+/* Por qué no se puede, en concreto. Antes el aviso culpaba siempre al
+   perfil, así que a un administrador general le decía que no era
+   administrador y no había forma de saber qué pasaba. */
+function motivoNoAnula(){
+  if(ordenAnulada(EST_OT_ACT,EST_TALLER))
+    return 'Esta orden ya está anulada.';
+  if(ordenPagada(EST_OT_ACT,EST_TALLER))
+    return 'La orden ya está pagada: no se puede anular.';
+  if(!esAdminTaller())
+    return 'Solo un administrador puede anular una orden. Tu perfil es <b>'+
+      esc((ROLES[rolEs()]&&ROLES[rolEs()].t)||rolEs()||'sin perfil')+
+      '</b>. El jefe de taller puede solicitarla desde la orden.';
+  return 'No se puede anular esta orden en este momento.';
 }
 function puedeSolicitar(est_ot,est_taller){
   return (esJefeTaller()||esVentanilla())&&!ordenPagada(est_ot,est_taller);
@@ -9393,6 +9439,107 @@ function cargarSolicitudes(cb){
       cb&&cb(SOLIC_PEND);
     },function(){ cb&&cb([]) });
 }
+/* ---- ventanilla: adicionales que el taller acaba de pedir ----
+   Cuando el jefe de taller agrega un servicio o un repuesto sobre una
+   OT ya aprobada, la línea queda como adicional pendiente. Ventanilla
+   es la que tiene que despacharlo y cobrarlo, pero no tenía cómo
+   enterarse salvo abriendo la OT de casualidad. */
+var ADIC_VENT=[],ADIC_VISTAS={};
+function cargarAdicVent(cb){
+  if(!sb){cb&&cb([]);return}
+  sb.from('ordenes')
+    .select('id,numero,estado_ot,estado_taller,vehiculos(placa,marca,modelo),clientes(nombre)')
+    .eq('sede_id',SEDE_ACTIVA)
+    .order('ingreso',{ascending:false}).limit(300)
+    .then(function(r){
+      /* Una OT pagada o anulada ya no le pide nada a ventanilla. */
+      var ords=(r.data||[]).filter(function(o){
+        return o.estado_ot&&o.estado_ot!=='PAGADA'&&o.estado_ot!=='ANULADA'&&
+               o.estado_taller!=='CANCELADO';
+      });
+      var ids=ords.map(function(o){return o.id});
+      if(r.error||!ids.length){ADIC_VENT=[];cb&&cb([]);return}
+      sb.from('orden_detalle')
+        .select('id,orden_id,descripcion,cantidad,precio_taller,precio_caja,anulada,agregado_por')
+        .in('orden_id',ids).eq('adicional','PEND')
+        .then(function(r2){
+          var porOT={};
+          (r2.data||[]).forEach(function(l){
+            if(l.anulada)return;
+            /* Lo que cargó ventanilla no es una solicitud para
+               ventanilla: ya lo puso ella misma. */
+            if(l.agregado_por==='ventanilla')return;
+            var g=porOT[l.orden_id]||(porOT[l.orden_id]={lineas:[],monto:0});
+            var pr=(l.precio_caja!==null&&l.precio_caja!==undefined)?l.precio_caja:l.precio_taller;
+            var m=(Number(pr)||0)*(Number(l.cantidad)||1);
+            g.lineas.push({id:l.id,desc:l.descripcion||'',cant:Number(l.cantidad)||1,monto:m});
+            g.monto+=m;
+          });
+          ADIC_VENT=ords.filter(function(o){return porOT[o.id]}).map(function(o){
+            var vh=o.vehiculos||{},c=o.clientes||{},g=porOT[o.id];
+            return {id:o.id,ot:o.numero,placa:vh.placa||'—',
+              veh:[vh.marca,vh.modelo].filter(Boolean).join(' '),
+              cliente:c.nombre||'—',lineas:g.lineas,monto:g.monto};
+          });
+          cb&&cb(ADIC_VENT);
+        },function(){ADIC_VENT=[];cb&&cb([])});
+    },function(){ADIC_VENT=[];cb&&cb([])});
+}
+function revisarAdicVent(){
+  if(!sb||!SESION)return;
+  if(!(esVentanilla()||esAdminTaller()))return;
+  cargarAdicVent(function(lista){ pintarAvisoAdic(lista) });
+}
+function nLineasAdic(n){ return n+(n===1?' adicional':' adicionales') }
+function pintarAvisoAdic(lista){
+  var z=document.getElementById('avisoAdic');
+  if(!z)return;
+  if(!lista.length){z.innerHTML='';z.classList.add('oculto');return}
+  var nuevas=lista.filter(function(o){
+    return o.lineas.filter(function(l){return !ADIC_VISTAS[l.id]}).length;
+  });
+  var tot=lista.reduce(function(a,o){return a+o.lineas.length},0);
+  z.classList.remove('oculto');
+  z.innerHTML='<div class="popSolic'+(nuevas.length?' nueva':'')+'">'+
+    '<div class="cab"><b>⚠ '+nLineasAdic(tot)+' por despachar</b>'+
+    '<button class="x" onclick="cerrarAvisoAdic()">✕</button></div>'+
+    '<div class="hint" style="margin:-4px 0 4px;color:#B9C3D0">'+
+      'El taller los agregó sobre '+(lista.length===1?'una OT ya aprobada.':
+      lista.length+' OT ya aprobadas.')+'</div>'+
+    lista.slice(0,4).map(function(o){
+      return '<div class="it">'+
+        '<div class="t">'+otCorto(o.ot)+' · '+esc(o.placa)+
+          (o.veh?' <span style="font-weight:400">'+esc(o.veh)+'</span>':'')+'</div>'+
+        '<div class="m">'+o.lineas.slice(0,3).map(function(l){
+            return esc(l.desc)+(l.cant>1?' ×'+l.cant:'')}).join(' · ')+
+          (o.lineas.length>3?' y '+(o.lineas.length-3)+' más':'')+'</div>'+
+        '<div class="q">'+esc(o.cliente)+' · '+S(Math.round(o.monto))+'</div>'+
+        '<div class="b"><button class="btn chico" onclick="abrirAdicVent('+o.id+')">Ver la OT</button></div>'+
+      '</div>';
+    }).join('')+
+    (lista.length>4?'<div class="hint" style="margin:6px 0 0;color:#8A94A3">y '+
+      (lista.length-4)+' OT más con adicionales</div>':'')+
+  '</div>';
+}
+/* Abrir la OT cuenta como haberla visto: el aviso deja de insistir
+   con esa, pero sigue para las demás. */
+function abrirAdicVent(id){
+  ADIC_VENT.forEach(function(o){
+    if(o.id===id)o.lineas.forEach(function(l){ADIC_VISTAS[l.id]=1});
+  });
+  var z=document.getElementById('avisoAdic');
+  if(z){z.innerHTML='';z.classList.add('oculto')}
+  /* ir() deja la lista de ventanilla a la vista en el acto; ventAbrir
+     abre la OT encima cuando termina de cargarla. */
+  try{ if(VISTA_ACT!=='ventanilla')ir('ventanilla') }catch(e){}
+  ventAbrir(id);
+}
+function cerrarAvisoAdic(){
+  ADIC_VENT.forEach(function(o){o.lineas.forEach(function(l){ADIC_VISTAS[l.id]=1})});
+  var z=document.getElementById('avisoAdic');
+  if(z){z.innerHTML='';z.classList.add('oculto')}
+}
+
 /* Aviso flotante: solo para quien puede ejecutar la anulación. */
 function revisarSolicitudes(){
   if(!sb||!SESION)return;
@@ -10587,7 +10734,7 @@ function facturaNegra(snap,titulo){
 var SIN_OT_TALLER=['RECIBIDO','EN_DIAGNOSTICO'];
 var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,nota_interna,nota_interna_el,nota_atendida_el,'+
   'nota_atendida_por,nota_atendida_coment,nota_publica,'+
-  'vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono)';
+  'km_ingreso,vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono,tipo_doc,num_doc)';
 function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   if(!sb){cb([]);return}
   /* sedeOpt: sin pasar = el local activo · null = todos · número = ese local */
@@ -10655,6 +10802,27 @@ function cargarAdicPend(lista,cb){
       cb();
     },function(){cb()});
 }
+/* Ficha del vehículo y del cliente dentro de la OT.
+   Ya no se usan órdenes de trabajo en papel, así que lo que antes se
+   leía de la hoja tiene que estar acá: placa, marca, modelo, nombre
+   completo, documento y el kilometraje que registró el jefe de
+   taller. Sin esto el asesor y caja se lo vuelven a preguntar al
+   cliente, y el kilometraje directamente no se lo preguntan. */
+function fichaOT(o){
+  if(!o)return '';
+  var d=[];
+  if(o.doc)d.push('<div class="ln"><span>Documento</span><b>'+esc(o.doc)+'</b></div>');
+  if(o.tel)d.push('<div class="ln"><span>Teléfono</span><b>'+esc(o.tel)+'</b></div>');
+  d.push('<div class="ln"><span>Kilometraje</span><b>'+
+    (o.km?Number(o.km).toLocaleString('es-PE')+' km':'<span class="falta">sin registrar</span>')+
+    '</b></div>');
+  if(o.mec)d.push('<div class="ln"><span>Mecánico</span><b>'+esc(o.mec)+'</b></div>');
+  return '<div class="fichaOT">'+
+    '<div class="cab"><span class="pl">'+esc(o.placa||'—')+'</span>'+
+      '<span class="vh">'+esc(o.veh||'Vehículo sin datos')+'</span></div>'+
+    '<div class="nm">'+esc(o.cliente||'—')+'</div>'+
+    '<div class="dt">'+d.join('')+'</div></div>';
+}
 /* En el detalle: el estado de la OT y, si los hay, los adicionales que
    el cliente todavía no autorizó. */
 function bloqueAprob(o,lineas){
@@ -10705,6 +10873,12 @@ function mapearOrden(o){
         return {id:o.id,ot:o.numero,placa:v.placa||'—',
           veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
           cliente:c.nombre||'—',tel:c.telefono||'',sede:o.sede_id,
+          /* El asesor y caja arman el comprobante desde la pantalla:
+             el documento y el kilometraje tienen que viajar con la
+             orden o los terminan preguntando otra vez al cliente. */
+          doc:[c.tipo_doc,c.num_doc].filter(Boolean).join(' '),
+          tipo_doc:c.tipo_doc||'',num_doc:c.num_doc||'',
+          km:Number(o.km_ingreso||0),
           estado_ot:o.estado_ot,estado_taller:o.estado_taller,
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
           forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
@@ -10793,6 +10967,7 @@ function ventTab(t){
 }
 function pintarVentanilla(){
   try{ revisarSolicitudes() }catch(e){}
+  try{ revisarAdicVent() }catch(e){}
   try{ ventContadores() }catch(e){}
   VENT_OT=null;
   $('ventDetalle').classList.add('oculto');
@@ -11093,6 +11268,7 @@ function anuVentGuardar(s,anula,nota){
       pregCerrar();
       conex(anula?'Anulación ejecutada':'Solicitud rechazada');
       revisarSolicitudes();
+      revisarAdicVent();
       if(VENT_TAB==='anul')anuVentCargar();
     },function(){pregAviso('Sin conexión.')});
 }
@@ -11181,9 +11357,7 @@ function ventRender(){
   $('ventDetalle').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarVentanilla()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+esc(o.placa)+'</b></span></div>'+
-    '<div class="fichaVeh"><div class="pl">'+esc(o.placa)+'</div>'+
-      '<div class="dd"><b>'+esc(o.veh||'Vehículo sin datos')+'</b><br>'+esc(o.cliente||'')+
-      (o.mec?'<br><span class="hint" style="margin:0">Mecánico: '+esc(o.mec)+'</span>':'')+'</div></div>'+
+    fichaOT(o)+
     notaEnOT(o)+
     '<h3>Orden de trabajo · '+otCorto(o.ot)+'</h3>'+
     bloqueAprob(o,VENT_LIN)+
@@ -11715,6 +11889,7 @@ function aseRender(){
   $('asesorLista').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarAsesor()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    fichaOT(o)+
     bloqueAprob(o,ASE_LIN)+
     (bloqueado?'':
       aseFilas()+
@@ -12207,6 +12382,7 @@ function renderCobro(){
   $('cajaZona').innerHTML=
     '<div class="navproc"><button class="atras" onclick="pintarCaja()">← Volver a la lista</button>'+
     '<span class="donde">'+otCorto(o.ot)+' · <b>'+o.placa+'</b> · '+o.cliente+'</span></div>'+
+    fichaOT(o)+
     bloqueAprob(o,CAJA_LIN)+
     '<div class="hint">Comprobante: <b>'+o.comp+'</b>'+(o.ruc?' · RUC '+o.ruc:'')+
       (o.estado_taller!=='LISTO'&&o.estado_taller!=='ENTREGADO'?' · <span class="eti e3">vehículo aún en taller</span>':'')+'</div>'+
@@ -12325,7 +12501,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=191;
+var APP_VER=193;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
