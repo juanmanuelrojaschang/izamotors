@@ -1,4 +1,4 @@
-<!--IZAV:190-->
+<!--IZAV:191-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4281,8 +4281,8 @@ function editarEnProceso(){
       'registrados en la bitácora. Para cambiar de vehículo hay que reiniciar el check-in.</div>'+
     '<h3 style="font-size:14px;margin-top:14px">Vehículo · '+v.placa+'</h3>'+
     '<div class="grid g3">'+
-      '<div><label>Marca</label>'+selMarca('ep',v.marca||'')+'</div>'+
-      '<div><label>Modelo</label>'+selModelo('ep',v.marca||'',v.modelo||'')+'</div>'+
+      '<div><label>Marca</label>'+cbCampo('ep','marca',v.marca||'')+'</div>'+
+      '<div><label>Modelo</label>'+cbCampo('ep','modelo',v.modelo||'',v.marca||'')+'</div>'+
       '<div><label>Año</label><select id="epAnio">'+optAnios(v.anio)+'</select></div>'+
       '<div style="grid-column:1/-1"><label>Color</label>'+colorChips('epColor',v.color||'')+'</div>'+
       '<div><label>Kilometraje</label><input id="epKm" inputmode="numeric" value="'+
@@ -4629,121 +4629,211 @@ function optNiveles(sel){
   return NIVELES_CLI.map(function(n){
     return '<option value="'+n.v+'"'+(sel===n.v?' selected':'')+'>'+n.t+'</option>'}).join('');
 }
-/* ---------- marca y modelo: listas cerradas ----------
-   Antes los dos campos eran de texto libre con sugerencias. La
-   sugerencia no obligaba a nada: quien escribía "Cheryy Qq" lo
-   guardaba así, y en la base quedaba una marca que no existe y que
-   ya no cuadra con ningún precio ni con el preciario de
-   mantenimiento mayor.
+/* ---------- marca y modelo: escribir o desplegar ----------
+   El campo se escribe —"toy" deja Toyota en la lista— o se toca
+   para ver todo y elegir. Lo que queda guardado siempre sale de la
+   lista: si al salir del campo lo escrito no corresponde a ninguna
+   opción, el campo se limpia en vez de guardar una marca que no
+   existe. Así entró el "Cheryy Qq": el campo era libre y lo
+   tecleado se guardaba tal cual.
 
-   Ahora se elige de la lista. Escribir a mano se habilita solo con
-   "Otra", que es el caso real: una marca o un modelo que el
-   catálogo todavía no tiene.
+   Escribir libre sigue estando, pero hay que pedirlo: la última
+   opción de la lista es "Otra · escribir marca", para la marca o el
+   modelo que el catálogo todavía no tiene.
 
-   El valor que se guarda vive en un campo oculto —epMarca,
-   nvModelo, etc.— así que todo lo que ya leía esos ids sigue
-   leyendo lo mismo.
+   No se usa <datalist>: en el celular no se despliega al tocar el
+   campo, y la idea es poder mirar antes de escribir. Es la misma
+   lista propia que ya usa el buscador de servicios.
+
+   El valor vive en un campo oculto —nvMarca, epModelo…— así que
+   todo lo que ya leía esos ids sigue leyendo lo mismo.
    --------------------------------------------------------- */
+var CB={};
 function marcasCat(){ return MARCAS.filter(function(m){return m!=='Otra'}) }
 
-/* "chery", "CHERY " y "Chery" son la misma marca. Si lo escrito a
-   mano coincide con una del catálogo, se usa la del catálogo: así
-   no se crea un duplicado por una mayúscula o un espacio. */
-function marcaDelCatalogo(t){
-  var q=mmLlano(t);
-  if(!q)return '';
-  var l=marcasCat().filter(function(m){return mmLlano(m)===q});
-  return l.length?l[0]:'';
+function cbOpciones(base){
+  var c=CB[base]; if(!c)return [];
+  if(c.tipo==='marca')return marcasCat();
+  var m=$(c.pre+'Marca');
+  return (m&&MODELOS[m.value])||[];
+}
+function cbEtiquetaLibre(base){
+  return (CB[base]&&CB[base].tipo==='marca')?'Otra · escribir marca':'Otro · escribir modelo';
+}
+function cbNotaLibre(base){
+  return (CB[base]&&CB[base].tipo==='marca')
+    ? '<b>Marca nueva</b> · se guarda tal como la escribas'
+    : '<b>Modelo nuevo</b> · se guarda tal como lo escribas';
 }
 
-function selMarca(pre,sel){
-  sel=sel||'';
-  var lista=marcasCat(),enLista=lista.indexOf(sel)>-1,otra=!!sel&&!enLista;
-  return '<select id="'+pre+'MarcaSel" onchange="marcaElegida(&quot;'+pre+'&quot;)">'+
-      '<option value="">— marca · obligatorio —</option>'+
-      lista.map(function(m){
-        return '<option'+(enLista&&sel===m?' selected':'')+'>'+m+'</option>'}).join('')+
-      '<option value="__otra"'+(otra?' selected':'')+'>Otra · escribir marca</option>'+
-    '</select>'+
-    '<input id="'+pre+'MarcaOtra" autocomplete="off" placeholder="Escribe la marca" '+
-      'style="margin-top:6px;display:'+(otra?'block':'none')+'" value="'+escAtr(otra?sel:'')+'" '+
-      'oninput="marcaOtraEscrita(&quot;'+pre+'&quot;)" '+
-      'onblur="marcaOtraCierra(&quot;'+pre+'&quot;)">'+
-    '<input type="hidden" id="'+pre+'Marca" value="'+escAtr(sel)+'">';
+/* pre: 'nv' o 'ep' · tipo: 'marca' o 'modelo'.
+   marca: solo para el modelo, para saber qué lista le toca. */
+function cbCampo(pre,tipo,sel,marca){
+  var base=pre+(tipo==='marca'?'Marca':'Modelo');
+  sel=String(sel||'').trim();
+  var lista=(tipo==='marca')?marcasCat():(MODELOS[marca||'']||[]);
+  var libre=!!sel&&lista.indexOf(sel)<0;
+  CB[base]={pre:pre,tipo:tipo,libre:libre,abierta:false,pintados:[]};
+  return '<div class="invBox">'+
+      '<input id="'+base+'Txt" autocomplete="off" value="'+escAtr(sel)+'" '+
+        'placeholder="Toca para ver la lista o escribe" '+
+        'oninput="cbEscribe(&quot;'+base+'&quot;)" '+
+        'onfocus="cbAbrir(&quot;'+base+'&quot;)" '+
+        'onblur="cbCerrar(&quot;'+base+'&quot;)">'+
+      '<button type="button" class="limpiaX'+(sel?' on':'')+'" id="'+base+'X" title="Borrar" '+
+        'onmousedown="event.preventDefault()" onclick="cbLimpiar(&quot;'+base+'&quot;)">✕</button>'+
+      '<div class="srvLista" id="'+base+'Lista" onmousedown="event.preventDefault()"></div>'+
+    '</div>'+
+    '<input type="hidden" id="'+base+'" value="'+escAtr(sel)+'">'+
+    '<div class="hint" id="'+base+'Nota" style="margin:3px 0 0">'+
+      (libre?cbNotaLibre(base):'')+'</div>';
 }
 
-function opcsModelo(lista,sel){
-  var enLista=!!sel&&lista.indexOf(sel)>-1,otro=!!sel&&!enLista;
-  return '<option value="">— modelo · obligatorio —</option>'+
-    lista.map(function(x){
-      return '<option'+(enLista&&sel===x?' selected':'')+'>'+x+'</option>'}).join('')+
-    '<option value="__otro"'+(otro?' selected':'')+'>Otro · escribir modelo</option>';
+function cbPintar(base,filtro){
+  var c=CB[base],dl=$(base+'Lista'); if(!c||!dl)return;
+  var q=mmLlano(filtro),todas=cbOpciones(base);
+  var l=q?todas.filter(function(x){return mmLlano(x).indexOf(q)>-1}):todas.slice();
+  c.pintados=l;
+  var html=l.length
+    ? l.map(function(x,i){
+        return '<button type="button" class="srvOp" '+
+          'onclick="cbElegir(&quot;'+base+'&quot;,'+i+')">'+
+          '<span class="d">'+esc(x)+'</span></button>'}).join('')
+    : '<div class="srvVacio">'+(c.tipo==='marca'?'Ninguna marca':'Ningún modelo')+
+      (filtro?' con “'+esc(filtro)+'”':'')+' en la lista.</div>';
+  html+='<button type="button" class="srvOp" style="border-top:1px solid var(--gris2)" '+
+    'onclick="cbLibre(&quot;'+base+'&quot;)"><span class="d">✎ '+cbEtiquetaLibre(base)+'</span></button>';
+  dl.innerHTML=html;
+  dl.classList.toggle('on',!!c.abierta);
+  cbAcomodar(base);
 }
 
-function selModelo(pre,marca,sel){
-  sel=sel||'';
-  var lista=MODELOS[marca]||[],otro=!!sel&&lista.indexOf(sel)<0;
-  return '<select id="'+pre+'ModeloSel" onchange="modeloElegido(&quot;'+pre+'&quot;)">'+
-      opcsModelo(lista,sel)+'</select>'+
-    '<input id="'+pre+'ModeloOtro" autocomplete="off" placeholder="Escribe el modelo" '+
-      'style="margin-top:6px;display:'+(otro?'block':'none')+'" value="'+escAtr(otro?sel:'')+'" '+
-      'oninput="modeloOtroEscrito(&quot;'+pre+'&quot;)">'+
-    '<input type="hidden" id="'+pre+'Modelo" value="'+escAtr(sel)+'">';
+/* En el celular el teclado se come media pantalla: si abajo no cabe,
+   la lista se abre hacia arriba. Igual que la de servicios. */
+function cbAcomodar(base){
+  var dl=$(base+'Lista'),inp=$(base+'Txt');
+  if(!dl||!inp||!dl.classList.contains('on'))return;
+  var vv=window.visualViewport;
+  var topVista=vv?vv.offsetTop:0,altoVista=vv?vv.height:window.innerHeight;
+  var r=inp.getBoundingClientRect();
+  var abajo=(topVista+altoVista)-r.bottom-14,arriba=r.top-topVista-14;
+  if(abajo>=150||abajo>=arriba){
+    dl.style.top='100%';dl.style.bottom='auto';
+    dl.style.marginTop='3px';dl.style.marginBottom='0';
+    dl.style.maxHeight=Math.max(130,Math.min(300,abajo))+'px';
+  }else{
+    dl.style.top='auto';dl.style.bottom='100%';
+    dl.style.marginTop='0';dl.style.marginBottom='3px';
+    dl.style.maxHeight=Math.max(130,Math.min(300,arriba))+'px';
+  }
+}
+function cbAcomodarTodas(){ for(var k in CB) if(CB[k]&&CB[k].abierta)cbAcomodar(k) }
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',cbAcomodarTodas);
+  window.visualViewport.addEventListener('scroll',cbAcomodarTodas);
+}
+window.addEventListener('resize',cbAcomodarTodas);
+
+function cbX(base){
+  var t=$(base+'Txt'),x=$(base+'X');
+  if(x)x.classList.toggle('on',!!(t&&t.value));
 }
 
-function marcaElegida(pre){
-  var s=$(pre+'MarcaSel'),ot=$(pre+'MarcaOtra'),h=$(pre+'Marca');
-  if(!s||!ot||!h)return;
-  if(s.value==='__otra'){ ot.style.display='block'; h.value=ot.value.trim(); ot.focus() }
-  else { ot.style.display='none'; ot.value=''; h.value=s.value }
-  /* Cambiar de marca cambia la lista de modelos: el modelo anterior
-     ya no corresponde, así que se limpia en vez de arrastrarse. */
-  modelosDe(pre,'');
+function cbAbrir(base){
+  var c=CB[base],t=$(base+'Txt'),h=$(base); if(!c||!t)return;
+  c.abierta=true;
+  var f=t.value;
+  /* Si lo escrito es justo la opción ya elegida, filtrar por ese
+     texto deja la lista en un solo ítem y no hay cómo cambiar sin
+     borrar letra por letra. En ese caso se abre completa. */
+  if(h&&h.value&&h.value===t.value)f='';
+  cbPintar(base,f);
 }
-function marcaOtraEscrita(pre){
-  var ot=$(pre+'MarcaOtra'),h=$(pre+'Marca');
-  if(!ot||!h)return;
-  h.value=ot.value.trim();
-  /* Acá se escribe letra por letra: borrar el modelo en cada tecla
-     haría imposible corregir la marca sin perderlo. Se conserva. */
-  modelosDe(pre);
+function cbCerrar(base){
+  /* margen para que el clic en una opción alcance a registrarse */
+  setTimeout(function(){
+    var c=CB[base]; if(!c)return;
+    c.abierta=false;
+    var dl=$(base+'Lista'); if(dl)dl.classList.remove('on');
+    cbValidar(base);
+  },260);
 }
-/* Al salir del campo libre: si lo escrito resulta ser una marca del
-   catálogo, se elige la del catálogo. */
-function marcaOtraCierra(pre){
-  var ot=$(pre+'MarcaOtra'),s=$(pre+'MarcaSel'),hm=$(pre+'Modelo');
-  if(!ot||!s)return;
-  var cat=marcaDelCatalogo(ot.value);
-  if(!cat)return;
-  /* Acá la marca no cambió: solo quedó bien escrita. El modelo que
-     ya estaba elegido se conserva. */
-  var mod=hm?hm.value:'';
-  s.value=cat; marcaElegida(pre);
-  if(mod)modelosDe(pre,mod);
+function cbEscribe(base){
+  var c=CB[base],t=$(base+'Txt'),h=$(base); if(!c||!t||!h)return;
+  /* Mientras se escribe no hay nada elegido: el valor se fija al
+     tocar una opción o al salir del campo si lo escrito calza. */
+  h.value=c.libre?t.value.trim():'';
+  cbX(base);
+  c.abierta=true;
+  cbPintar(base,t.value);
 }
-
-function modelosDe(pre,sel){
-  var h=$(pre+'Marca'),s=$(pre+'ModeloSel'),ot=$(pre+'ModeloOtro'),hm=$(pre+'Modelo');
-  if(!h||!s||!ot||!hm)return;
-  if(sel===undefined||sel===null)sel=hm.value||'';
-  var lista=MODELOS[h.value]||[],enLista=!!sel&&lista.indexOf(sel)>-1,otro=!!sel&&!enLista;
-  s.innerHTML=opcsModelo(lista,sel);
-  /* Una vez que el desplegable se tocó, el navegador deja de hacer
-     caso al "selected" del HTML nuevo: hay que fijarlo a mano. */
-  s.value=otro?'__otro':(enLista?sel:'');
-  ot.style.display=otro?'block':'none';
-  ot.value=otro?sel:'';
-  hm.value=otro?sel:(enLista?sel:'');
+function cbElegir(base,i){
+  var c=CB[base]; if(!c)return;
+  var val=c.pintados[i];
+  if(val===undefined)return;
+  cbFijar(base,val,false);
 }
-function modeloElegido(pre){
-  var s=$(pre+'ModeloSel'),ot=$(pre+'ModeloOtro'),hm=$(pre+'Modelo');
-  if(!s||!ot||!hm)return;
-  if(s.value==='__otro'){ ot.style.display='block'; hm.value=ot.value.trim(); ot.focus() }
-  else { ot.style.display='none'; ot.value=''; hm.value=s.value }
+function cbLibre(base){
+  var t=$(base+'Txt');
+  cbFijar(base,t?t.value.trim():'',true);
+  if(t)t.focus();
 }
-function modeloOtroEscrito(pre){
-  var ot=$(pre+'ModeloOtro'),hm=$(pre+'Modelo');
-  if(ot&&hm)hm.value=ot.value.trim();
+function cbFijar(base,val,libre){
+  var c=CB[base],t=$(base+'Txt'),h=$(base),n=$(base+'Nota'); if(!c)return;
+  var antes=h?h.value:'';
+  c.libre=!!libre;
+  if(t)t.value=val;
+  if(h)h.value=val;
+  if(n)n.innerHTML=libre?cbNotaLibre(base):'';
+  c.abierta=false;
+  var dl=$(base+'Lista'); if(dl)dl.classList.remove('on');
+  cbX(base);
+  /* Otra marca es otra lista de modelos: el modelo anterior ya no
+     corresponde. */
+  if(c.tipo==='marca'&&val!==antes)cbReset(c.pre+'Modelo');
+}
+function cbReset(base){
+  var c=CB[base]; if(!c)return;
+  c.libre=false;c.abierta=false;c.pintados=[];
+  var t=$(base+'Txt'),h=$(base),n=$(base+'Nota'),dl=$(base+'Lista');
+  if(t)t.value='';
+  if(h)h.value='';
+  if(n)n.innerHTML='';
+  if(dl){dl.classList.remove('on');dl.innerHTML=''}
+  cbX(base);
+}
+function cbLimpiar(base){
+  var c=CB[base]; if(!c)return;
+  cbReset(base);
+  if(c.tipo==='marca')cbReset(c.pre+'Modelo');
+  c.abierta=true;
+  cbPintar(base,'');
+  var t=$(base+'Txt'); if(t)t.focus();
+}
+/* Al salir del campo. Acá se decide qué queda guardado. */
+function cbValidar(base){
+  var c=CB[base],t=$(base+'Txt'),h=$(base),n=$(base+'Nota'); if(!c||!t||!h)return;
+  var val=t.value.trim();
+  if(c.libre){
+    h.value=val;
+    if(!val){ c.libre=false; if(n)n.innerHTML='' }
+    cbX(base);
+    return;
+  }
+  if(!val){ h.value=''; if(n)n.innerHTML=''; cbX(base); return }
+  var lista=cbOpciones(base),q=mmLlano(val);
+  var ex=lista.filter(function(x){return mmLlano(x)===q})[0];
+  if(!ex){
+    var pre=lista.filter(function(x){return mmLlano(x).indexOf(q)===0});
+    if(pre.length===1)ex=pre[0];
+  }
+  if(ex){ cbFijar(base,ex,false); return }
+  /* Lo escrito no es ninguna opción, así que no se guarda. Si de
+     verdad es una marca nueva, para eso está "Otra" en la lista. */
+  t.value='';h.value='';
+  if(n)n.innerHTML='No está en la lista. Elige una opción o usa “'+cbEtiquetaLibre(base)+'”.';
+  cbX(base);
+  if(c.tipo==='marca')cbReset(c.pre+'Modelo');
 }
 /* kilometraje con separador de miles */
 function fmtKm(el){
@@ -5356,8 +5446,8 @@ function formVehiculo(pref){
   return '<div class="grid g3">'+
     '<div><label>Placa</label><input id="nvPlaca" placeholder="obligatorio" value="'+(pref.placa||'')+
       '" oninput="this.value=this.value.toUpperCase()"></div>'+
-    '<div><label>Marca</label>'+selMarca('nv',pref.marca||'')+'</div>'+
-    '<div><label>Modelo</label>'+selModelo('nv',pref.marca||'',pref.modelo||'')+'</div>'+
+    '<div><label>Marca</label>'+cbCampo('nv','marca',pref.marca||'')+'</div>'+
+    '<div><label>Modelo</label>'+cbCampo('nv','modelo',pref.modelo||'',pref.marca||'')+'</div>'+
     '<div><label>Año</label><select id="nvAnio">'+optAnios()+'</select></div>'+
     '<div style="grid-column:1/-1"><label>Color · opcional</label>'+colorChips('nvColor','')+'</div>'+
     '<div><label>Kilometraje</label><input id="nvKm" inputmode="numeric" placeholder="opcional · 24,000" oninput="fmtKm(this)"></div>'+
@@ -5457,7 +5547,7 @@ function guardarVehiculo(clienteId,volverA,msg){
   if(!modelo)falta.push('el modelo');
   if(falta.length){
     msg.innerHTML='<div class="aviso rojo">Falta '+falta.join(', ').replace(/,([^,]*)$/,' y$1')+'.</div>';
-    var foco=placa.length<5?'nvPlaca':(!marca?'nvMarcaSel':'nvModeloSel');
+    var foco=placa.length<5?'nvPlaca':(!marca?'nvMarcaTxt':'nvModeloTxt');
     if($(foco))$(foco).focus();
     return;
   }
@@ -12235,7 +12325,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=190;
+var APP_VER=191;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
