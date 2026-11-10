@@ -1,4 +1,4 @@
-<!--IZAV:194-->
+<!--IZAV:195-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9455,18 +9455,53 @@ function cargarSolicitudes(cb){
    La primera versión miraba solo la marca de "adicional sin aprobar"
    para los dos, y por eso un repuesto ya despachado seguía saliendo
    en el aviso. */
-var ADIC_VENT=[],ADIC_VISTAS={};
+var ADIC_VENT=[];
+/* Dos memorias distintas, porque son dos gestos distintos:
+   · la ✕ es "ya lo vi, no me lo muestres más" → se guarda en el
+     equipo y sobrevive a recargar la página
+   · abrir la OT solo calla el aviso mientras dure la sesión: si al
+     final no se despachó, mañana tiene que volver a salir */
+var ADIC_VISTAS=adicVistasCargar(),ADIC_SESION={},ADIC_ULT='';
+function adicVistasCargar(){
+  try{ return JSON.parse(localStorage.getItem('iza_adic_vistas')||'{}')||{} }
+  catch(e){ return {} }
+}
+function adicVistasGuardar(){
+  try{
+    var k=Object.keys(ADIC_VISTAS);
+    /* No dejar que crezca para siempre: se quedan los 200 más
+       recientes, que es mucho más de lo que una ventanilla descarta
+       en un mes. */
+    if(k.length>400){
+      k.sort(function(a,b){return (ADIC_VISTAS[a]||0)-(ADIC_VISTAS[b]||0)});
+      k.slice(0,k.length-200).forEach(function(x){delete ADIC_VISTAS[x]});
+    }
+    localStorage.setItem('iza_adic_vistas',JSON.stringify(ADIC_VISTAS));
+  }catch(e){}
+}
+function adicDescartada(id){ return !!(ADIC_VISTAS[id]||ADIC_SESION[id]) }
+/* Cuántos días hacia atrás mira el aviso. Es un aviso de algo que
+   acaba de pasar, no un tablero de pendientes: una OT de hace
+   semanas con un repuesto sin bajar se ve en la OT y en el kanban,
+   no en un cartel que no se va. */
+var ADIC_DIAS=7;
 function cargarAdicVent(cb){
   if(!sb){cb&&cb([]);return}
   sb.from('ordenes')
-    .select('id,numero,estado_ot,estado_taller,vehiculos(placa,marca,modelo),clientes(nombre)')
+    .select('id,numero,ingreso,estado_ot,estado_taller,'+
+            'vehiculos(placa,marca,modelo),clientes(nombre)')
     .eq('sede_id',SEDE_ACTIVA)
     .order('ingreso',{ascending:false}).limit(300)
     .then(function(r){
-      /* Una OT pagada o anulada ya no le pide nada a ventanilla. */
+      var corte=Date.now()-ADIC_DIAS*86400000;
       var ords=(r.data||[]).filter(function(o){
-        return o.estado_ot&&o.estado_ot!=='PAGADA'&&o.estado_ot!=='ANULADA'&&
-               o.estado_taller!=='CANCELADO';
+        /* Una OT pagada, anulada o con el carro ya entregado no le
+           pide nada a ventanilla. */
+        if(!o.estado_ot||o.estado_ot==='PAGADA'||o.estado_ot==='ANULADA')return false;
+        if(o.estado_taller==='CANCELADO'||o.estado_taller==='ENTREGADO')return false;
+        var t=Date.parse(o.ingreso||'');
+        if(t&&t<corte)return false;
+        return true;
       });
       var ids=ords.map(function(o){return o.id});
       if(r.error||!ids.length){ADIC_VENT=[];cb&&cb([]);return}
@@ -9478,9 +9513,11 @@ function cargarAdicVent(cb){
           var porOT={};
           (r2.data||[]).forEach(function(l){
             if(l.anulada)return;
-            /* Lo que cargó ventanilla no es una solicitud para
-               ventanilla: ya lo puso ella misma. */
-            if(l.agregado_por==='ventanilla')return;
+            /* El aviso es "el taller está pidiendo esto". Lo que
+               cargó ventanilla, el asesor o caja no es una solicitud
+               para ventanilla. */
+            if(l.agregado_por!=='taller')return;
+            if(adicDescartada(l.id))return;
             var falta=faltaEnVentanilla(l);
             if(!falta)return;
             var g=porOT[l.orden_id]||(porOT[l.orden_id]={lineas:[],monto:0,desp:0,apr:0});
@@ -9529,15 +9566,27 @@ function resumenAdic(desp,apr){
 function pintarAvisoAdic(lista){
   var z=document.getElementById('avisoAdic');
   if(!z)return;
-  if(!lista.length){z.innerHTML='';z.classList.add('oculto');return}
-  var nuevas=lista.filter(function(o){
-    return o.lineas.filter(function(l){return !ADIC_VISTAS[l.id]}).length;
-  });
+  /* Lo descartado no se vuelve a mostrar, ni siquiera dentro de una
+     OT que todavía tiene otra línea pendiente. */
+  lista=lista.map(function(o){
+    var l=o.lineas.filter(function(x){return !adicDescartada(x.id)});
+    return Object.assign({},o,{lineas:l,
+      monto:l.reduce(function(a,x){return a+x.monto},0),
+      desp:l.filter(function(x){return x.falta==='despachar'}).length,
+      apr:l.filter(function(x){return x.falta==='aprobar'}).length});
+  }).filter(function(o){return o.lineas.length});
+  if(!lista.length){z.innerHTML='';z.classList.add('oculto');ADIC_ULT='';return}
+  /* La animación de entrada solo cuando de verdad hay algo distinto:
+     si no, el cartel parpadea cada 20 segundos. */
+  var firma=lista.map(function(o){
+    return o.lineas.map(function(l){return l.id}).join(',')}).join('|');
+  var cambio=firma!==ADIC_ULT;
+  ADIC_ULT=firma;
   var tot=lista.reduce(function(a,o){return a+o.lineas.length},0);
   z.classList.remove('oculto');
-var tDesp=lista.reduce(function(a,o){return a+(o.desp||0)},0);
+  var tDesp=lista.reduce(function(a,o){return a+(o.desp||0)},0);
   var tApr=lista.reduce(function(a,o){return a+(o.apr||0)},0);
-  z.innerHTML='<div class="popSolic'+(nuevas.length?' nueva':'')+'">'+
+  z.innerHTML='<div class="popSolic'+(cambio?' nueva':'')+'">'+
     '<div class="cab"><b>⚠ '+nLineasAdic(tot)+' por atender</b>'+
     '<button class="x" onclick="cerrarAvisoAdic()">✕</button></div>'+
     '<div class="hint" style="margin:-4px 0 4px;color:#B9C3D0">'+
@@ -9559,23 +9608,28 @@ var tDesp=lista.reduce(function(a,o){return a+(o.desp||0)},0);
       (lista.length-4)+' OT más con adicionales</div>':'')+
   '</div>';
 }
-/* Abrir la OT cuenta como haberla visto: el aviso deja de insistir
-   con esa, pero sigue para las demás. */
+/* Abrir la OT calla el aviso de esa OT mientras dure la sesión. No
+   se guarda: si al final no se despachó, mañana vuelve a salir. */
 function abrirAdicVent(id){
   ADIC_VENT.forEach(function(o){
-    if(o.id===id)o.lineas.forEach(function(l){ADIC_VISTAS[l.id]=1});
+    if(o.id===id)o.lineas.forEach(function(l){ADIC_SESION[l.id]=1});
   });
   var z=document.getElementById('avisoAdic');
-  if(z){z.innerHTML='';z.classList.add('oculto')}
+  if(z){z.innerHTML='';z.classList.add('oculto');ADIC_ULT=''}
   /* ir() deja la lista de ventanilla a la vista en el acto; ventAbrir
      abre la OT encima cuando termina de cargarla. */
   try{ if(VISTA_ACT!=='ventanilla')ir('ventanilla') }catch(e){}
   ventAbrir(id);
 }
+/* La ✕ sí es definitiva: se guarda en el equipo. */
 function cerrarAvisoAdic(){
-  ADIC_VENT.forEach(function(o){o.lineas.forEach(function(l){ADIC_VISTAS[l.id]=1})});
+  var ahora=Date.now();
+  ADIC_VENT.forEach(function(o){
+    o.lineas.forEach(function(l){ ADIC_VISTAS[l.id]=ahora });
+  });
+  adicVistasGuardar();
   var z=document.getElementById('avisoAdic');
-  if(z){z.innerHTML='';z.classList.add('oculto')}
+  if(z){z.innerHTML='';z.classList.add('oculto');ADIC_ULT=''}
 }
 
 /* Aviso flotante: solo para quien puede ejecutar la anulación. */
@@ -12544,7 +12598,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=194;
+var APP_VER=195;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
