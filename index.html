@@ -1,4 +1,4 @@
-<!--IZAV:193-->
+<!--IZAV:194-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9441,9 +9441,20 @@ function cargarSolicitudes(cb){
 }
 /* ---- ventanilla: adicionales que el taller acaba de pedir ----
    Cuando el jefe de taller agrega un servicio o un repuesto sobre una
-   OT ya aprobada, la línea queda como adicional pendiente. Ventanilla
-   es la que tiene que despacharlo y cobrarlo, pero no tenía cómo
-   enterarse salvo abriendo la OT de casualidad. */
+   OT ya aprobada, ventanilla tiene que enterarse: antes solo se daba
+   cuenta si abría la OT de casualidad.
+
+   Qué cuenta como pendiente, que no es lo mismo para los dos tipos:
+
+     · un REPUESTO está pendiente mientras no se haya bajado al
+       taller. En cuanto ventanilla lo despacha, deja de serlo.
+     · un SERVICIO no se despacha. Lo que falta ahí es que el cliente
+       lo apruebe, así que sale mientras siga como adicional sin
+       aprobar.
+
+   La primera versión miraba solo la marca de "adicional sin aprobar"
+   para los dos, y por eso un repuesto ya despachado seguía saliendo
+   en el aviso. */
 var ADIC_VENT=[],ADIC_VISTAS={};
 function cargarAdicVent(cb){
   if(!sb){cb&&cb([]);return}
@@ -9460,8 +9471,9 @@ function cargarAdicVent(cb){
       var ids=ords.map(function(o){return o.id});
       if(r.error||!ids.length){ADIC_VENT=[];cb&&cb([]);return}
       sb.from('orden_detalle')
-        .select('id,orden_id,descripcion,cantidad,precio_taller,precio_caja,anulada,agregado_por')
-        .in('orden_id',ids).eq('adicional','PEND')
+        .select('id,orden_id,tipo,descripcion,cantidad,precio_taller,precio_caja,'+
+                'anulada,agregado_por,adicional,despachado_el,stock_ok')
+        .in('orden_id',ids).not('adicional','is',null)
         .then(function(r2){
           var porOT={};
           (r2.data||[]).forEach(function(l){
@@ -9469,21 +9481,37 @@ function cargarAdicVent(cb){
             /* Lo que cargó ventanilla no es una solicitud para
                ventanilla: ya lo puso ella misma. */
             if(l.agregado_por==='ventanilla')return;
-            var g=porOT[l.orden_id]||(porOT[l.orden_id]={lineas:[],monto:0});
+            var falta=faltaEnVentanilla(l);
+            if(!falta)return;
+            var g=porOT[l.orden_id]||(porOT[l.orden_id]={lineas:[],monto:0,desp:0,apr:0});
             var pr=(l.precio_caja!==null&&l.precio_caja!==undefined)?l.precio_caja:l.precio_taller;
             var m=(Number(pr)||0)*(Number(l.cantidad)||1);
-            g.lineas.push({id:l.id,desc:l.descripcion||'',cant:Number(l.cantidad)||1,monto:m});
+            g.lineas.push({id:l.id,desc:l.descripcion||'',cant:Number(l.cantidad)||1,
+                           monto:m,falta:falta});
             g.monto+=m;
+            if(falta==='despachar')g.desp++; else g.apr++;
           });
           ADIC_VENT=ords.filter(function(o){return porOT[o.id]}).map(function(o){
             var vh=o.vehiculos||{},c=o.clientes||{},g=porOT[o.id];
             return {id:o.id,ot:o.numero,placa:vh.placa||'—',
               veh:[vh.marca,vh.modelo].filter(Boolean).join(' '),
-              cliente:c.nombre||'—',lineas:g.lineas,monto:g.monto};
+              cliente:c.nombre||'—',lineas:g.lineas,monto:g.monto,
+              desp:g.desp,apr:g.apr};
           });
           cb&&cb(ADIC_VENT);
         },function(){ADIC_VENT=[];cb&&cb([])});
     },function(){ADIC_VENT=[];cb&&cb([])});
+}
+/* '' si ventanilla ya no tiene nada que hacer con esa línea. */
+function faltaEnVentanilla(l){
+  if(l.tipo==='REP'){
+    if(l.despachado_el)return '';
+    /* Ventanilla ya lo revisó y lo dejó fuera del stock: no se va a
+       despachar nunca, así que no tiene sentido seguir pidiéndolo. */
+    if(l.stock_ok===false)return '';
+    return 'despachar';
+  }
+  return l.adicional==='PEND'?'aprobar':'';
 }
 function revisarAdicVent(){
   if(!sb||!SESION)return;
@@ -9491,6 +9519,13 @@ function revisarAdicVent(){
   cargarAdicVent(function(lista){ pintarAvisoAdic(lista) });
 }
 function nLineasAdic(n){ return n+(n===1?' adicional':' adicionales') }
+/* "2 por despachar · 1 por aprobar", sin nombrar lo que no hay. */
+function resumenAdic(desp,apr){
+  var t=[];
+  if(desp)t.push(desp+' por despachar');
+  if(apr)t.push(apr+' por aprobar');
+  return t.join(' · ');
+}
 function pintarAvisoAdic(lista){
   var z=document.getElementById('avisoAdic');
   if(!z)return;
@@ -9500,12 +9535,14 @@ function pintarAvisoAdic(lista){
   });
   var tot=lista.reduce(function(a,o){return a+o.lineas.length},0);
   z.classList.remove('oculto');
+var tDesp=lista.reduce(function(a,o){return a+(o.desp||0)},0);
+  var tApr=lista.reduce(function(a,o){return a+(o.apr||0)},0);
   z.innerHTML='<div class="popSolic'+(nuevas.length?' nueva':'')+'">'+
-    '<div class="cab"><b>⚠ '+nLineasAdic(tot)+' por despachar</b>'+
+    '<div class="cab"><b>⚠ '+nLineasAdic(tot)+' por atender</b>'+
     '<button class="x" onclick="cerrarAvisoAdic()">✕</button></div>'+
     '<div class="hint" style="margin:-4px 0 4px;color:#B9C3D0">'+
-      'El taller los agregó sobre '+(lista.length===1?'una OT ya aprobada.':
-      lista.length+' OT ya aprobadas.')+'</div>'+
+      'El taller los agregó sobre '+(lista.length===1?'una OT ya aprobada':
+      lista.length+' OT ya aprobadas')+' · '+resumenAdic(tDesp,tApr)+'.</div>'+
     lista.slice(0,4).map(function(o){
       return '<div class="it">'+
         '<div class="t">'+otCorto(o.ot)+' · '+esc(o.placa)+
@@ -9513,7 +9550,8 @@ function pintarAvisoAdic(lista){
         '<div class="m">'+o.lineas.slice(0,3).map(function(l){
             return esc(l.desc)+(l.cant>1?' ×'+l.cant:'')}).join(' · ')+
           (o.lineas.length>3?' y '+(o.lineas.length-3)+' más':'')+'</div>'+
-        '<div class="q">'+esc(o.cliente)+' · '+S(Math.round(o.monto))+'</div>'+
+        '<div class="q">'+esc(o.cliente)+' · '+S(Math.round(o.monto))+
+          ' · '+resumenAdic(o.desp,o.apr)+'</div>'+
         '<div class="b"><button class="btn chico" onclick="abrirAdicVent('+o.id+')">Ver la OT</button></div>'+
       '</div>';
     }).join('')+
@@ -11522,8 +11560,13 @@ function ventDespachar(todo){
     function listo(){
       var reps=VENT_LIN.filter(function(l){return l.incluir&&l.tipo==='REP'});
       var faltan=reps.filter(function(l){return !l.desp}).length;
-      auditar('DESPACHA','orden',o.ot,sel.length+' repuesto(s) al taller'+(faltan?' · faltan '+faltan:' · completo'));
+      try{ auditar('DESPACHA','orden',o.ot,sel.length+' repuesto(s) al taller'+
+        (faltan?' · faltan '+faltan:' · completo')) }catch(e){}
       ventRender();
+      /* El aviso flotante se refresca solo cada 20 s; acá se acaba de
+         despachar, así que se actualiza en el acto en vez de dejarlo
+         pidiendo algo que ya está hecho. */
+      try{ revisarAdicVent() }catch(e){}
     }
   });
 }
@@ -12501,7 +12544,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=193;
+var APP_VER=194;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
