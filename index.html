@@ -1,4 +1,4 @@
-<!--IZAV:195-->
+<!--IZAV:196-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -302,6 +302,8 @@ input::placeholder,textarea::placeholder{color:#A6AEB8;opacity:1}
 .srvOp:active{background:var(--gris2)}
 .srvOp .d{flex:1;font-size:13.5px;line-height:1.3}
 .srvOp .p{flex:0 0 auto;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.srvOp .p.libre{color:var(--verde)}
+.srvOp .p.lleno{color:var(--rojo)}
 .srvVacio{padding:12px;font-size:12.5px;color:var(--mudo);text-align:center}
 /* ===== filtros compactos ===== */
 .filtros{display:grid;gap:9px 10px;margin-bottom:12px;align-items:end;
@@ -1316,7 +1318,7 @@ tr.sel td{background:var(--rojo-cl)}
       <div class="card" id="gAsig">
         <h3 id="tituloMec">Asignar mecánico e iniciar diagnóstico</h3>
         <div class="grid g2" style="gap:10px">
-          <div><label>Mecánico</label><select id="gMec"></select>
+          <div><label>Mecánico</label><div id="gMecBox"></div>
             <div id="gMecAviso"></div></div>
           <div><label>Kilometraje de ingreso</label>
             <input id="gKm" inputmode="numeric" placeholder="obligatorio · 24,000" oninput="fmtKm(this)">
@@ -1569,11 +1571,13 @@ tr.sel td{background:var(--rojo-cl)}
         <option value="ventanilla">Ventanilla</option>
         <option value="asesor">Asesor de Servicio</option>
         <option value="caja">Caja</option>
-        <option value="mecanico">Mecánico</option>
         <option value="admin_local">Administrador Local</option>
         <option value="admin_general">Administrador General</option>
       </select></div>
       <div><label>Local</label><select id="nuSede"></select></div>
+      <div style="grid-column:1/-1"><div class="hint" style="margin:0">
+        Los mecánicos y lavadores no son usuarios del sistema: no entran
+        con clave. Se cargan en Configuración → Datos maestros.</div></div>
       <div><label id="nuPinLbl">PIN (4 dígitos)</label>
         <input id="nuPin" maxlength="6" inputmode="numeric" placeholder="0000"></div>
       <div id="nuActivoCaja" style="display:none"><label>Estado</label>
@@ -5722,7 +5726,8 @@ function editarUsuario(){
   }).then(function(r){
     if(r.error){
       msg.innerHTML='<div class="aviso rojo">'+esc(r.error.message)+
-        (/function .*does not exist/i.test(r.error.message)?'<br>Falta correr el paso 46.':'')+'</div>';
+        (/function .*does not exist|could not find/i.test(r.error.message)
+          ?'<br>Falta correr el <b>paso 52</b> en Supabase.':'')+'</div>';
       return;
     }
     if(String(r.data).indexOf('ERROR')===0){
@@ -5743,9 +5748,14 @@ function crearUsuario(){
     p_admin:SESION.usuario,p_admin_pin:apin,p_usuario:u,p_nombre:n,
     p_rol:$('nuRol').value,p_sede:Number($('nuSede').value),p_pin:pin
   }).then(function(r){
-    if(r.error){msg.innerHTML='<div class="aviso rojo">'+r.error.message+'</div>';return}
+    if(r.error){
+      msg.innerHTML='<div class="aviso rojo">'+esc(r.error.message)+
+        (/function .*does not exist|could not find/i.test(r.error.message)
+          ?'<br>Falta correr el <b>paso 52</b> en Supabase.':'')+'</div>';
+      return;
+    }
     if(String(r.data).indexOf('ERROR')===0){
-      msg.innerHTML='<div class="aviso rojo">'+r.data+'</div>';return;
+      msg.innerHTML='<div class="aviso rojo">'+esc(r.data)+'</div>';return;
     }
     msg.innerHTML='<div class="aviso ok">Usuario guardado.</div>';
     usrNuevo();
@@ -5867,7 +5877,7 @@ function sincronizarDesdeBase(){
       if(d.estado_taller&&d.estado_taller!==EST_TALLER){EST_TALLER=d.estado_taller;cambio=true}
       if((d.estado_ot||'')!==(EST_OT_ACT||'')){EST_OT_ACT=d.estado_ot||'';cambio=true}
       if(d.mecanico_nombre&&!MECANICO_OT){MECANICO_OT=d.mecanico_nombre;
-        var sm=$('gMec');if(sm)sm.value=MECANICO_OT}
+        mecPoner('gMec',MECANICO_OT)}
       if(d.comprobante_tipo&&$('gComprobante')&&!$('gComprobante').value){
         $('gComprobante').value=d.comprobante_tipo;
         if(d.comprobante_ruc&&$('gRuc'))$('gRuc').value=d.comprobante_ruc;
@@ -7255,7 +7265,7 @@ function pedirResponsables(faltaMec,faltaLav,k,nota){
   var cuerpo='';
   if(faltaMec)
     cuerpo+='<label>Mecánico que atendió</label>'+
-      '<select id="pregMec">'+mecOpciones('MECANICO',MECANICO_OT||'')+'</select>';
+      mecCampo('pregMec','MECANICO',MECANICO_OT||'');
   if(faltaLav)
     cuerpo+='<div style="margin-top:10px"><label>Quién hizo el lavado</label>'+
       '<select id="pregLav">'+mecOpciones('LAVADOR',LAVADOR_OT||'')+'</select></div>';
@@ -7287,7 +7297,7 @@ function pregAviso(t){
 function asignarMecanicoAhora(mec){
   var antes=MECANICO_OT;
   MECANICO_OT=mec;
-  var sm=$('gMec'); if(sm)sm.value=mec;
+  mecPoner('gMec',mec);
   if(sb&&OT_NUM){
     var pm=mec.split(' · ');
     sb.from('ordenes').update({mecanico_nombre:pm[1]||mec,mecanico_codigo:pm[0]||null})
@@ -8140,6 +8150,182 @@ function mecOpciones(tipo,sel){
       return '<option value="'+v+'"'+(sel===v||sel===m.nombre?' selected':'')+'>'+v+loc+'</option>';
     }).join('');
 }
+/* ---------- cuántos autos tiene encima cada mecánico ----------
+   El desplegable los listaba a todos igual. Con treinta nombres hay
+   que bajar buscando, y sobre todo no se ve quién está cargado: el
+   que ya tiene tres autos abiertos no es a quien conviene darle el
+   cuarto. */
+var CARGA_MEC={},CARGA_MEC_T=0,CARGA_MEC_SEDE=null;
+/* El mecánico se guarda unas veces como "COD · Nombre" y otras solo
+   con el nombre. Para contar, lo que vale es el nombre. */
+function mecClave(v){
+  var s=String(v||''),p=s.split('·');
+  return mmLlano(p.length>1?p.slice(1).join('·'):s);
+}
+function cargarCargaMec(cb){
+  if(!sb){cb&&cb();return}
+  /* Un minuto de caché: el combo se abre muchas veces seguidas y el
+     número no cambia entre una y otra. */
+  if(CARGA_MEC_SEDE===SEDE_ACTIVA&&Date.now()-CARGA_MEC_T<60000){cb&&cb();return}
+  var q=sb.from('ordenes')
+    .select('id,mecanico_nombre,estado_taller,estado_ot'+(HAY_ES_PRUEBA?',es_prueba':''))
+    .in('estado_taller',['EN_DIAGNOSTICO','EN_PROCESO'])
+    .eq('sede_id',SEDE_ACTIVA).limit(600);
+  try{ q=sinPruebas(q) }catch(e){}
+  q.then(function(r){
+    var m={};
+    (r.data||[]).forEach(function(o){
+      if(o.estado_ot==='ANULADA')return;
+      var k=mecClave(o.mecanico_nombre);
+      if(k)m[k]=(m[k]||0)+1;
+    });
+    CARGA_MEC=m;CARGA_MEC_T=Date.now();CARGA_MEC_SEDE=SEDE_ACTIVA;
+    cb&&cb();
+  },function(){ cb&&cb() });
+}
+function cargaDe(m){ return CARGA_MEC[mmLlano(m.nombre)]||0 }
+function cargaTexto(n){
+  if(!n)return 'libre';
+  return n===1?'1 auto':n+' autos';
+}
+
+/* ---------- combo de mecánico: se escribe o se despliega ----------
+   Mismo comportamiento que el buscador de servicios. Lo que queda
+   guardado siempre sale de la lista: acá no existe el "otro", un
+   mecánico que no está cargado no puede atender un auto.
+   El valor vive en un campo oculto con el mismo id de antes
+   —gMec, pregMec, ptMecSel— así que todo lo que ya leía .value
+   sigue leyendo lo mismo.
+   ----------------------------------------------------------- */
+var MC={};
+function mecValor(m){ return m.codigo+' · '+m.nombre }
+function mecPorValor(tipo,val){
+  var q=mecClave(val);
+  if(!q)return null;
+  var l=MECS.filter(function(m){return m.tipo===tipo&&mmLlano(m.nombre)===q});
+  return l.length?l[0]:null;
+}
+function mecCampo(base,tipo,sel){
+  MC[base]={tipo:tipo,abierta:false,pintados:[]};
+  sel=String(sel||'').trim();
+  var m=mecPorValor(tipo,sel),txt=m?mecValor(m):sel;
+  return '<div class="invBox">'+
+      '<input id="'+base+'Txt" autocomplete="off" value="'+escAtr(txt)+'" '+
+        'placeholder="Toca para ver la lista o escribe el nombre" '+
+        'oninput="mecEscribe(&quot;'+base+'&quot;)" '+
+        'onfocus="mecAbrir(&quot;'+base+'&quot;)" '+
+        'onblur="mecCerrar(&quot;'+base+'&quot;)">'+
+      '<button type="button" class="limpiaX'+(txt?' on':'')+'" id="'+base+'X" '+
+        'title="Quitar" onmousedown="event.preventDefault()" '+
+        'onclick="mecLimpiar(&quot;'+base+'&quot;)">✕</button>'+
+      '<div class="srvLista" id="'+base+'Lista" onmousedown="event.preventDefault()"></div>'+
+    '</div>'+
+    '<input type="hidden" id="'+base+'" value="'+escAtr(txt)+'">';
+}
+function mecPintar(base,filtro){
+  var c=MC[base],dl=$(base+'Lista'); if(!c||!dl)return;
+  var q=mmLlano(filtro),todos=MECS.filter(function(m){return m.tipo===c.tipo});
+  var l=q?todos.filter(function(m){
+        return mmLlano(m.nombre).indexOf(q)>-1||mmLlano(m.codigo).indexOf(q)>-1;
+      }):todos.slice();
+  /* Los más libres primero. */
+  l=l.slice().sort(function(a,b){
+    var d=cargaDe(a)-cargaDe(b);
+    return d||(a.nombre<b.nombre?-1:1);
+  });
+  c.pintados=l;
+  dl.innerHTML=l.length
+    ? l.map(function(m,i){
+        var n=cargaDe(m);
+        var loc=(MECS_OTROS&&m.sedes&&m.sedes.nombre&&m.sede_id!==SEDE_ACTIVA)
+          ?' · '+esc(m.sedes.nombre):'';
+        return '<button type="button" class="srvOp" '+
+          'onclick="mecElegir(&quot;'+base+'&quot;,'+i+')">'+
+          '<span class="d">'+esc(m.nombre)+
+            '<span style="font-weight:400;color:var(--mudo)"> '+esc(m.codigo)+loc+'</span></span>'+
+          '<span class="p '+(n?(n>2?'lleno':''):'libre')+'">'+cargaTexto(n)+'</span></button>';
+      }).join('')
+    : '<div class="srvVacio">Nadie'+(filtro?' con “'+esc(filtro)+'”':' en la lista')+'.</div>';
+  dl.classList.toggle('on',!!c.abierta);
+  cbAcomodar(base);
+}
+function mecX(base){
+  var t=$(base+'Txt'),x=$(base+'X');
+  if(x)x.classList.toggle('on',!!(t&&t.value));
+}
+function mecAbrir(base){
+  var c=MC[base],t=$(base+'Txt'),h=$(base); if(!c||!t)return;
+  c.abierta=true;
+  var f=t.value;
+  /* Si lo escrito es justo el que ya está elegido, filtrar por ese
+     texto deja la lista en uno solo y no hay cómo cambiarlo. */
+  if(h&&h.value&&h.value===t.value)f='';
+  /* La carga se pide acá: al abrir, no al pintar la pantalla. */
+  cargarCargaMec(function(){ if(MC[base]&&MC[base].abierta)mecPintar(base,f) });
+  mecPintar(base,f);
+}
+function mecCerrar(base){
+  setTimeout(function(){
+    var c=MC[base]; if(!c)return;
+    c.abierta=false;
+    var dl=$(base+'Lista'); if(dl)dl.classList.remove('on');
+    mecValidar(base);
+  },260);
+}
+function mecEscribe(base){
+  var c=MC[base],t=$(base+'Txt'),h=$(base); if(!c||!t||!h)return;
+  h.value='';            /* nada elegido hasta tocar una opción */
+  mecX(base);
+  c.abierta=true;
+  mecPintar(base,t.value);
+}
+function mecElegir(base,i){
+  var c=MC[base]; if(!c)return;
+  var m=c.pintados[i]; if(!m)return;
+  mecFijar(base,mecValor(m));
+}
+function mecFijar(base,val){
+  var c=MC[base],t=$(base+'Txt'),h=$(base); if(!c)return;
+  if(t)t.value=val;
+  if(h)h.value=val;
+  c.abierta=false;
+  var dl=$(base+'Lista'); if(dl)dl.classList.remove('on');
+  mecX(base);
+}
+function mecLimpiar(base){
+  var c=MC[base]; if(!c)return;
+  mecFijar(base,'');
+  c.abierta=true;
+  mecPintar(base,'');
+  var t=$(base+'Txt'); if(t)t.focus();
+}
+/* Al salir del campo: lo escrito solo vale si corresponde a alguien
+   de la lista. Si no, se limpia; no se inventa un mecánico. */
+function mecValidar(base){
+  var c=MC[base],t=$(base+'Txt'),h=$(base); if(!c||!t||!h)return;
+  var val=t.value.trim();
+  if(!val){ h.value=''; mecX(base); return }
+  var lista=MECS.filter(function(m){return m.tipo===c.tipo}),q=mmLlano(val);
+  var ex=lista.filter(function(m){
+    return mmLlano(mecValor(m))===q||mmLlano(m.nombre)===q||mmLlano(m.codigo)===q;
+  })[0];
+  if(!ex){
+    var pre=lista.filter(function(m){
+      return mmLlano(m.nombre).indexOf(q)===0||mmLlano(m.codigo).indexOf(q)===0;
+    });
+    if(pre.length===1)ex=pre[0];
+  }
+  if(ex){ mecFijar(base,mecValor(ex)); return }
+  t.value='';h.value='';
+  mecX(base);
+}
+/* Para el código que ya existía y hacía $('gMec').value = … */
+function mecPoner(base,val){
+  if(!MC[base]){ var h=$(base); if(h)h.value=val||''; return }
+  var m=mecPorValor(MC[base].tipo,val);
+  mecFijar(base,m?mecValor(m):String(val||''));
+}
+
 /* Dice qué falta de verdad, en vez de culpar al local. */
 function mecAviso(){
   var z=document.getElementById('gMecAviso');if(!z)return;
@@ -8178,8 +8364,8 @@ function pintarKmIngreso(){
 function pintarMecanicos(sel){
   pintarKmIngreso();
   cargarMecanicos(function(){
-    var s=document.getElementById('gMec');
-    if(s)s.innerHTML=mecOpciones('MECANICO',sel||MECANICO_OT||'');
+    var s=document.getElementById('gMecBox');
+    if(s)s.innerHTML=mecCampo('gMec','MECANICO',sel||MECANICO_OT||'');
     mecAviso();
     pintarLavador();
   });
@@ -8241,7 +8427,7 @@ function irDiagnostico(){
      no hay nada que guardar. */
   if(EST_TALLER!=='RECIBIDO'&&!mec){
     aviso('Elige un mecánico de la lista para asignarlo.');
-    if($('gMec'))$('gMec').focus();
+    if($('gMecTxt'))$('gMecTxt').focus();
     return;
   }
   if(ORD)ORD.km=km;
@@ -8544,8 +8730,8 @@ function ptAsignarMec(i,luego){
     pregunta('Asignar mecánico',
       '<b>'+esc(v.placa||'—')+'</b> · '+esc(otCorto(o.numero))+'<br>'+
       esc([v.marca,v.modelo].filter(Boolean).join(' '))+
-      '<div style="margin-top:12px"><select id="ptMecSel" style="width:100%">'+
-        mecOpciones('MECANICO',o.mecanico_nombre||'')+'</select></div>',
+      '<div style="margin-top:12px">'+
+        mecCampo('ptMecSel','MECANICO',o.mecanico_nombre||'')+'</div>',
       [{t:'Guardar',p:true,cierra:false,fn:function(){
           var val=((document.getElementById('ptMecSel')||{}).value||'').trim();
           if(!val){aviso('Elige un mecánico de la lista.');return}
@@ -8563,8 +8749,9 @@ function ptAsignarMec(i,luego){
         }},
        {t:'Cancelar'}]);
   }
-  if(MECS.length&&MECS_SEDE===SEDE_ACTIVA)abrir();
-  else cargarMecanicos(abrir);
+  function listo(){ cargarCargaMec(abrir) }
+  if(MECS.length&&MECS_SEDE===SEDE_ACTIVA)listo();
+  else cargarMecanicos(listo);
 }
 /* Entrega rápida desde el reporte. Si algo quedó sin cobrar, el aviso
    lo dice con todas sus letras antes de soltar el carro: una vez
@@ -12598,7 +12785,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=195;
+var APP_VER=196;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
