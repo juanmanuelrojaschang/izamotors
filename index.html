@@ -1,4 +1,4 @@
-<!--IZAV:196-->
+<!--IZAV:197-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2804,6 +2804,14 @@ var LINEAS_SERV=[];
 /* ¿el detalle que hay en memoria es el completo de la base? Mientras
    sea false, guardar NO borra: solo agrega lo nuevo. */
 var LINEAS_CARGADAS=false;
+/* Los ids que trajo la última lectura BUENA del detalle. Solo esas
+   líneas se pueden borrar al guardar: cualquier otra es de alguien
+   más —ventanilla, el asesor— y no se toca. */
+var LIN_BD_IDS=[];
+function refrescarIdsBD(){
+  LIN_BD_IDS=LINEAS_SERV.concat(LINEAS_REP)
+    .map(function(l){return l.id_bd}).filter(Boolean);
+}
 function pintarPresupuesto(){
   /* el catálogo puede no haber llegado todavía: sin él no hay familias */
   if(!SERVICIOS.length)cargarCatalogoV2();
@@ -5804,7 +5812,11 @@ function abrirOrden(ot){
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
   PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
-  LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];
+  LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];LIN_BD_IDS=[];
+  /* El comentario se vacía antes de traer el de la base: si queda el
+     de la orden anterior, sincronizarDesdeBase lo respeta por no estar
+     vacío y termina guardado en esta. */
+  if($('sintoma'))$('sintoma').value='';
   PANEL_SEL=null;ACC_ABIERTO=carrilPorDefecto();
   clearInterval(tint);$('crono').classList.remove('on');
   $('gInfo').innerHTML=d.info||(d.veh+' · <b class="num">'+d.placa+'</b> · '+d.cliente);
@@ -5823,8 +5835,13 @@ function abrirOrden(ot){
 /* La base es la fuente de verdad: al reabrir, se traen estado, mecánico
    y líneas, y se pisa lo que el navegador tenía guardado. */
 function cargarLineasOrden(ordenId,cb){
-  cargarLineasBD(ordenId,function(lin){
+  cargarLineasBD(ordenId,function(lin,ok){
+    /* Si la lectura no llegó, el detalle NO está cargado. Darlo por
+       cargado acá era lo que autorizaba al siguiente guardado a borrar
+       lo que no tenía delante. */
+    if(!ok){ conex('No pude traer el detalle de la orden',true); cb&&cb(); return }
     LINEAS_CARGADAS=true;
+    LIN_BD_IDS=lin.map(function(l){return l.id});
     if(!lin.length){cb&&cb();return}
     LINEAS_SERV=[];LINEAS_REP=[];
     lin.forEach(function(l){
@@ -7166,7 +7183,7 @@ function recibir(){
     });
   }
   BITACORA={};
-  LINEAS_CARGADAS=true;
+  LINEAS_CARGADAS=true;LIN_BD_IDS=[];
   EST_TALLER='RECIBIDO';EST_OT_ACT='';HITOS={};PANEL_SEL=null;ACC_ABIERTO='taller';
   TIENE_P2=false;PRELIM_REV=0;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
   HITOS['T_REGISTRO']=selloHora();
@@ -7436,6 +7453,15 @@ function insertarOrden(vehId,cliId){
   }).select('id').then(function(r){
     if(r.error){conex('No se pudo crear la orden: '+r.error.message,true);return}
     conex('Orden '+OT_NUM+' creada en la base');
+    /* En un update aparte: si el paso 53 todavía no corrió, estas dos
+       columnas no existen y el error no debe tumbar la creación. */
+    if(SESION&&r.data&&r.data[0])
+      sb.from('ordenes')
+        .update({recepcion_usuario:SESION.usuario||null,
+                 recepcion_nombre:SESION.nombre||null})
+        .eq('id',r.data[0].id).then(function(rr){
+          if(!rr.error&&HAY_RECEPCION===false)HAY_RECEPCION=true;
+        },function(){});
     guardarDetalleBD();
   },function(){});
 }
@@ -7569,7 +7595,7 @@ function agregarAOT(){
   if(!LINEAS_CARGADAS&&sb&&OT_NUM){
     conex('Trayendo el detalle de la orden…');
     sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
-      if(!r.data){LINEAS_CARGADAS=true;agregarAOT();return}
+      if(!r.data){LINEAS_CARGADAS=true;LIN_BD_IDS=[];agregarAOT();return}
       cargarLineasOrden(r.data.id,function(){ pintarPresupuestoLista(); agregarAOT() });
     },function(){ conex('Sin conexión: no se puede agregar ahora',true) });
     return;
@@ -8457,17 +8483,42 @@ function irDiagnostico(){
   guardarOrden();
 }
 
+/* Todo lo que pertenece a UNA orden se borra junto.
+   Antes esta función limpiaba las líneas y el cliente, pero dejaba
+   puestos el número de OT, el mecánico y —sobre todo— el comentario
+   del preliminar: la siguiente recepción arrancaba con el comentario
+   del cliente anterior y lo guardaba como suyo. El número de OT que
+   quedaba colgado era peor: cualquier guardado posterior escribía
+   sobre la orden de antes. */
+function limpiarOrdenEnMemoria(){
+  OT_NUM='';ORD=null;OT_EST='';
+  EST_TALLER='RECIBIDO';EST_OT_ACT='';
+  HITOS={};PRELIM_REV=0;TIENE_P2=false;
+  EDITANDO_OT=false;AGREGANDO=false;
+  MECANICO_OT='';LAVADOR_OT='';
+  LINEAS_SERV=[];LINEAS_REP=[];LINEAS_CARGADAS=false;LIN_BD_IDS=[];
+  SEL={};SEL_SERV={};BITACORA={};estadoZ={};
+  FOTOS=[];FOTOS_MINI=[];
+  PANEL_SEL=null;
+  ['sintoma','gKm','gRuc','placa'].forEach(function(id){
+    var e=document.getElementById(id); if(e)e.value='';
+  });
+  var g=document.getElementById('gOT');        if(g)g.textContent='';
+  var i=document.getElementById('gInfo');      if(i)i.innerHTML='';
+  var t=document.getElementById('tiempoFinal');if(t)t.innerHTML='';
+  var m=document.getElementById('gMecBox');    if(m)m.innerHTML='';
+  var c=document.getElementById('gComprobante');if(c)c.selectedIndex=0;
+}
 function reset(){
   BORR.borrar();
-  LINEAS_CARGADAS=false;
+  limpiarOrdenEnMemoria();
   MODO_REC='deja';
   apagarCamara();try{fotoCerrar()}catch(e){}
   clearInterval(tint);$('crono').classList.remove('on');
-  SESION_ACT=false;ORD=null;PASO_ACTUAL=1;
+  SESION_ACT=false;PASO_ACTUAL=1;
   $('segHome').style.display='block';$('flujo').style.display='none';
-  FOTOS=[];FOTOS_MINI=[];$('galeria').innerHTML='';estadoZ={};SEL={};OT_EST='';SEL_SERV={};LINEAS_SERV=[];LINEAS_REP=[];
-  BITACORA={};
-  $('placa').value='';ACTUAL=null;ocrIdx=0;
+  $('galeria').innerHTML='';
+  ACTUAL=null;ocrIdx=0;
   modoInicio();
   $('ficha').innerHTML='<div class="aviso info" style="margin:0">Escribe la placa para traer el cliente, su historial y su recurrencia.</div>';
   document.querySelectorAll('.punto').forEach(function(d,i){d.className='punto';d.textContent=ZONAS[i][0].split(' ')[0].slice(0,4)});
@@ -9924,12 +9975,24 @@ function esAdminGeneral(){ return !!(SESION&&SESION.rol==='admin_general') }
 /* Las órdenes que registra un administrador general son pruebas y no
    deben verse en taller, tienda ni reportería. La columna llega con el
    paso30; mientras no esté, se consulta sin ese filtro. */
+/* Quién recibió el vehículo. La app no puede leer la tabla usuarios
+   —el paso 32 se la cerró y la vista de login no expone el id—, así que
+   el nombre y el código del jefe de taller se guardan en la propia
+   orden. Mientras no se corra el paso 53 las columnas no existen: se
+   detecta una vez y se trabaja sin ellas. */
+var HAY_RECEPCION=null;
+function detectarRecepcion(cb){
+  if(HAY_RECEPCION!==null||!sb){cb&&cb();return}
+  sb.from('ordenes').select('recepcion_usuario').limit(1).then(function(r){
+    HAY_RECEPCION=!r.error;cb&&cb();
+  },function(){ HAY_RECEPCION=false;cb&&cb() });
+}
 var HAY_ES_PRUEBA=null;
 function detectarEsPrueba(cb){
   if(HAY_ES_PRUEBA!==null||!sb){cb&&cb();return}
   sb.from('ordenes').select('es_prueba').limit(1).then(function(r){
-    HAY_ES_PRUEBA=!r.error;cb&&cb();
-  },function(){ HAY_ES_PRUEBA=false;cb&&cb() });
+    HAY_ES_PRUEBA=!r.error;detectarRecepcion(cb);
+  },function(){ HAY_ES_PRUEBA=false;detectarRecepcion(cb) });
 }
 function sinPruebas(q){
   return HAY_ES_PRUEBA?q.or('es_prueba.is.null,es_prueba.eq.false'):q;
@@ -10899,6 +10962,9 @@ function cliDevolverYa(m){
    ============================================================ */
 function guardarDetalleBD(){
   if(!sb||!OT_NUM)return;
+  /* Sin orden abierta no hay nada que guardar, y OT_NUM puede haber
+     quedado apuntando a la orden anterior. */
+  if(!ORD)return;
   sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
     if(!r.data)return;
     var oid=r.data.id,t=totalesV2();
@@ -10908,53 +10974,69 @@ function guardarDetalleBD(){
     /* Antes se borraba TODO el detalle y se reescribía con lo del taller.
        Con ventanilla cargando repuestos en diagnóstico eso los borraba,
        así que ahora se respeta lo que ella agregó y sigue en la lista. */
-    var conservar={};
+    var vivos={};
     LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
-      if(l.de_vent&&l.id_bd)conservar[l.id_bd]=true;
+      if(l.id_bd)vivos[l.id_bd]=true;
     });
     sb.from('orden_detalle').select('id').eq('orden_id',oid).then(function(rl){
+      /* Se borra únicamente lo que vino en la última lectura buena y el
+         taller quitó a propósito. Lo que no estaba en esa lectura no es
+         suyo: puede haberlo agregado ventanilla hace un minuto. */
       var fuera=(rl.data||[]).map(function(x){return x.id})
-                 .filter(function(id){return !conservar[id]});
+                 .filter(function(id){
+                   return LIN_BD_IDS.indexOf(id)>-1 && !vivos[id];
+                 });
       if(fuera.length)
         sb.from('orden_detalle').delete().in('id',fuera).then(seguir,seguir);
       else seguir();
     },seguir);
     function seguir(){
-      var filas=[],nuevas=[];
-      /* Sin el detalle completo delante solo se manda lo que todavía no
-         existe allá; con él, se reescribe todo como siempre. */
-      function toca(l){
-        if(l.de_vent&&l.id_bd)return false;
-        if(!LINEAS_CARGADAS&&l.id_bd)return false;   /* ya está en la base */
-        return true;
+      var filas=[],nuevas=[],edits=[];
+      /* La línea que ya existe se ACTUALIZA; antes se borraba y se
+         volvía a insertar, y en el camino se perdía todo lo que no es
+         del taller: si ventanilla ya la había despachado o el cliente
+         ya había aprobado el adicional, eso volvía a cero. */
+      function campos(l,tipo){
+        var d={descripcion:l.desc,cantidad:l.cant||1,precio_taller:l.precio,
+               codigo_almacen:l.codigo||null,codigo2:l.codigo2||null};
+        if(tipo==='REP'){
+          d.ubicacion=l.ubicacion||null;
+          d.marca=l.marca||null;
+          d.modelo=l.modelo||null;
+        }
+        return d;
       }
-      /* Los códigos, la marca y la ubicación viajan con la línea:
-         ventanilla los necesita y antes llegaban vacíos. */
-      LINEAS_SERV.forEach(function(l){
-        if(!toca(l))return;
+      function reparte(l,tipo){
+        if(l.de_vent&&l.id_bd)return;           /* la cargó ventanilla */
+        if(l.id_bd){
+          /* Con el detalle leído, ese id es de ESTA orden y se puede
+             tocar. Sin leerlo puede venir del borrador del navegador y
+             apuntar a cualquier lado: ahí no se toca nada. */
+          if(LINEAS_CARGADAS)edits.push({id:l.id_bd,d:campos(l,tipo)});
+          return;
+        }
         nuevas.push(l);
-        filas.push({orden_id:oid,tipo:'MO',descripcion:l.desc,cantidad:l.cant||1,
-                    precio_taller:l.precio,stock_ok:true,agregado_por:'taller',
-                    adicional:l.adic||null,
-                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null});
+        var f=campos(l,tipo);
+        f.orden_id=oid; f.tipo=tipo; f.agregado_por='taller';
+        f.adicional=l.adic||null;
+        f.stock_ok=(tipo==='MO')?true:null;
+        filas.push(f);
+      }
+      LINEAS_SERV.forEach(function(l){ reparte(l,'MO') });
+      LINEAS_REP.forEach(function(l){ reparte(l,'REP') });
+
+      edits.forEach(function(e){
+        sb.from('orden_detalle').update(e.d).eq('id',e.id).then(function(){},function(){});
       });
-      LINEAS_REP.forEach(function(l){
-        if(!toca(l))return;
-        nuevas.push(l);
-        filas.push({orden_id:oid,tipo:'REP',descripcion:l.desc,cantidad:l.cant,
-                    precio_taller:l.precio,stock_ok:null,agregado_por:'taller',
-                    adicional:l.adic||null,
-                    codigo_almacen:l.codigo||null,codigo2:l.codigo2||null,
-                    ubicacion:l.ubicacion||null,marca:l.marca||null,modelo:l.modelo||null});
-      });
-      if(LINEAS_CARGADAS)nuevas.forEach(function(l){ l.id_bd=null });
       if(filas.length)
         sb.from('orden_detalle').insert(filas).select('id').then(function(ins){
-          /* cada línea se queda con su id: así el próximo guardado no la
-             vuelve a insertar */
+          /* cada línea se queda con su id: así el próximo guardado la
+             actualiza en vez de volver a insertarla */
           var ids=(ins&&ins.data)||[];
           nuevas.forEach(function(l,k){ if(ids[k])l.id_bd=ids[k].id });
+          refrescarIdsBD();
         },function(){});
+      else refrescarIdsBD();
       sb.from('ordenes').update({total_taller:t.tot,
         comprobante_tipo:($('gComprobante')?($('gComprobante').value||null):null),
         comprobante_ruc:($('gRuc')?($('gRuc').value.trim()||null):null),
@@ -11014,6 +11096,12 @@ var SIN_OT_TALLER=['RECIBIDO','EN_DIAGNOSTICO'];
 var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cobrado,ingreso,forma_pago,voucher_url,pago_tarjeta_por,pago_tarjeta_el,comprobante_tipo,comprobante_ruc,ot_prelim_aprobada,ot_prelim2_aprobada,ot_def_aprobada,mecanico_nombre,nota_interna,nota_interna_el,nota_atendida_el,'+
   'nota_atendida_por,nota_atendida_coment,nota_publica,'+
   'km_ingreso,vehiculos(placa,marca,modelo,anio),clientes(nombre,telefono,tipo_doc,num_doc)';
+/* Las columnas de recepción se piden solo si el paso 53 ya corrió: si
+   no existen, PostgREST rechaza la consulta entera y el asesor se
+   queda sin bandeja. */
+function colsOrden(){
+  return COLS_ORDEN+(HAY_RECEPCION?',recepcion_usuario,recepcion_nombre':'');
+}
 function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   if(!sb){cb([]);return}
   /* sedeOpt: sin pasar = el local activo · null = todos · número = ese local */
@@ -11034,10 +11122,10 @@ function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   }
   function conSede(q){ return sinPruebas(sedeF===null?q:q.eq('sede_id',sedeF)) }
   if(conOT.length)
-    conSede(sb.from('ordenes').select(COLS_ORDEN).in('estado_ot',conOT))
+    conSede(sb.from('ordenes').select(colsOrden()).in('estado_ot',conOT))
       .order('ingreso',{ascending:false}).limit(200).then(recibir,function(){fin()});
   if(sinOT)
-    conSede(sb.from('ordenes').select(COLS_ORDEN).is('estado_ot',null))
+    conSede(sb.from('ordenes').select(colsOrden()).is('estado_ot',null))
       .in('estado_taller',SIN_OT_TALLER)
       .order('ingreso',{ascending:false}).limit(200).then(recibir,function(){fin()});
 }
@@ -11096,6 +11184,12 @@ function fichaOT(o){
     (o.km?Number(o.km).toLocaleString('es-PE')+' km':'<span class="falta">sin registrar</span>')+
     '</b></div>');
   if(o.mec)d.push('<div class="ln"><span>Mecánico</span><b>'+esc(o.mec)+'</b></div>');
+  /* Quién recibió el vehículo: el asesor arma el comprobante y tiene
+     que saber a qué jefe de taller preguntarle. */
+  if(o.rec||o.rec_cod)
+    d.push('<div class="ln"><span>Recibió</span><b>'+esc(o.rec||o.rec_cod)+
+      (o.rec&&o.rec_cod?' <span style="font-weight:400;color:var(--mudo)">'+
+        esc(o.rec_cod)+'</span>':'')+'</b></div>');
   return '<div class="fichaOT">'+
     '<div class="cab"><span class="pl">'+esc(o.placa||'—')+'</span>'+
       '<span class="vh">'+esc(o.veh||'Vehículo sin datos')+'</span></div>'+
@@ -11158,6 +11252,7 @@ function mapearOrden(o){
           doc:[c.tipo_doc,c.num_doc].filter(Boolean).join(' '),
           tipo_doc:c.tipo_doc||'',num_doc:c.num_doc||'',
           km:Number(o.km_ingreso||0),
+          rec:o.recepcion_nombre||'',rec_cod:o.recepcion_usuario||'',
           estado_ot:o.estado_ot,estado_taller:o.estado_taller,
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
           forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
@@ -11171,10 +11266,15 @@ function mapearOrden(o){
   })();
 }
 
+/* cb(lineas, ok). El segundo dato importa: una consulta que falla
+   devuelve una lista vacía igual que una orden que no tiene líneas, y
+   confundir las dos cosas es lo que hizo que se perdiera el detalle de
+   una orden entera. */
 function cargarLineasBD(ordenId,cb){
-  if(!sb){cb([]);return}
+  if(!sb){cb([],false);return}
   sb.from('orden_detalle').select('*').eq('orden_id',ordenId).order('id')
     .then(function(r){
+      if(r.error){cb([],false);return}
       cb((r.data||[]).map(function(l){
         return {id:l.id,tipo:l.tipo,desc:l.descripcion,cant:Number(l.cantidad)||1,
                 precio:Number(l.precio_taller)||0,
@@ -11184,8 +11284,8 @@ function cargarLineasBD(ordenId,cb){
                 nota:l.nota_cambio||'',desp:l.despachado_el||null,desp_por:l.despachado_por||'',
                 por:l.agregado_por||'',sub:l.sub_desc||'',adic:l.adicional||'',
                 cod2:l.codigo2||'',ubic:l.ubicacion||'',marca:l.marca||'',modelo:l.modelo||''};
-      }));
-    },function(){cb([])});
+      }),true);
+    },function(){cb([],false)});
 }
 
 /* ============================================================
@@ -12785,7 +12885,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=196;
+var APP_VER=197;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
