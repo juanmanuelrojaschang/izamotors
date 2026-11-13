@@ -1,4 +1,4 @@
-<!--IZAV:197-->
+<!--IZAV:198-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5841,7 +5841,7 @@ function cargarLineasOrden(ordenId,cb){
        lo que no tenía delante. */
     if(!ok){ conex('No pude traer el detalle de la orden',true); cb&&cb(); return }
     LINEAS_CARGADAS=true;
-    LIN_BD_IDS=lin.map(function(l){return l.id});
+    LIN_BD_IDS=[];
     if(!lin.length){cb&&cb();return}
     LINEAS_SERV=[];LINEAS_REP=[];
     lin.forEach(function(l){
@@ -5858,6 +5858,12 @@ function cargarLineasOrden(ordenId,cb){
           marca:l.marca||'',modelo:l.modelo||'',ubicacion:l.ubic||'',
           adic:l.adic||'',id_bd:l.id,de_vent:dv});
     });
+    /* Solo las líneas que de verdad entraron a las listas del taller
+       se pueden borrar después. Un repuesto que ventanilla retiró no
+       entra acá —no tiene incluir— y antes igual quedaba en la lista
+       de borrables: el siguiente guardado del taller lo eliminaba de
+       la base junto con el registro de que lo habían retirado. */
+    refrescarIdsBD();
     try{pintarPresupuestoLista()}catch(e){}
     try{var t=totalesV2();$('totMO').textContent=S(t.mo);$('totREP').textContent=S(t.rp);$('totTOT').textContent=S(t.tot)}catch(e){}
     guardarOrden();
@@ -10996,13 +11002,26 @@ function guardarDetalleBD(){
          volvía a insertar, y en el camino se perdía todo lo que no es
          del taller: si ventanilla ya la había despachado o el cliente
          ya había aprobado el adicional, eso volvía a cero. */
-      function campos(l,tipo){
-        var d={descripcion:l.desc,cantidad:l.cant||1,precio_taller:l.precio,
-               codigo_almacen:l.codigo||null,codigo2:l.codigo2||null};
+      /* Lo que el taller NO tiene no se manda.
+         Ventanilla codifica el repuesto y le pone almacén, ubicación y
+         marca. Si después el jefe agrega un adicional y guarda, su
+         copia de esa línea todavía viene sin código: mandarla con el
+         campo vacío borraba el trabajo de ventanilla y la línea volvía
+         a salir como "sin código de stock", como si nunca la hubiera
+         atendido. Un campo vacío de este lado significa "no sé", no
+         "bórralo". */
+      function campos(l,tipo,esNueva){
+        var d={descripcion:l.desc,cantidad:l.cant||1,precio_taller:l.precio};
+        function pon(k,val){
+          if(val!==undefined&&val!==null&&String(val)!=='')d[k]=val;
+          else if(esNueva)d[k]=null;
+        }
+        pon('codigo_almacen',l.codigo);
+        pon('codigo2',l.codigo2);
         if(tipo==='REP'){
-          d.ubicacion=l.ubicacion||null;
-          d.marca=l.marca||null;
-          d.modelo=l.modelo||null;
+          pon('ubicacion',l.ubicacion);
+          pon('marca',l.marca);
+          pon('modelo',l.modelo);
         }
         return d;
       }
@@ -11012,11 +11031,11 @@ function guardarDetalleBD(){
           /* Con el detalle leído, ese id es de ESTA orden y se puede
              tocar. Sin leerlo puede venir del borrador del navegador y
              apuntar a cualquier lado: ahí no se toca nada. */
-          if(LINEAS_CARGADAS)edits.push({id:l.id_bd,d:campos(l,tipo)});
+          if(LINEAS_CARGADAS)edits.push({id:l.id_bd,d:campos(l,tipo,false)});
           return;
         }
         nuevas.push(l);
-        var f=campos(l,tipo);
+        var f=campos(l,tipo,true);
         f.orden_id=oid; f.tipo=tipo; f.agregado_por='taller';
         f.adicional=l.adic||null;
         f.stock_ok=(tipo==='MO')?true:null;
@@ -12885,7 +12904,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=197;
+var APP_VER=198;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
