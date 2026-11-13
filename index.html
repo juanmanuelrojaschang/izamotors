@@ -1,4 +1,4 @@
-<!--IZAV:198-->
+<!--IZAV:199-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4197,13 +4197,22 @@ function toggleServicio(cod,el){
 function quitarRepuesto(i){LINEAS_REP.splice(i,1);pintarPresupuestoLista()}
 function cantRepuesto(i,v){LINEAS_REP[i].cant=Math.max(1,Number(v)||1);pintarPresupuestoLista()}
 
-function totalesV2(){
+/* Sin argumentos: usa las listas que están en pantalla y además
+   refresca los totales de arriba. Con listas explícitas solo calcula
+   y no toca la pantalla: así lo llama el guardado, que trabaja sobre
+   una copia congelada y puede estar escribiendo una orden que el
+   usuario ya cerró. */
+function totalesV2(serv,rep){
+  var enPantalla=(serv===undefined&&rep===undefined);
+  var ls=serv||LINEAS_SERV,lr=rep||LINEAS_REP;
   var mo=0,rp=0;
-  LINEAS_SERV.forEach(function(l){mo+=Number(l.precio)*Number(l.cant||1)});
-  LINEAS_REP.forEach(function(l){rp+=l.precio*l.cant});
+  ls.forEach(function(l){mo+=Number(l.precio)*Number(l.cant||1)});
+  lr.forEach(function(l){rp+=Number(l.precio)*Number(l.cant||1)});
   var tot=Math.round(mo+rp);
-  var e1=$('totMO'),e2=$('totREP'),e3=$('totTOT');
-  if(e1){e1.textContent=S(mo);e2.textContent=S(rp);e3.textContent=S(tot)}
+  if(enPantalla){
+    var e1=$('totMO'),e2=$('totREP'),e3=$('totTOT');
+    if(e1){e1.textContent=S(mo);e2.textContent=S(rp);e3.textContent=S(tot)}
+  }
   return {mo:mo,rp:rp,tot:tot};
 }
 function cambioComprobante(){
@@ -7815,7 +7824,8 @@ function pintarSnapshotEtapa(etapa){
         var s=(rs.data||[])[0];
         if(s){z.innerHTML=facturaNegra(s,'OT en esta etapa');return}
         /* sin foto guardada: se muestra lo contratado según la base */
-        cargarLineasBD(r.data.id,function(lin){
+        cargarLineasBD(r.data.id,function(lin,ok){
+          if(!ok){z.innerHTML='<div class="hint">No se pudo leer la OT de esta etapa.</div>';return}
           if(!lin.length){z.innerHTML='<div class="hint">Esta etapa no dejó una foto de la OT.</div>';return}
           var snap={lineas:lin.map(function(l){return {d:l.desc,c:l.cant,p:l.final,x:l.incluir?0:1,k:l.cambio}}),
                     total:lin.filter(function(l){return l.incluir}).reduce(function(a,l){return a+l.final*l.cant},0)};
@@ -10971,17 +10981,26 @@ function guardarDetalleBD(){
   /* Sin orden abierta no hay nada que guardar, y OT_NUM puede haber
      quedado apuntando a la orden anterior. */
   if(!ORD)return;
-  sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
+  /* Todo lo que se va a escribir se congela ACÁ. Entre que sale la
+     consulta y vuelve la respuesta el usuario puede haber cerrado la
+     orden y abierto otra: si el callback leyera los globales, las
+     líneas de una orden terminarían escritas en la otra. */
+  var elNum=OT_NUM,
+      misServ=LINEAS_SERV.slice(),
+      misRep=LINEAS_REP.slice(),
+      misCargadas=LINEAS_CARGADAS,
+      misIds=LIN_BD_IDS.slice();
+  sb.from('ordenes').select('id').eq('numero',elNum).maybeSingle().then(function(r){
     if(!r.data)return;
-    var oid=r.data.id,t=totalesV2();
+    var oid=r.data.id,t=totalesV2(misServ,misRep);
     /* Sin la certeza de tener el detalle completo, se agrega sin borrar:
        perder líneas ajenas es mucho peor que repetir una. */
-    if(!LINEAS_CARGADAS){ seguir(); return }
+    if(!misCargadas){ seguir(); return }
     /* Antes se borraba TODO el detalle y se reescribía con lo del taller.
        Con ventanilla cargando repuestos en diagnóstico eso los borraba,
        así que ahora se respeta lo que ella agregó y sigue en la lista. */
     var vivos={};
-    LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
+    misServ.concat(misRep).forEach(function(l){
       if(l.id_bd)vivos[l.id_bd]=true;
     });
     sb.from('orden_detalle').select('id').eq('orden_id',oid).then(function(rl){
@@ -10990,7 +11009,7 @@ function guardarDetalleBD(){
          suyo: puede haberlo agregado ventanilla hace un minuto. */
       var fuera=(rl.data||[]).map(function(x){return x.id})
                  .filter(function(id){
-                   return LIN_BD_IDS.indexOf(id)>-1 && !vivos[id];
+                   return misIds.indexOf(id)>-1 && !vivos[id];
                  });
       if(fuera.length)
         sb.from('orden_detalle').delete().in('id',fuera).then(seguir,seguir);
@@ -11031,7 +11050,7 @@ function guardarDetalleBD(){
           /* Con el detalle leído, ese id es de ESTA orden y se puede
              tocar. Sin leerlo puede venir del borrador del navegador y
              apuntar a cualquier lado: ahí no se toca nada. */
-          if(LINEAS_CARGADAS)edits.push({id:l.id_bd,d:campos(l,tipo,false)});
+          if(misCargadas)edits.push({id:l.id_bd,d:campos(l,tipo,false)});
           return;
         }
         nuevas.push(l);
@@ -11041,8 +11060,8 @@ function guardarDetalleBD(){
         f.stock_ok=(tipo==='MO')?true:null;
         filas.push(f);
       }
-      LINEAS_SERV.forEach(function(l){ reparte(l,'MO') });
-      LINEAS_REP.forEach(function(l){ reparte(l,'REP') });
+      misServ.forEach(function(l){ reparte(l,'MO') });
+      misRep.forEach(function(l){ reparte(l,'REP') });
 
       edits.forEach(function(e){
         sb.from('orden_detalle').update(e.d).eq('id',e.id).then(function(){},function(){});
@@ -11053,14 +11072,19 @@ function guardarDetalleBD(){
              actualiza en vez de volver a insertarla */
           var ids=(ins&&ins.data)||[];
           nuevas.forEach(function(l,k){ if(ids[k])l.id_bd=ids[k].id });
-          refrescarIdsBD();
+          /* Los ids solo se refrescan si seguimos en la misma orden. */
+          if(OT_NUM===elNum)refrescarIdsBD();
         },function(){});
-      else refrescarIdsBD();
-      sb.from('ordenes').update({total_taller:t.tot,
-        comprobante_tipo:($('gComprobante')?($('gComprobante').value||null):null),
-        comprobante_ruc:($('gRuc')?($('gRuc').value.trim()||null):null),
-        diagnostico:($('sintoma')?$('sintoma').value.trim():null)
-      }).eq('id',oid).then(function(){},function(){});
+      else if(OT_NUM===elNum)refrescarIdsBD();
+      /* Lo que se lee de la pantalla solo vale si la pantalla sigue
+         mostrando esta orden. */
+      var patch={total_taller:t.tot};
+      if(OT_NUM===elNum){
+        patch.comprobante_tipo=($('gComprobante')?($('gComprobante').value||null):null);
+        patch.comprobante_ruc=($('gRuc')?($('gRuc').value.trim()||null):null);
+        patch.diagnostico=($('sintoma')?$('sintoma').value.trim():null);
+      }
+      sb.from('ordenes').update(patch).eq('id',oid).then(function(){},function(){});
     }
   },function(){});
 }
@@ -11283,6 +11307,22 @@ function mapearOrden(o){
           nota_publica:!!o.nota_publica,
           ingreso:o.ingreso,mins:Math.round((Date.now()-new Date(o.ingreso))/60000)};
   })();
+}
+
+/* ---------- escribir una línea sin pisar a los demás ----------
+   Sobre la misma fila de orden_detalle escriben tres módulos: el
+   taller la crea, ventanilla la codifica y despacha, el asesor la
+   ajusta. Cada uno guarda desde una copia que puede tener minutos, así
+   que si cada uno manda TODOS los campos, el último en guardar borra
+   el trabajo de los otros. De ahí venían los códigos de almacén que
+   desaparecían y el despacho que se "deshacía".
+
+   La regla: un texto vacío significa "no sé", no "bórralo". Solo viaja
+   lo que de verdad se tiene. Lo que el módulo decide a propósito
+   —precio, cobrado, cantidad— viaja siempre, incluso en cero. */
+function campoSiHay(d,k,val){
+  if(val!==undefined&&val!==null&&String(val).trim()!=='')d[k]=val;
+  return d;
 }
 
 /* cb(lineas, ok). El segundo dato importa: una consulta que falla
@@ -11729,12 +11769,24 @@ function ventPorPlaca(placa){
     ventAbrir(o.id);
   });
 }
+/* Mensaje único para cuando el detalle no se pudo leer. Es casi
+   siempre la conexión del local. */
+function noSeAbrio(){
+  pregunta('No se pudo abrir la orden',
+    'No pude leer el detalle desde la base, así que no la abro: una OT '+
+    'en blanco llevaría a guardar encima de lo que sí está guardado.<br><br>'+
+    'Revisa la conexión y vuelve a entrar.',[{t:'Entendido'}]);
+}
 function ventAbrir(id){
   cargarOrdenesBD(VENT_ESTADOS,function(lista){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarVentanilla();return}
     VENT_OT=o;VENT_ADD_ABIERTO=false;VENT_DET_ABIERTO=false;
-    cargarLineasBD(id,function(lin){
+    cargarLineasBD(id,function(lin,ok){
+      /* Si el detalle no llegó, la orden NO se abre. Abrirla vacía es
+         peor que no abrirla: se ve como una OT sin nada y lo que se
+         guarde encima arrasa con lo que sí estaba. */
+      if(!ok){ VENT_OT=null; noSeAbrio(); return }
       VENT_LIN=lin.map(function(l){l.orig_final=l.final;return l});
       $('ventHome').classList.add('oculto');
       $('ventDetalle').classList.remove('oculto');
@@ -11862,7 +11914,8 @@ function pintarAvisoDespacho(){
   if(!z||!sb||!OT_NUM)return;
   sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
     if(!r.data)return;
-    cargarLineasBD(r.data.id,function(lin){
+    cargarLineasBD(r.data.id,function(lin,ok){
+      if(!ok)return;   /* sin lectura buena no se afirma "0 de N" */
       var reps=lin.filter(function(l){return l.incluir&&l.tipo==='REP'});
       if(!reps.length)return;
       var d=reps.filter(function(l){return l.desp}).length;
@@ -12105,10 +12158,19 @@ function ventGuardarLineas(cb){
   var o=VENT_OT,pend=VENT_LIN.length,err=0;
   if(!pend){cb();return}
   VENT_LIN.forEach(function(l){
-    var datos={descripcion:l.desc,cantidad:l.cant,precio_caja:l.final,cobrado:l.incluir,
-      stock_ok:l.incluir,codigo_almacen:l.cod_alm||null,cambio:l.cambio||null,
-      descripcion_original:l.orig||null,nota_cambio:l.nota||null,
-      codigo2:l.cod2||null,ubicacion:l.ubic||null,marca:l.marca||null,modelo:l.modelo||null};
+    /* Lo que ventanilla decide siempre viaja. Lo que solo copia
+       —códigos, ubicación, marca— solo si lo tiene: si su copia es
+       anterior a que el taller lo completara, mandarlo vacío lo
+       borraría. */
+    var datos={descripcion:l.desc,cantidad:l.cant,precio_caja:l.final,
+               cobrado:l.incluir,stock_ok:l.incluir,cambio:l.cambio||null};
+    campoSiHay(datos,'codigo_almacen',l.cod_alm);
+    campoSiHay(datos,'codigo2',l.cod2);
+    campoSiHay(datos,'ubicacion',l.ubic);
+    campoSiHay(datos,'marca',l.marca);
+    campoSiHay(datos,'modelo',l.modelo);
+    campoSiHay(datos,'descripcion_original',l.orig);
+    campoSiHay(datos,'nota_cambio',l.nota);
     var q=l.id
       ? sb.from('orden_detalle').update(datos).eq('id',l.id).select('id')
       : sb.from('orden_detalle').insert(Object.assign({orden_id:o.id,tipo:l.tipo,precio_taller:l.precio,agregado_por:'ventanilla'},datos)).select('id');
@@ -12276,7 +12338,12 @@ function aseAbrir(id){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarAsesor();return}
     ASE_OT=o;ASE_ADD=false;ASE_VOUCHER=null;
-    cargarLineasBD(id,function(lin){ ASE_LIN=lin; aseRender(); window.scrollTo({top:0,behavior:'smooth'}); });
+    cargarLineasBD(id,function(lin,ok){
+      /* Sin detalle no se abre: el asesor guarda el total de la orden
+         con lo que ve, y lo que veía era una OT en cero. */
+      if(!ok){ ASE_OT=null; noSeAbrio(); return }
+      ASE_LIN=lin; aseRender(); window.scrollTo({top:0,behavior:'smooth'});
+    });
   });
 }
 function aseTotales(){
@@ -12484,9 +12551,13 @@ function aseGuardarLineas(cb){
   if(!pend){cb(0);return}
   ASE_LIN.forEach(function(l){
     if(!l.id)return;
-    sb.from('orden_detalle').update({descripcion:l.desc,precio_caja:l.final,
-      cantidad:l.cant||1,
-      codigo_almacen:l.cod_alm||null,codigo2:l.cod2||null,cobrado:l.incluir})
+    /* Misma regla que en ventanilla: el asesor no copia códigos que
+       no tiene. Antes los mandaba vacíos y borraba la codificación. */
+    var datos={descripcion:l.desc,precio_caja:l.final,
+               cantidad:l.cant||1,cobrado:l.incluir};
+    campoSiHay(datos,'codigo_almacen',l.cod_alm);
+    campoSiHay(datos,'codigo2',l.cod2);
+    sb.from('orden_detalle').update(datos)
       .eq('id',l.id).select('id')
       .then(function(r){ if(r.error)err++; if(--pend===0)cb(err) },
             function(){ err++; if(--pend===0)cb(err) });
@@ -12724,7 +12795,12 @@ function abrirCobro(id){
     var o=lista.filter(function(x){return x.id===id})[0];
     if(!o){pintarCaja();return}
     CAJA_OT=o;CAJA_VOUCHER=null;CAJA_MODO='';
-    cargarLineasBD(id,function(lin){ CAJA_LIN=lin.filter(function(l){return l.incluir}); renderCobro(); window.scrollTo({top:0,behavior:'smooth'}); });
+    cargarLineasBD(id,function(lin,ok){
+      /* Nunca cobrar sobre un detalle que no se pudo leer. */
+      if(!ok){ CAJA_OT=null; noSeAbrio(); return }
+      CAJA_LIN=lin.filter(function(l){return l.incluir});
+      renderCobro(); window.scrollTo({top:0,behavior:'smooth'});
+    });
   });
 }
 function cajaTotal(){
@@ -12904,7 +12980,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=198;
+var APP_VER=199;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
