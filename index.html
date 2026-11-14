@@ -1,4 +1,4 @@
-<!--IZAV:202-->
+<!--IZAV:203-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2851,6 +2851,8 @@ var LINEAS_CARGADAS=false;
    líneas se pueden borrar al guardar: cualquier otra es de alguien
    más —ventanilla, el asesor— y no se toca. */
 var LIN_BD_IDS=[];
+/* Orden cuyo detalle se está pidiendo ahora mismo. */
+var DET_PIDIENDO='';
 function refrescarIdsBD(){
   LIN_BD_IDS=LINEAS_SERV.concat(LINEAS_REP)
     .map(function(l){return l.id_bd}).filter(Boolean);
@@ -2858,10 +2860,17 @@ function refrescarIdsBD(){
 function pintarPresupuesto(){
   /* el catálogo puede no haber llegado todavía: sin él no hay familias */
   if(!SERVICIOS.length)cargarCatalogoV2();
-  if(!LINEAS_SERV.length&&!LINEAS_REP.length&&sb&&OT_NUM){
-    sb.from('ordenes').select('id').eq('numero',OT_NUM).maybeSingle().then(function(r){
-      if(r.data)cargarLineasOrden(r.data.id);
-    },function(){});
+  /* Esta función se pinta varias veces seguidas. Sin candado salían
+     dos lecturas del detalle a la vez para la misma orden. */
+  if(!LINEAS_SERV.length&&!LINEAS_REP.length&&sb&&OT_NUM&&DET_PIDIENDO!==OT_NUM){
+    DET_PIDIENDO=OT_NUM;
+    var pedida=OT_NUM;
+    sb.from('ordenes').select('id').eq('numero',pedida).maybeSingle().then(function(r){
+      if(r.data&&OT_NUM===pedida)cargarLineasOrden(r.data.id,function(){
+        if(DET_PIDIENDO===pedida)DET_PIDIENDO='';
+      });
+      else DET_PIDIENDO='';
+    },function(){ DET_PIDIENDO='' });
   }
   var wp=$('waNumPre');
   if(wp&&!wp.value)wp.value=String((ORD&&ORD.tel)||(ACTUAL&&ACTUAL.tel)||'').replace(/\D/g,'');
@@ -5963,8 +5972,15 @@ function cargarLineasOrden(ordenId,cb){
     if(!ok){ conex('No pude traer el detalle de la orden',true); cb&&cb(); return }
     LINEAS_CARGADAS=true;
     LIN_BD_IDS=[];
-    if(!lin.length){cb&&cb();return}
+    /* Las listas se vacían SIEMPRE, también cuando la orden no tiene
+       detalle. Antes se salía antes de limpiarlas y quedaban en memoria
+       las líneas de otro momento, que el siguiente guardado insertaba
+       como si fueran nuevas. */
     LINEAS_SERV=[];LINEAS_REP=[];
+    if(!lin.length){
+      try{pintarPresupuestoLista()}catch(e){}
+      cb&&cb();return;
+    }
     lin.forEach(function(l){
       /* Al recuperar no se pierden los códigos: si se borraran aquí,
          el siguiente guardado los mandaría vacíos a la base. */
@@ -8652,6 +8668,7 @@ function limpiarOrdenEnMemoria(){
   EDITANDO_OT=false;AGREGANDO=false;
   MECANICO_OT='';LAVADOR_OT='';
   LINEAS_SERV=[];LINEAS_REP=[];LINEAS_CARGADAS=false;LIN_BD_IDS=[];
+  DET_PIDIENDO='';DET_PENDIENTE=false;
   SEL={};SEL_SERV={};BITACORA={};estadoZ={};
   FOTOS=[];FOTOS_MINI=[];
   PANEL_SEL=null;
@@ -11159,11 +11176,28 @@ function cliDevolverYa(m){
    DETALLE DE LA ORDEN EN LA BASE
    Ventanilla, asesor y caja leen las líneas desde acá.
    ============================================================ */
+/* Mientras una inserción está en vuelo, las líneas nuevas todavía no
+   tienen id. Un segundo guardado disparado en ese hueco las veía sin
+   id y las insertaba otra vez: así salía la OT con todo duplicado.
+   Se guarda de a uno; si llega otro pedido mientras tanto, se anota y
+   se corre al terminar. */
+var DET_EN_VUELO=false,DET_PENDIENTE=false;
 function guardarDetalleBD(){
   if(!sb||!OT_NUM)return;
   /* Sin orden abierta no hay nada que guardar, y OT_NUM puede haber
      quedado apuntando a la orden anterior. */
   if(!ORD)return;
+  if(DET_EN_VUELO){ DET_PENDIENTE=true; return }
+  DET_EN_VUELO=true;
+  var cerrado=false;
+  function fin(){
+    if(cerrado)return;
+    cerrado=true;
+    DET_EN_VUELO=false;
+    if(DET_PENDIENTE){ DET_PENDIENTE=false; setTimeout(guardarDetalleBD,0) }
+  }
+  /* si la base nunca contesta, el candado no se queda puesto */
+  setTimeout(fin,15000);
   /* Todo lo que se va a escribir se congela ACÁ. Entre que sale la
      consulta y vuelve la respuesta el usuario puede haber cerrado la
      orden y abierto otra: si el callback leyera los globales, las
@@ -11174,7 +11208,7 @@ function guardarDetalleBD(){
       misCargadas=LINEAS_CARGADAS,
       misIds=LIN_BD_IDS.slice();
   sb.from('ordenes').select('id').eq('numero',elNum).maybeSingle().then(function(r){
-    if(!r.data)return;
+    if(!r.data){ fin(); return }
     var oid=r.data.id,t=totalesV2(misServ,misRep);
     /* Sin la certeza de tener el detalle completo, se agrega sin borrar:
        perder líneas ajenas es mucho peor que repetir una. */
@@ -11229,6 +11263,8 @@ function guardarDetalleBD(){
       }
       function reparte(l,tipo){
         if(l.de_vent&&l.id_bd)return;           /* la cargó ventanilla */
+        /* ya salió en una inserción que todavía no vuelve */
+        if(l._insertando)return;
         if(l.id_bd){
           /* Con el detalle leído, ese id es de ESTA orden y se puede
              tocar. Sin leerlo puede venir del borrador del navegador y
@@ -11237,6 +11273,7 @@ function guardarDetalleBD(){
           return;
         }
         nuevas.push(l);
+        l._insertando=true;
         var f=campos(l,tipo,true);
         f.orden_id=oid; f.tipo=tipo; f.agregado_por='taller';
         f.adicional=l.adic||null;
@@ -11254,11 +11291,19 @@ function guardarDetalleBD(){
           /* cada línea se queda con su id: así el próximo guardado la
              actualiza en vez de volver a insertarla */
           var ids=(ins&&ins.data)||[];
-          nuevas.forEach(function(l,k){ if(ids[k])l.id_bd=ids[k].id });
+          nuevas.forEach(function(l,k){
+            if(ids[k])l.id_bd=ids[k].id;
+            delete l._insertando;
+          });
           /* Los ids solo se refrescan si seguimos en la misma orden. */
           if(OT_NUM===elNum)refrescarIdsBD();
-        },function(){});
-      else if(OT_NUM===elNum)refrescarIdsBD();
+          fin();
+        },function(){
+          /* no entraron: que el próximo guardado las vuelva a intentar */
+          nuevas.forEach(function(l){ delete l._insertando });
+          fin();
+        });
+      else { if(OT_NUM===elNum)refrescarIdsBD(); fin() }
       /* Lo que se lee de la pantalla solo vale si la pantalla sigue
          mostrando esta orden. */
       var patch={total_taller:t.tot};
@@ -11269,7 +11314,7 @@ function guardarDetalleBD(){
       }
       sb.from('ordenes').update(patch).eq('id',oid).then(function(){},function(){});
     }
-  },function(){});
+  },function(){ fin() });
 }
 
 /* Número corto para pantallas chicas: OT-2026-00201 → OT 201 */
@@ -13163,7 +13208,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=202;
+var APP_VER=203;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
