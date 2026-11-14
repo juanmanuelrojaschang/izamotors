@@ -1,4 +1,4 @@
-<!--IZAV:206-->
+<!--IZAV:207-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -387,6 +387,12 @@ body.sinScroll{overflow:hidden}
 .atajo{flex:0 0 auto;background:#fff;border:1px solid var(--borde);border-radius:999px;
   padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--tinta);white-space:nowrap;min-height:36px}
 .atajo:active{border-color:var(--rojo);color:var(--rojo)}
+.atajos .favEt{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:3px}
+.atajo.fav{border-color:var(--tinta);font-weight:700}
+.atajo.fav::before{content:'+';margin-right:5px;color:var(--rojo);font-weight:700}
+.atajo.fav:active{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.atajo.fav:active::before{color:#fff}
 .invRes.pantalla .invLista{padding:0 6px 24px}
 .invRes.pantalla .invBloque>.invGrupo{position:sticky;top:0;z-index:2}
 .invRes.on{display:block}
@@ -1378,6 +1384,7 @@ tr.sel td{background:var(--rojo-cl)}
               <input id="servPrecio" type="number" min="0" step="0.01" placeholder="0"></div>
             <div style="flex:0 0 auto"><button class="btn chico" onclick="agregarServicio()">Agregar</button></div>
           </div>
+          <div class="atajos" id="atajosSrv"></div>
           <div id="servDato"></div>
           <div id="zonaAceite"></div>
         </div>
@@ -2906,7 +2913,8 @@ function pintarPresupuesto(){
     pintarPresupuestoLista();
     conex(it.desc+' agregado');
   },'repBusq');
-  pintarAtajos('atajosRep','repRes','repBusq');
+  pintarFavoritos('atajosRep','rep');
+  pintarFavoritos('atajosSrv','serv');
   var rb=$('repBusq');
   if(rb)rb.value='';
   pintarPresupuestoLista();
@@ -4122,54 +4130,63 @@ function invMontar(contId,onAdd,inputId){
   INV_CTX[contId]={cont:contId,onAdd:onAdd,input:inputId||''};
   cargarSedesInv();
 }
-/* Lo que más se pide en el mostrador, a un toque. */
-/* El rótulo es lo que se lee; la búsqueda va en singular y sin tilde,
-   que es como está escrito el catálogo. Si el primer término no da
-   nada, se prueba el siguiente: cada taller nombra distinto. */
-var ATAJOS_REP=[
-  {t:'Filtro de aire',     q:['filtro de aire','filtro aire']},
-  {t:'Filtro de gasolina', q:['filtro de gasolina','filtro de combustible','filtro de petroleo']},
-  {t:'Filtro de cabina',   q:['filtro de cabina','filtro de polen','filtro de habitaculo']},
-  {t:'Bujías',             q:['bujia']},
-  {t:'Frenos',             q:['freno','pastilla']}
+/* ============ FAVORITOS ============
+   Lo que se cobra todos los días. Un toque y la línea entra a la OT
+   con su precio; el precio no va escrito en el botón —el mostrador no
+   lo necesita a la vista— pero es el que viaja a la boleta.
+   Tocarlo otra vez sube la cantidad en vez de repetir la línea. */
+var FAVS_SERV=[
+  {t:'Frenos',p:60},
+  {t:'Lavado de auto',p:15},
+  {t:'Rectificado de discos',p:40},
+  {t:'Foco',p:15},
+  {t:'RC',p:0}
 ];
-function pintarAtajos(zonaId,contId,inputId){
+var FAVS_REP=[
+  {t:'Filtro de aire',p:25},
+  {t:'Filtro de combustible',p:25},
+  {t:'Bujías',p:20},
+  {t:'Filtro de cabina',p:25},
+  {t:'Tapón de cárter',p:5},
+  {t:'Arandela',p:2}
+];
+function favLista(cual){ return (cual==='serv')?FAVS_SERV:FAVS_REP }
+function favCodigo(cual,f){
+  return (cual==='serv'?'FAV-S-':'FAV-R-')+
+    mmLlano(f.t).replace(/\s+/g,'-');
+}
+function pintarFavoritos(zonaId,cual){
   var z=document.getElementById(zonaId);if(!z)return;
-  z.innerHTML=ATAJOS_REP.map(function(a,i){
-    return '<button type="button" class="atajo" onclick="invAtajo(&quot;'+contId+'&quot;,'+i+
-      ',&quot;'+(inputId||'')+'&quot;)">'+esc(a.t)+'</button>';
-  }).join('');
+  z.innerHTML='<span class="favEt">Favoritos</span>'+
+    favLista(cual).map(function(f,i){
+      return '<button type="button" class="atajo fav" '+
+        'onclick="favAgregar(&quot;'+cual+'&quot;,'+i+')">'+esc(f.t)+'</button>';
+    }).join('');
 }
-function invAtajo(contId,idx,inputId){
-  var ctx=INV_CTX[contId],a=ATAJOS_REP[idx];
-  if(!ctx||!a)return;
-  INV_SUB[contId]='';INV_MARCA[contId]='';
-  clearTimeout(INV_TIMER);
-  invAtajoProbar(ctx,a,0,inputId);
-}
-/* Prueba los términos en orden y se queda con el primero que tenga
-   stock acá; si ninguno lo tiene, usa el primero igual para que el
-   usuario vea el mensaje y pueda abrir los otros locales. */
-function invAtajoProbar(ctx,a,i,inputId){
-  function usar(q){
-    /* En el campo va el rótulo, que es lo que se leyó en el botón; la
-       búsqueda usa el término que encuentra en el catálogo. */
-    var inp=document.getElementById(inputId||ctx.input||'');
-    if(inp)inp.value=a.t;
-    invBuscar(ctx,q);
-    var pq=document.getElementById(ctx.cont+'-q');
-    if(pq)pq.value=a.t;
+function favAgregar(cual,i){
+  var f=favLista(cual)[i];
+  if(!f)return;
+  if(typeof puedeEditar==='function'&&OT_EST&&!puedeEditar()&&!AGREGANDO){
+    aviso('Esta orden ya no admite cambios.');return;
   }
-  if(!sb||i>=a.q.length){ usar(a.q[0]); return }
-  var q=a.q[i],pal=invPalabras(q);
-  var cond=['descripcion.ilike.%'+pal.join('%')+'%'];
-  if(pal.length>1)cond.push('descripcion.ilike.%'+pal.slice().reverse().join('%')+'%');
-  var c=sb.from('catalogo').select('id',{count:'exact',head:true})
-      .eq('tipo','REP').eq('activo',true).or(cond.join(','));
-  c.then(function(r){
-    if(!r.error&&(r.count||0)>0){ usar(q); return }
-    invAtajoProbar(ctx,a,i+1,inputId);
-  },function(){ usar(q) });
+  var cod=favCodigo(cual,f),lista=(cual==='serv')?LINEAS_SERV:LINEAS_REP;
+  var ya=lista.filter(function(l){return l.codigo===cod})[0];
+  if(ya){
+    ya.cant=(Number(ya.cant)||1)+1;
+    pintarPresupuestoLista();
+    conex(f.t+' · '+ya.cant);
+    return;
+  }
+  if(cual==='serv'){
+    LINEAS_SERV.push({codigo:cod,codigo2:'',desc:f.t,
+      precio:f.p,precio_base:f.p,cant:1,categoria:'Favoritos'});
+    SEL_SERV[cod]=true;
+  }else{
+    LINEAS_REP.push({codigo:cod,codigo2:'',desc:f.t,precio:f.p,cant:1,
+      marca:'',modelo:'',ubicacion:''});
+  }
+  pintarPresupuestoLista();
+  conex(f.t+' agregado'+(f.p>0?' · '+S(f.p):''));
 }
 function invTeclea(contId,valor){
   var z=document.getElementById(contId);
@@ -13296,7 +13313,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=206;
+var APP_VER=207;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
