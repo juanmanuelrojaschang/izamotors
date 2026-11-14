@@ -1,4 +1,4 @@
-<!--IZAV:201-->
+<!--IZAV:202-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4938,14 +4938,54 @@ function limitarDoc(el){
   if(v.length>max)v=v.slice(0,max);
   if(el.value!==v)el.value=v;
 }
+/* Un RUC de persona natural es 10 + los 8 digitos del DNI + un digito
+   verificador. El mismo cliente puede estar en la base con el DNI y
+   llegar con el RUC, o al contrario: hay que buscarlo por los dos. */
+function digitoRuc(d10){
+  var pesos=[5,4,3,2,7,6,5,4,3,2],sum=0;
+  for(var i=0;i<10;i++)sum+=Number(d10.charAt(i))*pesos[i];
+  var r=11-(sum%11);
+  if(r===10)r=0;
+  if(r===11)r=1;
+  return String(r);
+}
+function esRucPersona(doc){
+  doc=String(doc||'').replace(/\D/g,'');
+  return doc.length===11&&/^(10|15|17)/.test(doc);
+}
+function docsEquivalentes(doc){
+  doc=String(doc||'').replace(/\D/g,'');
+  var out=doc?[doc]:[];
+  if(esRucPersona(doc)){
+    var dni=doc.slice(2,10);
+    if(out.indexOf(dni)<0)out.push(dni);
+  }
+  if(doc.length===8){
+    ['10','15','17'].forEach(function(pre){
+      var base=pre+doc,ruc=base+digitoRuc(base);
+      if(out.indexOf(ruc)<0)out.push(ruc);
+    });
+  }
+  return out;
+}
+/* Si el tipo dice RUC pero en pantalla hay nombres y apellidos, manda
+   lo que se ve: antes el codigo ponia el tipo sin cambiar el formulario
+   y al guardar pedia una razon social que no estaba en pantalla. */
+function pideRazon(){
+  var e=document.getElementById('nvEmpresa');
+  return !!(e&&e.style.display!=='none');
+}
 function toggleTipoDoc(prefijo){
   var dd=document.getElementById(prefijo+'Doc');
   if(dd&&prefijo==='nv')limitarDoc(dd);
   var t=document.getElementById(prefijo+'Tipo').value;
   var per=document.getElementById(prefijo+'Persona'),emp=document.getElementById(prefijo+'Empresa');
+  /* razon social solo para empresas: un RUC 10 es una persona y lleva
+     nombres y apellidos, igual que su DNI */
+  var empresa=(t==='RUC')&&!esRucPersona(dd?dd.value:'');
   if(per&&emp){
-    per.style.display = (t==='RUC')?'none':'';
-    emp.style.display = (t==='RUC')?'':'none';
+    per.style.display = empresa?'none':'';
+    emp.style.display = empresa?'':'none';
   }
 }
 function capitalizar(el){
@@ -4954,11 +4994,13 @@ function capitalizar(el){
   try{el.setSelectionRange(pos,pos)}catch(e){}
 }
 function nombreCompleto(prefijo){
-  var t=document.getElementById(prefijo+'Tipo').value;
-  if(t==='RUC')return (document.getElementById(prefijo+'Razon').value||'').trim();
+  var rz=document.getElementById(prefijo+'Razon');
+  var razon=rz?(rz.value||'').trim():'';
   var n=(document.getElementById(prefijo+'Nombres').value||'').trim();
   var a=(document.getElementById(prefijo+'Apellidos').value||'').trim();
-  return (n+' '+a).trim();
+  if(razon)return razon;
+  if(n||a)return (n+' '+a).trim();
+  return '';
 }
 
 /* ============================================================
@@ -4984,16 +5026,30 @@ function altaPlacaNueva(placa){
    '← Volver a elegir cómo ingresar la placa</button></div>';
 }
 function buscarCliente(placa){
-  var doc=$('busDoc').value.trim();
+  var doc=$('busDoc').value.trim().replace(/\D/g,'');
   if(doc.length<6){$('altaZona').innerHTML='<div class="aviso rojo">Ingresa el documento completo.</div>';return}
   $('altaZona').innerHTML='<div class="hint">Buscando…</div>';
-  sb.from('clientes').select('*, vehiculos(placa,marca,modelo)').eq('num_doc',doc).maybeSingle()
+  function noSePudo(e){
+    $('altaZona').innerHTML='<div class="aviso rojo"><b>No se pudo buscar el cliente.</b><br>'+
+      esc((e&&e.message)||'Sin conexión')+'<br>Vuelve a tocar «Buscar cliente». '+
+      'No lo registres de nuevo hasta que la búsqueda responda: lo duplicarías.</div>';
+  }
+  /* se busca por el documento tal cual y por su equivalente: el mismo
+     cliente puede estar guardado con DNI y llegar con RUC */
+  sb.from('clientes').select('*, vehiculos(placa,marca,modelo)')
+   .in('num_doc',docsEquivalentes(doc)).limit(5)
    .then(function(r){
-    if(r.data){
-      var c=r.data,otros=(c.vehiculos||[]).map(function(v){return v.placa}).join(' · ')||'ninguno';
+    if(r.error){ noSePudo(r.error); return }
+    var c=(r.data||[])[0];
+    if(c){
+      var otros=(c.vehiculos||[]).map(function(v){return v.placa}).join(' · ')||'ninguno';
       $('altaZona').innerHTML=
-        '<div class="aviso ok"><b>'+c.nombre+'</b> ya está registrado.<br>'+
-        '<span style="font-size:12.5px">Vehículos actuales: '+otros+'</span></div>'+
+        '<div class="aviso ok"><b>'+esc(c.nombre)+'</b> ya está registrado.'+
+        (String(c.num_doc)!==doc
+          ? '<br><span style="font-size:12.5px">Está en la base con '+esc(c.tipo_doc||'')+' '+
+            esc(c.num_doc)+', que es el mismo documento.</span>'
+          : '')+
+        '<br><span style="font-size:12.5px">Vehículos actuales: '+esc(otros)+'</span></div>'+
         '<h3 style="font-size:15px;margin:14px 0 10px">Agregar '+placa+' a este cliente</h3>'+
         formVehiculo({placa:placa})+
         '<button class="btn full" style="margin-top:14px" onclick="guardarVehiculo('+c.id+',\'recepcion\')">'+
@@ -5005,8 +5061,16 @@ function buscarCliente(placa){
         '<button class="btn full" style="margin-top:14px" onclick="guardarClienteNuevo(\'recepcion\')">'+
         'Crear cliente y vehículo</button>';
       var t=$('nvTipo');if(t)t.value=$('busTipo').value;
+      /* el formulario tiene que quedar acorde al tipo, y el padrón
+         rellena el nombre sin que haya que tipear nada */
+      toggleTipoDoc('nv');
+      padronPorDoc(doc,function(p){
+        if(!p)return;
+        padronAplicar(p,true);
+        conex('Datos traídos del padrón · revísalos antes de guardar');
+      });
     }
-  });
+  },noSePudo);
 }
 
 /* ============================================================
@@ -5581,12 +5645,12 @@ function guardarClienteNuevo(volverA){
   var doc=$('nvDoc').value.trim(),tipo=$('nvTipo').value,
       nom=nombreCompleto('nv'),placa=$('nvPlaca').value.trim().toUpperCase();
   var msg=document.getElementById('bdMsg')||document.getElementById('altaMsg');
-  if(!nom){msg.innerHTML='<div class="aviso rojo">'+(tipo==='RUC'?'La razón social es obligatoria.':'Nombres y apellidos son obligatorios.')+'</div>';return}
+  if(!nom){msg.innerHTML='<div class="aviso rojo">'+(pideRazon()?'La razón social es obligatoria.':'Nombres y apellidos son obligatorios.')+'</div>';return}
   if(!doc){msg.innerHTML='<div class="aviso rojo">El documento es obligatorio.</div>';return}
   msg.innerHTML='<div class="hint">Guardando…</div>';
   var reg={tipo_doc:tipo,num_doc:doc,nombre:nom,
     telefono:$('nvTel').value.trim(),email:($('nvMail').value.trim()||null),nivel:'Plata'};
-  if(tipo==='RUC'){reg.razon_social=nom}
+  if(pideRazon()){reg.razon_social=nom}
   else{reg.nombres=$('nvNombres').value.trim();reg.apellidos=$('nvApellidos').value.trim()}
   var fl=$('nvFlota')?$('nvFlota').value:'';
   if(fl){
@@ -5597,19 +5661,24 @@ function guardarClienteNuevo(volverA){
   }
   /* Un documento es un cliente. Antes se insertaba sin mirar, así que
      recibir dos veces al mismo cliente lo duplicaba en la lista. */
-  conRed(function(){ return sb.from('clientes').select('id,nombre').eq('num_doc',doc).maybeSingle() },
+  conRed(function(){ return sb.from('clientes').select('id,nombre,tipo_doc,num_doc')
+                              .in('num_doc',docsEquivalentes(doc)).limit(1) },
    function(ya){
     if(ya.error){ msgRed(msg,ya.error,'verificar el documento'); return }
-    if(ya.data){
+    var yd=(ya.data||[])[0];
+    if(yd){
+      var comoEsta=(String(yd.num_doc)!==String(doc)
+        ? ' (en la base está con '+esc(yd.tipo_doc||'')+' '+esc(yd.num_doc)+', el mismo documento)'
+        : '');
       if(!placa){
         msg.innerHTML='<div class="aviso rojo">El documento <b>'+doc+'</b> ya está registrado a nombre de '+
-          '<b>'+ya.data.nombre+'</b>. Búscalo y edítalo en vez de crearlo otra vez.</div>';
+          '<b>'+esc(yd.nombre)+'</b>'+comoEsta+'. Búscalo y edítalo en vez de crearlo otra vez.</div>';
         return;
       }
-      msg.innerHTML='<div class="aviso info">El documento <b>'+doc+'</b> ya existe ('+ya.data.nombre+
-        '): el vehículo se agrega a ese cliente.</div>';
+      msg.innerHTML='<div class="aviso info">El documento <b>'+doc+'</b> ya existe ('+esc(yd.nombre)+')'+
+        comoEsta+': el vehículo se agrega a ese cliente.</div>';
       auditar('CLIENTE_EXISTENTE','cliente',doc,'Se reutilizó en vez de duplicar');
-      guardarVehiculo(ya.data.id,volverA,msg);
+      guardarVehiculo(yd.id,volverA,msg);
       return;
     }
     conRed(function(){ return sb.from('clientes').insert(reg).select().single() },
@@ -9584,12 +9653,22 @@ function sinTildes(s){
 /* Por documento: coincidencia exacta, completa todo de una */
 function padronPorDoc(doc,cb){
   if(!sb||!doc)return;
-  sb.from('padron_clientes').select('*')
-    .or('num_doc.eq.'+doc+',dni_derivado.eq.'+doc).limit(1)
+  var ors=[];
+  docsEquivalentes(doc).forEach(function(d){
+    ors.push('num_doc.eq.'+d);
+    ors.push('dni_derivado.eq.'+d);
+  });
+  sb.from('padron_clientes').select('*').or(ors.join(',')).limit(1)
     .then(function(r){ cb((r.data||[])[0]||null) },function(){ cb(null) });
 }
 function padronDoc(el){
+  var crudo=(el.value||'').replace(/\D/g,'');
+  var tp=document.getElementById('nvTipo');
+  /* si pegan un RUC de 11 dígitos con el tipo en DNI, se corrige el
+     tipo en vez de recortarle el número */
+  if(tp&&tp.value!=='RUC'&&crudo.length===11)tp.value='RUC';
   limitarDoc(el);
+  toggleTipoDoc('nv');
   var d=(el.value||'').replace(/\D/g,'');
   if(d.length<8){padronCerrar();return}
   padronPorDoc(d,function(p){
@@ -9649,17 +9728,51 @@ function padronElegir(i){
   padronCerrar();
   conex('Tomado del padrón · revisa antes de guardar');
 }
+/* El padrón no siempre trae el nombre partido en dos columnas. Cuando
+   falta una, se deduce de la otra; y si no hay ninguna, se usa la
+   convención del padrón: los dos primeros términos son los apellidos.
+   Antes el nombre entero caía en APELLIDOS y NOMBRES quedaba vacío. */
+function partirNombre(p){
+  var full=String(p.nombre||'').trim();
+  var ap=String(p.apellidos||'').trim(),no=String(p.nombres||'').trim();
+  if(ap&&no)return {ap:ap,no:no};
+  var F=sinTildes(full);
+  if(ap&&!no){
+    var A=sinTildes(ap);
+    if(F.indexOf(A)===0)no=full.slice(ap.length).trim();
+    else if(F.length>A.length&&F.slice(F.length-A.length)===A)no=full.slice(0,full.length-ap.length).trim();
+    return {ap:ap,no:no};
+  }
+  if(!ap&&no){
+    var N=sinTildes(no);
+    if(F.indexOf(N)===0)ap=full.slice(no.length).trim();
+    else if(F.length>N.length&&F.slice(F.length-N.length)===N)ap=full.slice(0,full.length-no.length).trim();
+    return {ap:ap,no:no};
+  }
+  var w=full.split(/\s+/).filter(function(x){return !!x});
+  if(w.length<2)return {ap:full,no:''};
+  if(w.length===2)return {ap:w[0],no:w[1]};
+  return {ap:w.slice(0,2).join(' '),no:w.slice(2).join(' ')};
+}
 /* Rellena solo lo que esté vacío: nunca pisa lo que ya escribieron. */
 function padronAplicar(p,desdeDoc){
+  /* el padrón guarda todo en mayúsculas; en pantalla y en la boleta va
+     como se escribe un nombre */
   function pon(id,v){
     var e=document.getElementById(id);
-    if(e&&v&&!e.value.trim())e.value=v;
+    if(e&&v&&!e.value.trim()){
+      e.value=v;
+      if(id!=='nvDoc'&&id!=='nvTel')capitalizar(e);
+    }
   }
   var tp=document.getElementById('nvTipo');
-  if(tp&&p.tipo_doc&&tp.value!==p.tipo_doc){ tp.value=p.tipo_doc; toggleTipoDoc('nv') }
+  /* si el documento lo escribió el usuario, su tipo manda: cambiarlo
+     aquí le recortaba el RUC a 8 dígitos */
+  if(!desdeDoc&&tp&&p.tipo_doc&&tp.value!==p.tipo_doc){ tp.value=p.tipo_doc; toggleTipoDoc('nv') }
   if(!desdeDoc)pon('nvDoc',p.num_doc);
-  if(p.clase==='Empresa'){ pon('nvRazon',p.nombre) }
-  else { pon('nvApellidos',p.apellidos||''); pon('nvNombres',p.nombres||'') }
+  if(pideRazon()){ pon('nvRazon',p.nombre) }
+  else if(p.clase==='Empresa'){ pon('nvRazon',p.nombre); pon('nvApellidos',p.nombre) }
+  else { var pr=partirNombre(p); pon('nvApellidos',pr.ap); pon('nvNombres',pr.no) }
   pon('nvTel',p.telefono||'');
   var ez=document.getElementById('nvDir');
   if(ez&&p.direccion&&!ez.value.trim())ez.value=p.direccion;
@@ -13050,7 +13163,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=201;
+var APP_VER=202;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
