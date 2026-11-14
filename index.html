@@ -1,4 +1,4 @@
-<!--IZAV:203-->
+<!--IZAV:204-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -387,11 +387,8 @@ body.sinScroll{overflow:hidden}
 .atajo{flex:0 0 auto;background:#fff;border:1px solid var(--borde);border-radius:999px;
   padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--tinta);white-space:nowrap;min-height:36px}
 .atajo:active{border-color:var(--rojo);color:var(--rojo)}
-.soloMio{color:var(--mudo);font-weight:500}
-.invOtros{display:flex;align-items:center;gap:8px;padding:2px 12px 10px;font-size:12.5px;
-  color:var(--tinta);cursor:pointer}
-.invOtros input{width:18px;height:18px;margin:0}
 .invRes.pantalla .invLista{padding:0 6px 24px}
+.invRes.pantalla .invBloque>.invGrupo{position:sticky;top:0;z-index:2}
 .invRes.on{display:block}
 .invRes .invLista{border:0;border-radius:0}
 .invCab{font-size:12px;color:var(--mudo);padding:4px 2px 8px}
@@ -402,25 +399,49 @@ body.sinScroll{overflow:hidden}
 .invMarcas .mc b{font-family:ui-monospace,monospace;color:var(--mudo);margin-left:2px}
 .invMarcas .mc.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
 .invMarcas .mc.on b{color:#fff}
-.invLista{border:1px solid var(--borde);border-radius:10px;overflow:hidden}
-.invHd{display:flex;padding:7px 12px;background:var(--gris);border-bottom:1px solid var(--borde);
-  font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--mudo);font-weight:700}
-.invHd>span:first-child{flex:1}
-.invHd>.st{width:40px;text-align:center;flex:0 0 auto}
-.invHd>.loc{width:72px;flex:0 0 auto}
-.invLn{border-bottom:1px solid var(--gris2);background:#fff}
+.invLista{display:flex;flex-direction:column;gap:10px}
+/* un bloque por marca, como el archivo del almacén */
+.invBloque{border:1px solid var(--borde);border-radius:10px;overflow:hidden;background:#fff}
+.invBloque.suya{border-color:var(--rojo)}
+.invBloque>.invGrupo{display:flex;align-items:baseline;gap:7px;padding:8px 12px;
+  background:var(--tinta);color:#fff;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em}
+.invBloque.suya>.invGrupo{background:var(--rojo)}
+.invBloque>.invGrupo b{font-family:ui-monospace,monospace;font-weight:700;
+  color:rgba(255,255,255,.72)}
+.invBloque>.invGrupo .dz{margin-left:auto;font-size:9.5px;font-weight:600;
+  letter-spacing:.04em;color:rgba(255,255,255,.8);text-transform:none}
+/* código · descripción · modelo · cantidad · precio */
+.invHd,.invLn{display:grid;grid-template-columns:96px minmax(0,1fr) 84px 44px 62px;align-items:center}
+.invHd{padding:6px 12px;background:var(--gris);border-bottom:1px solid var(--borde);
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mudo);font-weight:700}
+.invHd>.ct,.invHd>.pr{text-align:right}
+.invLn{border-bottom:1px solid var(--gris2);background:#fff;padding:0 12px}
 .invLn:last-child{border-bottom:0}
-.invLn>.nom{display:inline-block;width:calc(100% - 118px);text-align:left;background:none;border:0;
-  padding:10px 8px 10px 12px;font:inherit;font-size:13.5px;color:var(--tinta);cursor:pointer;vertical-align:middle}
-.invLn>.nom:hover{color:var(--rojo)}
-.invLn>.st{display:inline-block;width:40px;text-align:center;font-size:12px;font-weight:700;
-  font-variant-numeric:tabular-nums;vertical-align:middle}
-.invLn>.st.hay{color:var(--verde)}
-.invLn>.st.no{color:var(--mudo)}
-.invLn>.loc{display:inline-block;width:72px;font-size:11px;color:var(--mudo);vertical-align:middle;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.invLn .ficha{padding:0 12px}
-.invLn .ficha:not(:empty){padding:10px 12px 12px;background:var(--gris);border-top:1px solid var(--gris2)}
+.invLn>.cd{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mudo);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:9px 8px 9px 0}
+.invLn>.ds{text-align:left;background:none;border:0;padding:9px 8px 9px 0;font:inherit;
+  font-size:13px;color:var(--tinta);cursor:pointer;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;min-width:0}
+.invLn>.ds:hover{color:var(--rojo)}
+.invLn>.md{font-size:10.5px;color:var(--mudo);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;padding-right:8px}
+.invLn>.ct{text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding-right:8px}
+.invLn>.ct.hay{color:var(--verde)}
+.invLn>.ct.no{color:var(--mudo)}
+.invLn>.pr{text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.invLn .ficha{grid-column:1/-1;padding:0}
+@media(max-width:560px){
+  .invHd{display:none}
+  .invLn{grid-template-columns:minmax(0,1fr) 46px 66px;padding:9px 12px;gap:0 4px}
+  .invLn>.cd{grid-column:1/-1;padding:0 0 1px;font-size:10px}
+  .invLn>.ds{grid-column:1/-1;white-space:normal;padding:0 0 2px;font-size:13.5px}
+  .invLn>.md{grid-column:1;padding:0;align-self:center}
+  .invLn>.ct,.invLn>.pr{align-self:center}
+}
+.invLn .ficha:not(:empty){padding:10px 12px 12px;margin:0 -12px;background:var(--gris);
+  border-top:1px solid var(--gris2)}
 .invLn .ficha .fi1{display:flex;align-items:baseline;gap:10px;font-size:15px;margin-bottom:6px}
 .invLn .ficha .fi1 span{font-size:12px;color:var(--mudo);font-weight:600}
 .invLn .ficha .cods{font-size:11.5px;color:var(--mudo);font-family:ui-monospace,monospace;margin-bottom:8px}
@@ -1505,8 +1526,8 @@ tr.sel td{background:var(--rojo-cl)}
     <div id="impEstado" style="margin-bottom:14px"></div>
     <div class="grid g2" style="gap:12px">
       <div class="card" style="margin:0;background:var(--gris)">
-        <label style="margin:0 0 4px">Repuestos y stock</label>
-        <div class="hint" style="margin:0 0 8px">Códigos, precios, stock y ubicación por local.</div>
+        <label style="margin:0 0 4px">Repuestos</label>
+        <div class="hint" style="margin:0 0 8px">Por bloques de marca: código, descripción, modelo, cantidad y precio. Ya no hay stock por local.</div>
         <input type="file" id="impFile" onchange="impLeer(this)" style="padding:9px;width:100%;font-size:12px">
         <div class="fila" style="gap:6px;margin-top:8px">
           <button class="btn chico sec" style="flex:1" onclick="impBajar('stock')">Descargar</button>
@@ -3613,6 +3634,9 @@ function pintarPresupuestoLista(){
    Cada resultado trae su stock y ubicación por local.
    ============================================================ */
 var INV_SEDES=[],INV_CACHE={},INV_TIMER=null;
+/* Lo que se trae de cada repuesto. La cantidad es una sola: el
+   almacén dejó de llevarse por local. */
+var INV_CAMPOS='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,stock';
 
 function cargarSedesInv(cb){
   if(INV_SEDES.length||!sb){cb&&cb();return}
@@ -3667,12 +3691,9 @@ function invBuscar(ctx,texto,familia,dentroDe,reintento){
   if(!sb){invMsg(cont,'<div class="invVacio">Sin conexión con la base.</div>');return}
   cont.classList.add('on');
   invMsg(cont,'<div class="invVacio">Buscando…</div>');
-  var soloMiLocal=!INV_OTROS[ctx.cont];
-  var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
-             'catalogo_stock'+(soloMiLocal?'!inner':'')+'(sede_id,stock,ubicacion)';
-  var sel=sb.from('catalogo').select(campos,{count:'exact'}).eq('tipo','REP').eq('activo',true);
-  if(soloMiLocal&&SEDE_ACTIVA)
-    sel=sel.eq('catalogo_stock.sede_id',SEDE_ACTIVA).gt('catalogo_stock.stock',0);
+  /* El almacén ya no se lleva por local: hay una sola cantidad. */
+  var sel=sb.from('catalogo').select(INV_CAMPOS,{count:'exact'})
+            .eq('tipo','REP').eq('activo',true);
   /* Una sola condición, con las palabras encadenadas por comodín:
      "filtro de aire" -> %filtro%aire%. Así la BASE ya descarta lo que
      no contiene todas, en vez de traer 250 alfabéticas y filtrarlas
@@ -3696,16 +3717,9 @@ function invBuscar(ctx,texto,familia,dentroDe,reintento){
   }
   sel.order('descripcion').limit(TOPE).then(function(r){
     if(r.error){
-      /* Si lo que falla es el filtro por local, se busca en todos antes
-         de dejar al usuario sin buscador. */
-      if(soloMiLocal){
-        INV_OTROS[ctx.cont]=true;
-        invBuscar(ctx,texto,familia,dentroDe);
-        return;
-      }
       invMsg(cont,'<div class="aviso rojo" style="margin:0">'+r.error.message+
         (/column|relation|permission|schema/i.test(r.error.message)
-          ? '<br><b>Falta correr el paso 17 en Supabase.</b>' : '')+'</div>');
+          ? '<br><b>Falta correr el paso 55 en Supabase.</b>' : '')+'</div>');
       return;
     }
     var lista=r.data||[];
@@ -3722,8 +3736,6 @@ function invBuscar(ctx,texto,familia,dentroDe,reintento){
     lista=invOrdenarRelevancia(lista,texto,pal);
     INV_TOTAL[ctx.cont]=(typeof r.count==='number')?r.count:lista.length;
     INV_TOPE[ctx.cont]=TOPE;
-    /* cuántos hay si se abre a todos los locales, para el "+N" del check */
-    if(soloMiLocal)invContarGlobal(ctx,texto,pal,familia,dentroDe,condFrase);
     INV_CACHE[ctx.cont]=lista;INV_FAMILIA[ctx.cont]=familia||'';
     INV_TODO[ctx.cont]=lista;INV_MARCA[ctx.cont]='';INV_SUB[ctx.cont]='';
     if(!lista.length){
@@ -3739,28 +3751,14 @@ function invBuscar(ctx,texto,familia,dentroDe,reintento){
 /* Refinado sin volver a consultar: sobre los resultados ya traídos se
    arman subgrupos con las palabras que más se repiten, chips de marca,
    y por defecto solo se muestra lo que hay en el local. */
-var INV_TODO={},INV_MARCA={},INV_SUB={},INV_OTROS={},INV_FAMILIA={};
-var INV_TOTAL={},INV_TOPE={},INV_GLOBAL={};
+var INV_TODO={},INV_MARCA={},INV_SUB={},INV_FAMILIA={};
+var INV_TOTAL={},INV_TOPE={};
 /* "filtro de aire" debe empezar por los que se llaman así, no por las
    carcasas y los conductos que también contienen esas palabras. */
 /* Rescate: la palabra más larga manda en la base (es la que menos
    filas devuelve) y el resto se cruza acá. */
-/* El número del check "incluir otros locales" sale de un conteo aparte:
-   el mismo filtro, sin restringir la sede. */
-function invContarGlobal(ctx,texto,pal,familia,dentroDe,condFrase){
-  var q=sb.from('catalogo').select('id',{count:'exact',head:true})
-          .eq('tipo','REP').eq('activo',true);
-  if(familia)q=q.eq('categoria',familia);
-  else if(dentroDe)q=q.eq('categoria',dentroDe).or(condFrase(pal,false));
-  else q=q.or(condFrase(pal,true));
-  q.then(function(c){
-    INV_GLOBAL[ctx.cont]=(typeof c.count==='number')?c.count:0;
-    if(document.getElementById(ctx.cont))invPintar(ctx.cont,familia||'');
-  },function(){});
-}
 function invBuscarSuelto(ctx,cont,texto,pal,dentroDe,TOPE){
-  var campos='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,'+
-             'catalogo_stock(sede_id,stock,ubicacion)';
+  var campos=INV_CAMPOS;
   var larga=pal.slice().sort(function(a,b){return b.length-a.length})[0];
   var q=sb.from('catalogo').select(campos,{count:'exact'}).eq('tipo','REP').eq('activo',true);
   if(dentroDe)q=q.eq('categoria',dentroDe);
@@ -3865,27 +3863,10 @@ function invSubgrupos(lista,buscado){
     .slice(0,10)
     .map(function(p){ return {p:p,n:cnt[p]} });
 }
-function invEnMiLocal(it){
-  return (it.catalogo_stock||[]).some(function(s){
-    return Number(s.sede_id)===Number(SEDE_ACTIVA)&&Number(s.stock)>0;
-  });
-}
 function invFiltrarSub(cont,p){
   INV_SUB[cont]=(INV_SUB[cont]===p)?'':p;
   invPintar(cont,'');
   var z=document.getElementById(cont);if(z)z.scrollTop=0;
-}
-function invToggleOtros(cont){
-  INV_OTROS[cont]=!INV_OTROS[cont];
-  /* Hay que volver a consultar: con el filtro de sede en la base, lo
-     de los otros locales ni siquiera se trajo. */
-  var ctx=INV_CTX[cont];
-  if(!ctx){invPintar(cont,'');return}
-  var inp=document.getElementById(ctx.input||''),
-      q=document.getElementById(cont+'-q');
-  var texto=((q&&q.value)||(inp&&inp.value)||'').trim();
-  INV_SUB[cont]='';INV_MARCA[cont]='';
-  invBuscar(ctx,texto,INV_FAMILIA[cont]||'');
 }
 /* Lo que se escribe dentro del panel acota la lista en vivo. */
 function invRefinar(cont,txt){
@@ -3913,12 +3894,8 @@ function invPintar(cont,familia){
       escribiendo=!!(act&&act.id===cont+'-q'),
       caret=escribiendo?act.selectionStart:0;
   var todo=INV_TODO[cont]||[],
-      marca=INV_MARCA[cont]||'',sub=INV_SUB[cont]||'',otros=!!INV_OTROS[cont];
-
-  /* 1 · el local manda: la base ya filtró por sede, así que lo traído
-     es lo del local salvo que se haya pedido lo demás */
-  var base=todo,
-      fuera=otros?0:Math.max(0,(INV_GLOBAL[cont]||0)-(INV_TOTAL[cont]||0));
+      marca=INV_MARCA[cont]||'',sub=INV_SUB[cont]||'';
+  var base=todo;
 
   /* 2 · subgrupo por palabra */
   var lista=base;
@@ -3959,24 +3936,14 @@ function invPintar(cont,familia){
   z.innerHTML=
     invBarra(cont)+
     '<div class="invCab">'+(familia?'Familia <b>'+familia+'</b> · '
-      :'')+'<b>'+lista.length+'</b> de '+todo.length+
-      ' · '+(otros?'todos los locales':esc(SEDE_NOMBRE))+'</div>'+
+      :'')+'<b>'+lista.length+'</b> de '+todo.length+' repuestos</div>'+
     (INV_TOTAL[cont]>todo.length
-      ? '<div class="invCorte">De <b>'+INV_TOTAL[cont]+'</b> coincidencias'+
-        (otros?' en todos los locales':' en '+esc(SEDE_NOMBRE))+
-        ' se muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
+      ? '<div class="invCorte">De <b>'+INV_TOTAL[cont]+'</b> coincidencias '+
+        'se muestran las primeras <b>'+todo.length+'</b>. Escribe una palabra más '+
         '(la marca, el modelo o el código) para verlas todas.</div>'
       : '')+
-    (fuera>0||otros
-      ? '<label class="invOtros"><input type="checkbox"'+(otros?' checked':'')+
-        ' onchange="invToggleOtros(&quot;'+cont+'&quot;)"> Incluir otros locales'+
-        (fuera>0?' <b>+'+fuera+'</b>':'')+
-        (otros?' <span class="soloMio">· desmárcalo para ver solo '+esc(SEDE_NOMBRE)+'</span>':'')+
-        '</label>'
-      : '')+
     chipsSub+chipsMar+
-    '<div class="invLista"><div class="invHd"><span>Repuesto</span>'+
-      '<span class="st">Stock</span><span class="loc">Dónde hay</span></div>'+
+    '<div class="invLista">'+
     (lista.length?invConSeparadores(ctx,lista)
       :'<div class="invVacio">Nada con esos filtros. Quita uno o escribe distinto.</div>')+
     '</div>';
@@ -3985,48 +3952,49 @@ function invPintar(cont,familia){
     if(q){ q.focus(); try{ q.setSelectionRange(caret,caret) }catch(e){} }
   }
 }
-/* Los tres grupos salen rotulados: sin rótulo, la lista parece un
-   revoltijo y no se entiende por qué un repuesto va antes que otro. */
+/* La lista va en bloques por marca, como el archivo del almacén. El
+   bloque de la marca del carro que está en el taller va primero; los
+   demás, de mayor a menor. Cada bloque lleva su propia cabecera de
+   columnas: código, descripción, modelo, cantidad y precio. */
+function invCabCols(){
+  return '<div class="invHd"><span class="cd">Código</span>'+
+         '<span class="ds">Descripción</span><span class="md">Modelo</span>'+
+         '<span class="ct">Cant.</span><span class="pr">Precio</span></div>';
+}
 function invConSeparadores(ctx,lista){
   var mc=invMarcaCliente();
-  var v=(typeof mmVehiculoDelCliente==='function')?mmVehiculoDelCliente():null;
-  var eq=MM_EQUIV[mc]||'';
-  var rot={0:'Sirven para cualquier vehículo',
-           1:'De '+((v&&v.marca)||'tu marca')+((v&&v.modelo)?' '+v.modelo:'')+
-             (eq?' · y de '+famBonita(eq):''),
-           2:'Otras marcas'};
-  var g=-1,sal='';
+  var orden=[],por={};
   lista.forEach(function(it,i){
-    var gi=invGrupoMarca(it,mc);
-    if(gi!==g){
-      g=gi;
-      /* sin marca de carro no hay nada que separar */
-      if(mc)sal+='<div class="invGrupo">'+esc(rot[gi])+'</div>';
-    }
-    sal+=invLinea(ctx,it,i);
+    var m=invMarcaDe(it);
+    if(!por[m]){por[m]=[];orden.push(m)}
+    por[m].push({it:it,i:i});
   });
-  return sal;
+  orden.sort(function(a,b){
+    var da=(invGrupoMarca({marca:a},mc)===1)?0:1,
+        db=(invGrupoMarca({marca:b},mc)===1)?0:1;
+    return da-db||por[b].length-por[a].length||a.localeCompare(b,'es');
+  });
+  return orden.map(function(m){
+    var suya=(invGrupoMarca({marca:m},mc)===1);
+    return '<div class="invBloque'+(suya?' suya':'')+'">'+
+      '<div class="invGrupo">'+esc(m)+' <b>'+por[m].length+'</b>'+
+        (suya?'<span class="dz">la marca del carro</span>':'')+'</div>'+
+      invCabCols()+
+      por[m].map(function(x){ return invLinea(ctx,x.it,x.i) }).join('')+
+    '</div>';
+  }).join('');
 }
-/* Línea de la lista: lo mínimo para decidir si es el que busca. */
-/* Cuál local se muestra: el mío si tiene stock, si no el que más
-   tenga. El número es el de ESE local, no la suma de todos. */
-function invDondeHay(it){
-  var con=(it.catalogo_stock||[]).filter(function(s){return Number(s.stock)>0});
-  if(!con.length)return null;
-  var mio=con.filter(function(s){return Number(s.sede_id)===Number(SEDE_ACTIVA)})[0];
-  if(mio)return {s:mio,otros:con.length-1,propio:true};
-  var mayor=con.slice().sort(function(a,b){return Number(b.stock)-Number(a.stock)})[0];
-  return {s:mayor,otros:con.length-1,propio:false};
-}
+/* Línea de la lista: las cinco columnas del archivo. */
+function invStock(it){ return Number(it.stock||0) }
 function invLinea(ctx,it,i){
-  var stocks=it.catalogo_stock||[],d=invDondeHay(it);
+  var n=invStock(it);
   return '<div class="invLn" id="'+ctx.cont+'-ln'+i+'">'+
-    '<button class="nom" onclick="invAbrir(&quot;'+ctx.cont+'&quot;,'+i+')">'+it.descripcion+'</button>'+
-    '<span class="st '+(d?'hay':'no')+'" title="stock en el local que se muestra">'+
-      (d?Number(d.s.stock):'0')+'</span>'+
-    '<span class="loc'+(d&&!d.propio?' ajeno':'')+'">'+
-      (d?invSede(d.s.sede_id):(stocks.length?'sin stock':'no registrado'))+
-      (d&&d.otros?' +'+d.otros+' más':'')+'</span>'+
+    '<span class="cd">'+esc(it.codigo||'—')+'</span>'+
+    '<button class="ds" onclick="invAbrir(&quot;'+ctx.cont+'&quot;,'+i+')">'+
+      esc(it.descripcion||'')+'</button>'+
+    '<span class="md">'+esc(it.modelo||it.marca||'—')+'</span>'+
+    '<span class="ct '+(n>0?'hay':'no')+'">'+n+'</span>'+
+    '<span class="pr">'+S(Number(it.prec1||it.precio||0))+'</span>'+
     '<div class="ficha" id="'+ctx.cont+'-fi'+i+'"></div></div>';
 }
 /* Ficha: se arma al tocar, y un segundo toque la cierra. */
@@ -4037,28 +4005,16 @@ function invAbrir(cont,i){
   if(z.innerHTML){z.innerHTML='';return}
   var otras=document.querySelectorAll('#'+cont+' .ficha');
   for(var k=0;k<otras.length;k++)otras[k].innerHTML='';
-  var stocks=it.catalogo_stock||[];
-  /* arrancar en el local que la línea ya mostraba, no en el primero de la lista */
-  var ini=0,dd=invDondeHay(it);
-  if(dd)for(var q=0;q<stocks.length;q++){ if(stocks[q]===dd.s){ini=q;break} }
-  var pri=stocks[ini]||{stock:0,ubicacion:''};
-  it._sel=ini;
+  var n=invStock(it);
   z.innerHTML=
     '<div class="fi1"><b>'+S(Number(it.prec1||it.precio||0))+'</b>'+
-      '<span>'+(it.marca||'—')+' · '+(it.modelo||'—')+'</span></div>'+
-    (veCodigos()
-      ? '<div class="cods">cód <b>'+(it.codigo||'—')+'</b>'+
-        (it.codigo2?' · cód 2 <b>'+it.codigo2+'</b>':'')+
-        ' · ubic <b id="'+cont+'-ub'+i+'">'+(pri.ubicacion||'—')+'</b></div>'
-      : '')+
+      '<span>'+esc(it.marca||'—')+' · '+esc(it.modelo||'—')+'</span></div>'+
+    '<div class="cods">cód <b>'+esc(it.codigo||'—')+'</b>'+
+      (it.codigo2?' · cód 2 <b>'+esc(it.codigo2)+'</b>':'')+
+      ' · '+esc(it.unidad||'UND')+'</div>'+
     '<div class="fila2">'+
-      '<select onchange="invCambiaSede(&quot;'+cont+'&quot;,'+i+',this.value)">'+
-        (stocks.length
-          ? stocks.map(function(s,k){return '<option value="'+k+'"'+(k===ini?' selected':'')+'>'+
-            invSede(s.sede_id)+' ('+Number(s.stock)+')</option>'}).join('')
-          : '<option value="-1">sin stock registrado</option>')+'</select>'+
-      '<span class="stk '+(Number(pri.stock)>0?'hay':'no')+'" id="'+cont+'-st'+i+'">'+
-        (stocks.length?'stock '+Number(pri.stock):'sin stock')+'</span>'+
+      '<span class="stk '+(n>0?'hay':'no')+'">'+
+        (n>0?'cantidad '+n:'sin cantidad')+'</span>'+
       '<label style="flex:0 0 96px;font-size:10px;text-transform:uppercase;color:var(--mudo);font-weight:700">Precio'+
         '<input type="number" min="0" step="0.01" id="'+cont+'-pr'+i+'" value="'+Number(it.prec1||it.precio||0)+
         '" style="width:100%;padding:6px;font-size:12.5px;margin-top:2px"></label>'+
@@ -4068,17 +4024,6 @@ function invAbrir(cont,i){
     '</div>'+
     '<button class="volverFi" onclick="invAbrir(&quot;'+cont+'&quot;,'+i+')">← Volver a los resultados</button>';
 }
-function invCambiaSede(cont,i,k){
-  var it=(INV_CACHE[cont]||[])[i];if(!it)return;
-  var s=(it.catalogo_stock||[])[Number(k)];
-  var st=document.getElementById(cont+'-st'+i),ub=document.getElementById(cont+'-ub'+i);
-  if(st){
-    st.textContent=s?('stock '+Number(s.stock)):'sin stock';
-    st.className='stk '+(s&&Number(s.stock)>0?'hay':'no');
-  }
-  if(ub)ub.textContent=(s&&s.ubicacion)||'—';
-  it._sel=Number(k);
-}
 function invFamilia(cont,fam){
   var ctx=INV_CTX[cont];if(!ctx)return;
   invBuscar(ctx,'',fam);
@@ -4086,7 +4031,6 @@ function invFamilia(cont,fam){
 function invAgregar(cont,i){
   var ctx=INV_CTX[cont];if(!ctx)return;
   var it=(INV_CACHE[cont]||[])[i];if(!it)return;
-  var s=(it.catalogo_stock||[])[it._sel||0]||{};
   /* El precio se lee ANTES de cerrar la ficha: el campo vive dentro de
      ella y al vaciarla se perdía lo que el usuario había escrito. */
   var e=document.getElementById(cont+'-pr'+i);
@@ -4099,7 +4043,7 @@ function invAgregar(cont,i){
   ctx.onAdd({codigo:it.codigo,codigo2:it.codigo2||'',desc:it.descripcion,
     marca:it.marca||'',modelo:it.modelo||'',categoria:it.categoria||'',
     precio:precio,
-    ubicacion:s.ubicacion||'',stock:Number(s.stock||0)});
+    ubicacion:'',stock:invStock(it)});
 }
 /* Volver al campo con algo escrito reabre la lista. */
 /* En el celular la lista flotante no sirve: el teclado tapa media
@@ -4199,7 +4143,6 @@ function invAtajo(contId,idx,inputId){
   var ctx=INV_CTX[contId],a=ATAJOS_REP[idx];
   if(!ctx||!a)return;
   INV_SUB[contId]='';INV_MARCA[contId]='';
-  INV_OTROS[contId]=false;      /* el atajo arranca en el local propio */
   clearTimeout(INV_TIMER);
   invAtajoProbar(ctx,a,0,inputId);
 }
@@ -4220,11 +4163,8 @@ function invAtajoProbar(ctx,a,i,inputId){
   var q=a.q[i],pal=invPalabras(q);
   var cond=['descripcion.ilike.%'+pal.join('%')+'%'];
   if(pal.length>1)cond.push('descripcion.ilike.%'+pal.slice().reverse().join('%')+'%');
-  var c=sb.from('catalogo')
-      .select('id'+(SEDE_ACTIVA?',catalogo_stock!inner(sede_id,stock)':''),
-              {count:'exact',head:true})
+  var c=sb.from('catalogo').select('id',{count:'exact',head:true})
       .eq('tipo','REP').eq('activo',true).or(cond.join(','));
-  if(SEDE_ACTIVA)c=c.eq('catalogo_stock.sede_id',SEDE_ACTIVA).gt('catalogo_stock.stock',0);
   c.then(function(r){
     if(!r.error&&(r.count||0)>0){ usar(q); return }
     invAtajoProbar(ctx,a,i+1,inputId);
@@ -6648,13 +6588,19 @@ function impLeer(inp){
   var esCsv=/\.csv$/i.test(f.name);
   var fr=new FileReader();
   fr.onload=function(e){
-    var filas;
+    var filas,aoa;
     try{
       /* El CSV viene en UTF-8: leerlo como binario parte los acentos
          y deja locales como "AmÃ©ricas". */
       var wb=esCsv ? XLSX.read(e.target.result,{type:'string'})
                    : XLSX.read(e.target.result,{type:'array'});
-      filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:true});
+      var hoja0=wb.Sheets[wb.SheetNames[0]];
+      /* El archivo de repuestos viene por bloques de marca y con dos
+         columnas MODELO: con nombres de columna repetidos no se puede
+         leer, así que se lee por posición. */
+      aoa=XLSX.utils.sheet_to_json(hoja0,{header:1,defval:'',raw:true});
+      if(impEsRepuestos(aoa)){ impRepuestos(aoa); return }
+      filas=XLSX.utils.sheet_to_json(hoja0,{defval:'',raw:true});
     }catch(err){
       $('impInfo').innerHTML='<div class="aviso rojo" style="margin:0">No pude leer el archivo: '+err.message+'</div>';
       return;
@@ -6684,41 +6630,123 @@ function impCol(fila,nombres){
   }
   return '';
 }
+/* ============ REPUESTOS · archivo por bloques de marca ============
+   Formato nuevo, sin stock por local: una fila "MARCA : X" abre el
+   bloque y debajo van sus repuestos, con código, descripción, dos
+   columnas MODELO, unidad, cantidad y precio. De las dos columnas
+   MODELO vale la primera que traiga algo; cuando una trae el id
+   numérico de la marca en vez del nombre, el nombre se saca de los
+   otros bloques del mismo archivo. */
+function impEsRepuestos(aoa){
+  for(var i=0;i<aoa.length&&i<500;i++){
+    var c=String(((aoa[i]||[])[0])||'').toUpperCase().replace(/\s+/g,'');
+    if(c.indexOf('MARCA:')===0)return true;
+  }
+  return false;
+}
+function impCabRep(aoa){
+  for(var i=0;i<aoa.length&&i<80;i++){
+    var f=(aoa[i]||[]).map(function(x){return String(x||'').toUpperCase().replace(/\s+/g,'')});
+    if(f.indexOf('CODIGO')<0)continue;
+    var m={cod:f.indexOf('CODIGO'),desc:f.indexOf('DESCRIPCION'),uni:f.indexOf('UNIDAD'),
+           cant:(f.indexOf('CANTIDAD')>-1?f.indexOf('CANTIDAD'):f.indexOf('STOCK')),
+           pre:(f.indexOf('PRECIO')>-1?f.indexOf('PRECIO'):f.indexOf('PREC1')),
+           mod:[]};
+    f.forEach(function(h,k){ if(h==='MODELO')m.mod.push(k) });
+    if(m.desc>-1&&m.cant>-1&&m.pre>-1)return m;
+  }
+  return null;
+}
+function impMarcaDeFila(f){
+  for(var k=0;k<f.length;k++){
+    var v=impTxt(f[k]);
+    if(v&&!/^MARCA\s*:?$/i.test(v))return v;
+  }
+  return '';
+}
+function impRepuestos(aoa){
+  var m=impCabRep(aoa);
+  if(!m){
+    $('impInfo').innerHTML='<div class="aviso rojo" style="margin:0">'+
+      'Este archivo viene por bloques de marca, pero no encontré la fila de títulos.<br>'+
+      'Hace falta una fila con <b>CODIGO</b>, <b>DESCRIPCION</b>, <b>CANTIDAD</b> y <b>PRECIO</b>.</div>';
+    return;
+  }
+  function val(f,k){ return (k>-1&&k<f.length)?impTxt(f[k]):'' }
+  var crudo=[],marca='',nomPorId={},bloques={};
+  aoa.forEach(function(f){
+    f=f||[];
+    var c0=String(f[0]||'').toUpperCase().replace(/\s+/g,'');
+    if(c0.indexOf('MARCA:')===0){ marca=impMarcaDeFila(f); return }
+    var cod=val(f,m.cod);
+    if(!cod||cod.toUpperCase()==='CODIGO')return;
+    var mods=m.mod.map(function(k){return val(f,k)});
+    crudo.push({cod:cod,desc:val(f,m.desc),mods:mods,marca:marca,
+                uni:val(f,m.uni),cant:impNum(f[m.cant]),pre:impNum(f[m.pre])});
+  });
+  /* el propio archivo dice qué nombre tiene cada id numérico */
+  crudo.forEach(function(r){
+    var num='',nom='';
+    r.mods.forEach(function(v){
+      if(/^\d+$/.test(v)){ if(!num)num=v }
+      else if(v&&!nom)nom=v;
+    });
+    if(!nom&&r.marca&&!/^\d+$/.test(r.marca))nom=r.marca;
+    if(num&&nom&&!nomPorId[num])nomPorId[num]=nom;
+  });
+  var items=crudo.map(function(r){
+    var modelo='';
+    for(var i=0;i<r.mods.length;i++){
+      var v=r.mods[i];
+      if(!v)continue;
+      if(/^\d+$/.test(v)){ if(!modelo&&nomPorId[v])modelo=nomPorId[v]; continue }
+      modelo=v;break;
+    }
+    var marca=r.marca||modelo||'';
+    if(/^\d+$/.test(marca))marca=nomPorId[marca]||'';
+    if(!marca)marca='Sin marca';
+    bloques[marca]=(bloques[marca]||0)+1;
+    return {codigo:r.cod,descripcion:r.desc,marca:marca,
+            modelo:modelo||(marca==='Sin marca'?'':marca),
+            unidad:r.uni||'UND',stock:r.cant,prec1:r.pre};
+  }).filter(function(i){ return !!i.descripcion });
+  IMP.tipo='repuestos';IMP.items=items;IMP.stock=[];IMP.sedes=[];
+  IMP.marcas=Object.keys(bloques).sort();
+  IMP.sinPrecio=items.filter(function(i){return !(i.prec1>0)}).length;
+  IMP.sinMarca=items.filter(function(i){return i.marca==='Sin marca'}).length;
+  impResumen(crudo.length);
+}
+/* Archivo viejo, con una fila por local: ya no hay stock por local,
+   así que las cantidades del mismo código se suman en una sola. */
 function impStock(filas){
-  var items={},stock={},sedes={};
+  var items={},bloques={};
   filas.forEach(function(r){
     var cod=impTxt(impCol(r,['CODIGO']));if(!cod)return;
-    var local=impTxt(impCol(r,['LOCAL/ALMACEN','LOCAL','ALMACEN']));
-    var sedeDir=impTxt(impCol(r,['SEDE']));   /* el CSV ya procesado trae el local resuelto */
     var marcaDir=impTxt(impCol(r,['MARCA']));
     var desc=impTxt(impCol(r,['DESCRIPCION']));
     var cod2=impTxt(impCol(r,['CODIGO2']));
     var mod=impTxt(impCol(r,['MODELO']));
-    var ubi=impTxt(impCol(r,['UBICACIÓN','UBICACION']));
-    var p1=impNum(impCol(r,['PREC1'])),p2=impNum(impCol(r,['PREC2'])),
-        p3=impNum(impCol(r,['PREC3'])),p4=impNum(impCol(r,['PREC4']));
+    var p1=impNum(impCol(r,['PREC1','PRECIO']));
     var marca=marcaDir;
     if(!marca&&mod){
       var p0=mod.split(' ')[0];
       if(IMP_MARCAS.indexOf(p0)>-1){marca=p0;mod=mod.slice(p0.length).trim()||p0}
       else if(p0==='VARIOS'){marca='Varios';mod=mod.slice(6).trim()}
     }
-    if(!items[cod]||(p1&&!items[cod].prec1))
-      items[cod]={codigo:cod,descripcion:desc,codigo2:cod2,marca:marca,modelo:mod,
-                  prec1:p1,prec2:p2,prec3:p3,prec4:p4};
-    var sede=sedeDir||impSede(local);sedes[sede]=1;
-    var k=cod+'||'+sede;
-    if(!stock[k])stock[k]={codigo:cod,sede:sede,stock:0,ubis:[]};
-    stock[k].stock+=impNum(impCol(r,['STOCK']));
-    var u=[impPiso(local),ubi].filter(Boolean).join(' ').trim();
-    if(u&&stock[k].ubis.indexOf(u)<0)stock[k].ubis.push(u);
+    if(!items[cod])
+      items[cod]={codigo:cod,descripcion:desc,codigo2:cod2,
+                  marca:marca||'Sin marca',modelo:mod||marca||'',
+                  unidad:impTxt(impCol(r,['UNIDAD']))||'UND',prec1:p1,stock:0};
+    if(p1&&!items[cod].prec1)items[cod].prec1=p1;
+    items[cod].stock+=impNum(impCol(r,['STOCK','CANTIDAD']));
   });
-  IMP.tipo='stock';
+  IMP.tipo='repuestos';
   IMP.items=Object.keys(items).map(function(k){return items[k]});
-  IMP.stock=Object.keys(stock).map(function(k){
-    var v=stock[k];return {codigo:v.codigo,sede:v.sede,stock:v.stock,ubicacion:v.ubis.join(' / ').slice(0,120)};
-  });
-  IMP.sedes=Object.keys(sedes).sort();
+  IMP.items.forEach(function(i){ bloques[i.marca]=1 });
+  IMP.stock=[];IMP.sedes=[];
+  IMP.marcas=Object.keys(bloques).sort();
+  IMP.sinPrecio=IMP.items.filter(function(i){return !(i.prec1>0)}).length;
+  IMP.sinMarca=IMP.items.filter(function(i){return i.marca==='Sin marca'}).length;
   impResumen(filas.length);
 }
 function impServicios(filas){
@@ -6815,12 +6843,15 @@ function impResumen(nf){
   var z=$('impInfo');
   if(!IMP.items.length){z.innerHTML='<div class="aviso rojo" style="margin:0">No encontré filas válidas.</div>';return}
   var det;
-  if(IMP.tipo==='stock'){
+  if(IMP.tipo==='repuestos'){
     det='<div class="fila" style="gap:10px">'+
       kpi(IMP.items.length,'repuestos')+
-      kpi(IMP.stock.length,'filas de stock')+
-      kpi(IMP.sedes.length,'locales')+'</div>'+
-      '<div class="hint" style="margin-top:8px">Locales: '+IMP.sedes.join(' · ')+'</div>';
+      kpi((IMP.marcas||[]).length,'marcas')+
+      kpi(IMP.sinMarca||0,'sin marca')+
+      kpi(IMP.sinPrecio||0,'sin precio')+'</div>'+
+      '<div class="hint" style="margin-top:8px">Marcas: '+
+      esc((IMP.marcas||[]).slice(0,14).join(' · '))+
+      ((IMP.marcas||[]).length>14?' · y '+((IMP.marcas||[]).length-14)+' más':'')+'</div>';
   }else if(IMP.tipo==='mecanicos'){
     var tl={},lc={};
     IMP.items.forEach(function(i){tl[i.tipo]=(tl[i.tipo]||0)+1;if(i.sede)lc[i.sede]=1});
@@ -6851,7 +6882,10 @@ function impResumen(nf){
   z.innerHTML='<div class="aviso ok" style="margin:0 0 10px">Leí <b>'+nf+'</b> filas de '+IMP.archivo+'.</div>'+det;
   $('impAcc').innerHTML='<button class="btn" onclick="impSubir()">Cargar a la base</button>'+
     '<div class="hint" style="margin-top:6px">Se actualiza lo que ya existe y se agrega lo nuevo. '+
-    (IMP.tipo==='stock'?'El stock de cada local se reemplaza por el del archivo. ':'')+
+    (IMP.tipo==='repuestos'
+      ? 'La cantidad y el precio se reemplazan por los del archivo, y los repuestos '+
+        'que ya no vengan quedan fuera del buscador. '
+      : '')+
     (IMP.tipo==='usuarios'?'A quien ya existe se le respeta su clave, salvo que el archivo traiga una nueva. ':'')+
     'Nada se borra.</div>';
 }
@@ -6877,7 +6911,7 @@ function impMsg(t,malo){
 }
 function impSubir(){
   if(!sb){impMsg('Sin conexión con la base.',true);return}
-  var qué=(IMP.tipo==='stock')?'repuestos'
+  var qué=(IMP.tipo==='repuestos')?'repuestos'
          :(IMP.tipo==='usuarios'?'usuarios'
          :(IMP.tipo==='mecanicos'?'mecánicos y lavadores'
          :(IMP.tipo==='mm'?'vehículos de mantenimiento mayor':'servicios')));
@@ -6888,85 +6922,58 @@ function impSubirYa(){
   if(IMP.tipo==='usuarios'){impUsuariosSubir();return}
   if(IMP.tipo==='mecanicos'){impMecanicosSubir();return}
   if(IMP.tipo==='mm'){impMMSubir();return}
-  var tipo=(IMP.tipo==='stock')?'REP':'MO';
+  if(IMP.tipo==='repuestos'){impRepuestosSubir();return}
   var cat=IMP.items.map(function(i){
-    return {codigo:i.codigo,tipo:tipo,descripcion:i.descripcion,
+    return {codigo:i.codigo,tipo:'MO',descripcion:i.descripcion,
       codigo2:i.codigo2||null,marca:i.marca||null,modelo:i.modelo||null,
-      categoria:i.categoria||i.marca||'Repuestos',unidad:i.unidad||'unidad',
-      precio:i.prec1,prec1:i.prec1,prec2:i.prec2||null,prec3:i.prec3||null,prec4:i.prec4||null,
-      activo:true};
+      categoria:i.categoria||'Servicios',unidad:i.unidad||'servicio',
+      precio:i.prec1,prec1:i.prec1,activo:true};
   });
   impProgreso(0,cat.length,'catálogo');
   impLote('catalogo',cat,'codigo,tipo',0,function(e){
     if(e){impMsg('La carga del catálogo falló.<br><b>'+(IMP_ERR||'sin detalle')+'</b>'+
       (/no unique|exclusion constraint|on conflict/i.test(IMP_ERR)
         ?'<br>Falta el índice único: corre el paso 20.':''),true);return}
-    if(IMP.tipo!=='stock'){
-      impMsg('✓ '+cat.length+' servicios actualizados.');
-      SERVICIOS=[];cargarCatalogoV2();
-      auditar('IMPORTA_SERVICIOS','catalogo','',IMP.archivo+' · '+cat.length+' ítems');
+    impMsg('✓ '+cat.length+' servicios actualizados.');
+    SERVICIOS=[];cargarCatalogoV2();
+    auditar('IMPORTA_SERVICIOS','catalogo','',IMP.archivo+' · '+cat.length+' ítems');
+  });
+}
+/* El archivo es la foto completa del almacén. Todo lo que sube lleva
+   la marca del lote; al terminar, lo que quedó con un lote viejo se
+   desactiva, que es como desaparece de la base sin borrar nada (las
+   órdenes antiguas siguen apuntando a su fila). */
+function impRepuestosSubir(){
+  var lote='L'+Date.now();
+  var cat=IMP.items.map(function(i){
+    return {codigo:i.codigo,tipo:'REP',descripcion:i.descripcion,
+      marca:i.marca||null,modelo:i.modelo||null,
+      categoria:i.marca||'Repuestos',unidad:i.unidad||'UND',
+      precio:i.prec1,prec1:i.prec1,stock:i.stock||0,
+      lote:lote,activo:true};
+  });
+  impProgreso(0,cat.length,'repuestos');
+  impLote('catalogo',cat,'codigo,tipo',0,function(e){
+    if(e){
+      impMsg('La carga de repuestos falló.<br><b>'+(IMP_ERR||'sin detalle')+'</b>'+
+        (/stock|lote|column/i.test(IMP_ERR)?'<br><b>Falta correr el paso 55.</b>':'')+
+        (/no unique|exclusion constraint|on conflict/i.test(IMP_ERR)
+          ?'<br>Falta el índice único: corre el paso 20.':''),true);
       return;
     }
-    impStockSubir();
+    impMsg('Dando de baja lo que ya no viene en el archivo…');
+    sb.from('catalogo').update({activo:false})
+      .eq('tipo','REP').or('lote.is.null,lote.neq.'+lote)
+      .then(function(){ listo() },function(){ listo() });
+    function listo(){
+      impMsg('✓ Listo: '+cat.length+' repuestos cargados en '+
+             ((IMP.marcas||[]).length)+' marcas.');
+      auditar('IMPORTA_REPUESTOS','catalogo','',IMP.archivo+' · '+cat.length+' ítems');
+      INV_CACHE={};INV_SEDES=[];
+      impEstado();
+    }
   });
 }
-function impStockSubir(){
-  impMsg('Resolviendo locales…');
-  sb.from('sedes').select('id,nombre').then(function(r){
-    var hay=r.data||[],falta=[];
-    IMP.sedes.forEach(function(n){
-      var clave=impClave(n);
-      var m=hay.filter(function(s){return s.nombre.toUpperCase().indexOf(clave)>-1})[0];
-      if(!m)falta.push({nombre:n,activa:true});
-    });
-    if(!falta.length){impStockCruzar(hay);return}
-    sb.from('sedes').insert(falta).select('id,nombre').then(function(r2){
-      if(r2.error){impMsg('No pude crear los locales nuevos.<br><b>'+r2.error.message+
-        '</b><br>Corre el paso 21.',true);return}
-      impStockCruzar(hay.concat(r2.data||[]));
-    },function(err){impMsg('No pude crear los locales nuevos.<br><b>'+
-        ((err&&err.message)||'sin detalle')+'</b><br>Corre el paso 21.',true)});
-  },function(){impMsg('No pude leer los locales.',true)});
-}
-function impStockCruzar(sedes){
-  var idSede={};
-  var sinLocal=[];
-  IMP.sedes.forEach(function(n){
-    var clave=impClave(n);
-    var m=sedes.filter(function(s){return s.nombre.toUpperCase().indexOf(clave)>-1})[0]
-         ||sedes.filter(function(s){return s.nombre===n})[0];
-    if(m)idSede[n]=m.id; else sinLocal.push(n);
-  });
-  if(sinLocal.length)conex('Sin local en la base: '+sinLocal.join(', '),true);
-  impMsg('Cruzando códigos con el catálogo…');
-  /* Traemos los ids en tandas: un IN con 17.000 códigos no pasa por la URL. */
-  var cods=IMP.items.map(function(i){return i.codigo}),mapa={},pos=0;
-  (function tanda(){
-    if(pos>=cods.length){impStockGrabar(mapa,idSede);return}
-    sb.from('catalogo').select('id,codigo').eq('tipo','REP').in('codigo',cods.slice(pos,pos+300))
-      .then(function(r){
-        (r.data||[]).forEach(function(c){mapa[c.codigo]=c.id});
-        pos+=300;impProgreso(Math.min(pos,cods.length),cods.length,'códigos');tanda();
-      },function(){impMsg('No pude cruzar los códigos.',true)});
-  })();
-}
-function impStockGrabar(mapa,idSede){
-  var filas=[];
-  IMP.stock.forEach(function(s){
-    var cid=mapa[s.codigo],sid=idSede[s.sede];
-    if(cid&&sid)filas.push({catalogo_id:cid,sede_id:sid,stock:s.stock,
-      ubicacion:s.ubicacion||null,actualizado:new Date().toISOString()});
-  });
-  if(!filas.length){impMsg('No quedó ninguna fila de stock por grabar.',true);return}
-  impProgreso(0,filas.length,'stock');
-  impLote('catalogo_stock',filas,'catalogo_id,sede_id',0,function(e){
-    if(e){impMsg('El stock falló a mitad de camino.<br><b>'+(IMP_ERR||'sin detalle')+'</b>',true);return}
-    impMsg('✓ Listo: '+IMP.items.length+' repuestos y '+filas.length+' filas de stock.');
-    auditar('IMPORTA_STOCK','catalogo','',IMP.archivo+' · '+IMP.items.length+' ítems');
-    INV_SEDES=[];INV_CACHE={};
-  });
-}
-
 /* ---------- descarga de lo vigente ----------
    No devuelve el archivo que se subió, sino lo que hoy tiene la
    base: el stock ya bajó con las ventas y los usuarios pudieron
@@ -7047,21 +7054,19 @@ function impBajarDatos(que,entregar){
       },function(){impMsg('No pude leer el preciario de mantenimiento mayor.',true)});
     return;
   }
-  /* stock: son 35.000 filas, van por páginas */
-  impPaginar('catalogo_stock',
-    'stock,ubicacion,sedes(nombre),catalogo!inner(codigo,descripcion,codigo2,marca,modelo,prec1,prec2,prec3,prec4,activo)',
-    [],0,[],function(d,err){
-    if(err){impMsg('No pude leer el inventario: '+err,true);return}
-    var filas=[];
-    d.forEach(function(x){
-      var c=x.catalogo||{};if(!c.codigo||c.activo===false)return;
-      filas.push({'LOCAL/ALMACEN':(x.sedes||{}).nombre||'','CODIGO':c.codigo,
-        'DESCRIPCION':c.descripcion,'CODIGO2':c.codigo2||'','STOCK':Number(x.stock||0),
-        'PREC1':Number(c.prec1||0),'PREC2':Number(c.prec2||0),
-        'PREC3':Number(c.prec3||0),'PREC4':Number(c.prec4||0),
-        'MARCA':c.marca||'','MODELO':c.modelo||'','UBICACIÓN':x.ubicacion||''});
+  /* repuestos: lo vigente en la base, con las mismas columnas del
+     archivo que se sube */
+  impPaginar('catalogo',
+    'codigo,descripcion,marca,modelo,unidad,stock,prec1,precio,activo,tipo',
+    [['eq','tipo','REP'],['eq','activo',true]],0,[],function(d,err){
+    if(err){impMsg('No pude leer los repuestos: '+err,true);return}
+    var filas=(d||[]).map(function(c){
+      return {'CODIGO':c.codigo,'DESCRIPCION':c.descripcion||'',
+              'MARCA':c.marca||'','MODELO':c.modelo||'',
+              'UNIDAD':c.unidad||'UND','CANTIDAD':Number(c.stock||0),
+              'PRECIO':Number(c.prec1||c.precio||0)};
     });
-    entregar(filas,'Stock');
+    entregar(filas,'Repuestos');
   });
 }
 function impExcel(filas,hoja,nombre){
@@ -12224,7 +12229,7 @@ function completarCodigos(lineas, cb){
   if(!sb){cb(0,faltan.length);return}
   var descs=faltan.map(function(l){return l.desc});
   sb.from('catalogo')
-    .select('codigo,codigo2,descripcion,marca,modelo,prec1,precio,catalogo_stock(sede_id,ubicacion)')
+    .select('codigo,codigo2,descripcion,marca,modelo,prec1,precio')
     .eq('tipo','REP').in('descripcion',descs)
     .then(function(r){
       if(r.error){cb(0,faltan.length);return}
@@ -12237,11 +12242,6 @@ function completarCodigos(lineas, cb){
         l.cod2=c.codigo2||'';
         if(!l.marca)l.marca=c.marca||'';
         if(!l.modelo)l.modelo=c.modelo||'';
-        if(!l.ubic){
-          var s=(c.catalogo_stock||[]).filter(function(x){return x.sede_id===SEDE_ACTIVA})[0]
-               ||(c.catalogo_stock||[])[0];
-          l.ubic=(s&&s.ubicacion)||'';
-        }
         n++;
       });
       cb(n,faltan.length-n);
@@ -13208,7 +13208,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=203;
+var APP_VER=204;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
