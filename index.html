@@ -1,4 +1,4 @@
-<!--IZAV:204-->
+<!--IZAV:206-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1536,7 +1536,8 @@ tr.sel td{background:var(--rojo-cl)}
       </div>
       <div class="card" style="margin:0;background:var(--gris)">
         <label style="margin:0 0 4px">Servicios del taller</label>
-        <div class="hint" style="margin:0 0 8px">Familia, descripción, precio y código RS-TALLER.</div>
+        <div class="hint" style="margin:0 0 8px">Familia, descripción, precio y código RS-TALLER.
+          Para agregar un servicio, deja vacío el «Código app»: la app le pone uno.</div>
         <input type="file" id="impFileSrv" onchange="impLeer(this)" style="padding:9px;width:100%;font-size:12px">
         <div class="fila" style="gap:6px;margin-top:8px">
           <button class="btn chico sec" style="flex:1" onclick="impBajar('servicios')">Descargar</button>
@@ -6619,6 +6620,55 @@ function impLeer(inp){
   };
   if(esCsv)fr.readAsText(f,'UTF-8'); else fr.readAsArrayBuffer(f);
 }
+/* ============ CÓDIGOS REPETIDOS ============
+   Postgres no acepta dos filas con el mismo código en la misma
+   escritura: devuelve "ON CONFLICT DO UPDATE command cannot affect
+   row a second time" y no entra nada. Pasa cuando alguien copia una
+   fila en el Excel para agregar la variante de camioneta y se olvida
+   de cambiarle el código.
+   Como son servicios distintos de verdad (otro precio, otra
+   descripción), no se descartan: al repetido se le pone -2, -3… y se
+   avisa cuáles fueron, antes de cargar nada. */
+function impNumerarRepetidos(items){
+  /* Primero se anotan TODOS los códigos del archivo. Así, si ya hay un
+     "X-2" escrito a mano, el repetido de "X" no se lo lleva por delante
+     y se va al siguiente libre. */
+  var tomado={},repes={},usado={};
+  items.forEach(function(it){
+    var c=String(it.codigo||'');
+    if(c)tomado[c]=true;
+  });
+  items.forEach(function(it){
+    var c=String(it.codigo||'');
+    if(!c)return;
+    if(!usado[c]){ usado[c]=true; return }      /* el primero se queda como está */
+    var n=2,nuevo=c+'-'+n;
+    while(tomado[nuevo]||usado[nuevo]){ n++; nuevo=c+'-'+n }
+    tomado[nuevo]=true; usado[nuevo]=true;
+    if(!repes[c])repes[c]=[c];
+    repes[c].push(nuevo);
+    it.codigo=nuevo;
+    it.repetido=c;
+  });
+  return Object.keys(repes)
+    .map(function(c){ return {codigo:c,codigos:repes[c]} })
+    .sort(function(a,b){ return b.codigos.length-a.codigos.length||
+                                a.codigo.localeCompare(b.codigo,'es') });
+}
+function impAvisoRepetidos(){
+  var r=IMP.repetidos||[];
+  if(!r.length)return '';
+  var n=r.reduce(function(a,x){return a+x.codigos.length-1},0);
+  return '<div class="aviso rojo" style="margin:10px 0 0">'+
+    '<b>'+n+' fila'+(n===1?'':'s')+' del archivo repite'+(n===1?'':'n')+' un código '+
+    'que ya usa otra fila.</b><br>'+
+    'La base no admite dos filas con el mismo código, así que a la repetida se le agregó '+
+    '<b>-2</b>, <b>-3</b>… Revísalo antes de cargar; si eran la misma cosa duplicada por '+
+    'error, corrige el Excel y vuelve a subirlo.'+
+    '<div class="hint" style="margin-top:7px;color:inherit">'+
+    r.slice(0,12).map(function(x){ return esc(x.codigos.join(' · ')) }).join('<br>')+
+    (r.length>12?'<br>… y '+(r.length-12)+' códigos más':'')+'</div></div>';
+}
 /* Toma la columna aunque cambie de mayúsculas o espacios. */
 function impCol(fila,nombres){
   var ks=Object.keys(fila);
@@ -6711,6 +6761,7 @@ function impRepuestos(aoa){
             unidad:r.uni||'UND',stock:r.cant,prec1:r.pre};
   }).filter(function(i){ return !!i.descripcion });
   IMP.tipo='repuestos';IMP.items=items;IMP.stock=[];IMP.sedes=[];
+  IMP.repetidos=impNumerarRepetidos(items);
   IMP.marcas=Object.keys(bloques).sort();
   IMP.sinPrecio=items.filter(function(i){return !(i.prec1>0)}).length;
   IMP.sinMarca=items.filter(function(i){return i.marca==='Sin marca'}).length;
@@ -6743,27 +6794,47 @@ function impStock(filas){
   IMP.tipo='repuestos';
   IMP.items=Object.keys(items).map(function(k){return items[k]});
   IMP.items.forEach(function(i){ bloques[i.marca]=1 });
+  IMP.repetidos=impNumerarRepetidos(IMP.items);
   IMP.stock=[];IMP.sedes=[];
   IMP.marcas=Object.keys(bloques).sort();
   IMP.sinPrecio=IMP.items.filter(function(i){return !(i.prec1>0)}).length;
   IMP.sinMarca=IMP.items.filter(function(i){return i.marca==='Sin marca'}).length;
   impResumen(filas.length);
 }
+/* Para una fila nueva sin código: se arma con las iniciales de la
+   descripción. No hace falta que nadie invente códigos a mano, que es
+   justo lo que termina repitiéndolos. */
+function impCodigoDe(desc,familia){
+  var pal=String(desc||'').toUpperCase()
+    .normalize?String(desc||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''):String(desc||'').toUpperCase();
+  pal=pal.replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(function(p){
+    return p&&['DE','DEL','LA','EL','LOS','LAS','Y','A','EN','CON','POR','PARA'].indexOf(p)<0;
+  });
+  var c=pal.map(function(p){return p.charAt(0)}).join('').slice(0,5);
+  if(c.length<2)c=(String(familia||'SRV').toUpperCase().replace(/[^A-Z]/g,'')+'SRV').slice(0,3);
+  return c;
+}
 function impServicios(filas){
-  var items=[];
+  var items=[],sinCodigo=0;
   filas.forEach(function(r){
     var cod=impTxt(impCol(r,['Código app','Codigo app','CODIGO']));
     var desc=impTxt(impCol(r,['Descripción','Descripcion']));
-    if(!cod||!desc)return;
+    if(!desc)return;
+    var fam=impTxt(impCol(r,['Familia']));
+    /* Sin código no se descarta la fila: se le pone uno. Antes se
+       perdía en silencio y la gente copiaba el código de al lado. */
+    if(!cod){ cod=impCodigoDe(desc,fam); sinCodigo++ }
     var real=impNum(impCol(r,['Precio real (S/)','Precio real']));
     var ref=impNum(impCol(r,['Precio referencial (S/)','Precio referencial']));
     items.push({codigo:cod,descripcion:desc,
-      categoria:impTxt(impCol(r,['Familia'])),
+      categoria:fam,
       unidad:impTxt(impCol(r,['Unidad']))||'servicio',
       codigo2:impTxt(impCol(r,['Código RS-TALLER','Codigo RS-TALLER'])),
       prec1:real||ref});
   });
   IMP.tipo='servicios';IMP.items=items;IMP.stock=[];IMP.sedes=[];
+  IMP.sinCodigo=sinCodigo;
+  IMP.repetidos=impNumerarRepetidos(items);
   impResumen(filas.length);
 }
 /* ============ MANTENIMIENTO MAYOR ============
@@ -6877,9 +6948,15 @@ function impResumen(nf){
     var fams={};IMP.items.forEach(function(i){if(i.categoria)fams[i.categoria]=1});
     det='<div class="fila" style="gap:10px">'+
       kpi(IMP.items.length,'servicios')+
-      kpi(Object.keys(fams).length,'familias')+'</div>';
+      kpi(Object.keys(fams).length,'familias')+
+      (IMP.sinCodigo?kpi(IMP.sinCodigo,'con código nuevo'):'')+'</div>'+
+      (IMP.sinCodigo
+        ? '<div class="hint" style="margin-top:8px">Filas sin «Código app»: se les puso uno '+
+          'con las iniciales de la descripción.</div>'
+        : '');
   }
-  z.innerHTML='<div class="aviso ok" style="margin:0 0 10px">Leí <b>'+nf+'</b> filas de '+IMP.archivo+'.</div>'+det;
+  z.innerHTML='<div class="aviso ok" style="margin:0 0 10px">Leí <b>'+nf+'</b> filas de '+
+    esc(IMP.archivo)+'.</div>'+det+impAvisoRepetidos();
   $('impAcc').innerHTML='<button class="btn" onclick="impSubir()">Cargar a la base</button>'+
     '<div class="hint" style="margin-top:6px">Se actualiza lo que ya existe y se agrega lo nuevo. '+
     (IMP.tipo==='repuestos'
@@ -6905,6 +6982,20 @@ function impProgreso(hecho,total,q){
   $('impProg').innerHTML='<div class="hint">'+q+': '+hecho+' de '+total+'</div>'+
     '<div style="height:10px;background:var(--gris2);border-radius:6px;overflow:hidden;margin-top:5px">'+
     '<div style="height:100%;width:'+p+'%;background:var(--verde)"></div></div>';
+}
+/* Qué significa el error de la base, en palabras. */
+function impPorQue(err){
+  err=String(err||'');
+  if(/affect row a second time/i.test(err))
+    return '<br>Eso quiere decir que <b>el archivo trae dos filas con el mismo código</b>. '+
+           'No es un problema de la base: vuelve a subir el archivo y la app te dirá cuáles son.';
+  if(/stock|lote/i.test(err)&&/column|schema/i.test(err))
+    return '<br><b>Falta correr el paso 55 en Supabase.</b>';
+  if(/no unique|exclusion constraint|on conflict/i.test(err))
+    return '<br>Falta el índice único: corre el paso 20.';
+  if(/permission|policy|rls/i.test(err))
+    return '<br>La base no deja escribir con este usuario. Revisa las políticas del paso 29.';
+  return '';
 }
 function impMsg(t,malo){
   $('impProg').innerHTML='<div class="aviso '+(malo?'rojo':'ok')+'" style="margin:0">'+t+'</div>';
@@ -6932,8 +7023,7 @@ function impSubirYa(){
   impProgreso(0,cat.length,'catálogo');
   impLote('catalogo',cat,'codigo,tipo',0,function(e){
     if(e){impMsg('La carga del catálogo falló.<br><b>'+(IMP_ERR||'sin detalle')+'</b>'+
-      (/no unique|exclusion constraint|on conflict/i.test(IMP_ERR)
-        ?'<br>Falta el índice único: corre el paso 20.':''),true);return}
+      impPorQue(IMP_ERR),true);return}
     impMsg('✓ '+cat.length+' servicios actualizados.');
     SERVICIOS=[];cargarCatalogoV2();
     auditar('IMPORTA_SERVICIOS','catalogo','',IMP.archivo+' · '+cat.length+' ítems');
@@ -6956,9 +7046,7 @@ function impRepuestosSubir(){
   impLote('catalogo',cat,'codigo,tipo',0,function(e){
     if(e){
       impMsg('La carga de repuestos falló.<br><b>'+(IMP_ERR||'sin detalle')+'</b>'+
-        (/stock|lote|column/i.test(IMP_ERR)?'<br><b>Falta correr el paso 55.</b>':'')+
-        (/no unique|exclusion constraint|on conflict/i.test(IMP_ERR)
-          ?'<br>Falta el índice único: corre el paso 20.':''),true);
+        impPorQue(IMP_ERR),true);
       return;
     }
     impMsg('Dando de baja lo que ya no viene en el archivo…');
@@ -13208,7 +13296,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=204;
+var APP_VER=206;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
