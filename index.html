@@ -1,4 +1,4 @@
-<!--IZAV:199-->
+<!--IZAV:200-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5984,7 +5984,26 @@ setInterval(function(){
 /* ============ CRONÓMETRO Y PASOS ============ */
 var t0=null,tint=null;
 var PASO_ACTUAL=1,SESION_ACT=false,ORD=null;   /* recepción en curso · distinto del usuario conectado */
+/* El número de la OT se pinta en dos sitios: el chip del flujo y la
+   barra de arriba. La barra se escribía una sola vez, al entrar al
+   paso 5, y la base devuelve el número definitivo un segundo después:
+   quedaba mostrando el número de la orden anterior. */
+function ponerOT(n){
+  OT_NUM=n;
+  var g=document.getElementById('gOT'); if(g)g.textContent=n;
+  if(ORD)ORD.num=n;
+  var d=document.getElementById('dondeEstoy');
+  if(d&&PASO_ACTUAL>=5)
+    d.innerHTML='Orden <b>'+esc(n||'')+'</b> · volver al listado de clientes';
+}
 function iniciar(){
+  /* Una recepción nueva arranca en blanco. Esto faltaba: "+ Nueva
+     recepción", elegir una placa del listado de clientes y retomar un
+     borrador entraban acá con la orden ANTERIOR todavía en memoria, y
+     el auto nuevo aparecía con el afinamiento, los adicionales y el
+     mecánico del auto de antes. No se usa reset() porque ese además
+     borra el borrador y devuelve la pantalla al inicio. */
+  limpiarOrdenEnMemoria();
   SESION_ACT=true;
   $('segHome').style.display='none';$('flujo').style.display='block';
   t0=Date.now();$('crono').classList.add('on');$('crono').classList.remove('listo');
@@ -6217,7 +6236,9 @@ function avisarOrdenAbierta(v){
 }
 function elegirPlaca(p){
   var pl=document.getElementById('panelListado');if(pl)pl.classList.add('oculto');
-  if($('flujo').style.display==='none')iniciar();
+  /* Antes solo arrancaba si el flujo estaba oculto: con una orden ya
+     abierta en pantalla, elegir otra placa se montaba encima de ella. */
+  iniciar();
   modoDigitar();
   $('placa').value=p;
   buscar();
@@ -7157,8 +7178,7 @@ function recibir(){
   var s=Math.floor((Date.now()-t0)/1000);
   $('crono').classList.add('listo');$('cronoL').textContent='Recepción completada';
   var v=ACTUAL||VEH['CTS009'];
-  OT_NUM=DB.correlativo();  /* provisional hasta que responda la base */
-  $('gOT').textContent=OT_NUM;
+  ponerOT(DB.correlativo());  /* provisional hasta que responda la base */
   var kmIng=kmNum('kmIngreso')||Number(v.km)||0;
   ORD={num:OT_NUM,placa:v.placa,veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
        cliente:v.cliente,tel:v.tel,km:kmIng,creada:Date.now()};
@@ -7169,6 +7189,13 @@ function recibir(){
       : '<br>Daños: <b>'+(danosLista().length?danosLista().join(', '):'ninguno')+'</b> · Fotos: <b>'+FOTOS.length+
         '</b> · Combustible: <b>'+$('cmb').textContent+'</b>');
   $('tiempoFinal').innerHTML='Recepción completada en '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · meta 3:00';
+  /* Segundo cinturón: aunque se haya llegado hasta acá por un camino
+     que no pasó por iniciar(), una orden que recién nace no hereda
+     líneas, mecánico ni comentario de la anterior. El mecánico se
+     limpia ANTES de pintar el combo, que se arma con MECANICO_OT. */
+  LINEAS_SERV=[];LINEAS_REP=[];
+  MECANICO_OT='';LAVADOR_OT='';
+  if($('sintoma'))$('sintoma').value='';
   pintarMecanicos('');
   /* El número lo entrega la base. Mientras tanto NADA debe escribir en
      ordenes: antes, un guardado que llegaba primero no encontraba la
@@ -7178,12 +7205,12 @@ function recibir(){
     ordenAbiertaDe(v._id,function(abierta){
       function nueva(){
         sb.rpc('nuevo_numero_ot').then(function(rn){
-          if(rn.data){ OT_NUM=rn.data; $('gOT').textContent=OT_NUM; if(ORD)ORD.num=OT_NUM; }
+          if(rn.data)ponerOT(rn.data);
           crearOrdenBD(v,kmIng);
         },function(){ crearOrdenBD(v,kmIng); });
       }
       function seguir(){
-        OT_NUM=abierta.numero;$('gOT').textContent=OT_NUM;if(ORD)ORD.num=OT_NUM;
+        ponerOT(abierta.numero);
         OT_CREANDO=false;
         conex('Se continúa la orden '+OT_NUM);
         guardarOrden();
@@ -12980,7 +13007,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=199;
+var APP_VER=200;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
