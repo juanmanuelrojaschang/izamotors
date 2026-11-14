@@ -1,4 +1,4 @@
-<!--IZAV:207-->
+<!--IZAV:208-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3850,8 +3850,17 @@ var INV_VACIAS=['de','del','la','el','los','las','para','con','y','a','en','por'
                 'mm','pza','pzas','und','kit','juego','set'];
 /* Palabras candidatas a subgrupo: las que dividen la lista en partes
    útiles, ni en todos los resultados ni en uno solo. */
-function invSubgrupos(lista,buscado){
+/* Los chips de AFINAR salen de las palabras de la descripción; los de
+   MARCA, del campo marca. Como la descripción casi siempre repite la
+   marca ("FILTRO DE AIRE CHEVROLET SPARK"), las dos filas mostraban lo
+   mismo y no se entendía para qué servía cada una: las palabras que ya
+   son una marca de la lista no vuelven a salir en Afinar. */
+function invSubgrupos(lista,buscado,marcas){
   var ya=invPalabras(buscado),cnt={},n=lista.length;
+  var esMarca={};
+  (marcas||[]).forEach(function(m){
+    mmLlano(m).split(/\s+/).forEach(function(p){ if(p)esMarca[p]=1 });
+  });
   lista.forEach(function(it){
     var vistas={};
     limpiarBusq(it.descripcion||'').toUpperCase().split(/[^A-ZÑ0-9]+/).forEach(function(p){
@@ -3859,6 +3868,7 @@ function invSubgrupos(lista,buscado){
       var l=p.toLowerCase();
       if(INV_VACIAS.indexOf(l)>-1)return;
       if(ya.indexOf(l)>-1)return;
+      if(esMarca[mmLlano(p)])return;
       if(vistas[p])return; vistas[p]=1;
       cnt[p]=(cnt[p]||0)+1;
     });
@@ -3924,16 +3934,16 @@ function invPintar(cont,familia){
   if(marca)lista=lista.filter(function(it){return invMarcaDe(it)===marca});
   INV_CACHE[cont]=lista;
 
-  var subs=invSubgrupos(base,(document.getElementById(ctx.input||'')||{}).value||'');
+  var subs=invSubgrupos(base,(document.getElementById(ctx.input||'')||{}).value||'',marcas);
   var chipsSub=subs.length?'<div class="invMarcas sub">'+
-    '<span class="et">Afinar</span>'+
+    '<span class="et" title="Palabras de la descripción">Afinar</span>'+
     subs.map(function(s){
       return '<button class="mc'+(sub===s.p?' on':'')+'" '+
         'onclick="invFiltrarSub(&quot;'+cont+'&quot;,&quot;'+s.p.replace(/"/g,'')+'&quot;)">'+
         esc(s.p)+' <b>'+s.n+'</b></button>';
     }).join('')+'</div>':'';
   var chipsMar=marcas.length>1?'<div class="invMarcas">'+
-    '<span class="et">Marca</span>'+
+    '<span class="et" title="Marca del repuesto">Marca</span>'+
     '<button class="mc'+(marca?'':' on')+'" onclick="invFiltrarMarca(&quot;'+cont+'&quot;,&quot;&quot;)">'+
       'Todas</button>'+
     marcas.map(function(m){
@@ -13313,7 +13323,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=207;
+var APP_VER=208;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
