@@ -1,4 +1,4 @@
-<!--IZAV:200-->
+<!--IZAV:201-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2006,8 +2006,17 @@ function tiempo(m){
 /* Los datos de demostración de productividad se eliminaron:
    la reportería sale de la base. */
 
-/* logo compartido */
-(function(){var a=document.getElementById('logoReal'),b=document.getElementById('logoCli');if(a&&b)b.src=a.src})();
+/* Logo compartido. El del login se ponía al final de pintarUsuarios(),
+   que solo corre cuando la base responde: si la consulta se colgaba,
+   quedaba el ícono de imagen rota y parecía que la app estaba mal
+   cargada. El logo va embebido, no necesita red. */
+(function(){
+  var a=document.getElementById('logoReal');
+  if(!a)return;
+  ['logoCli','logoLogin'].forEach(function(id){
+    var b=document.getElementById(id); if(b)b.src=a.src;
+  });
+})();
 
 /* ============ URL PÚBLICA REAL ============ */
 /* dentro de Apps Script la página corre en un iframe: location.href no sirve.
@@ -2487,13 +2496,41 @@ function pintarAtras(){
    -------------------------------------------- */
 var LOGIN_SEDES=[],LOGIN_USERS=[],LOGIN_DATOS=null;
 
+/* Una consulta que no vuelve dejaba el login en "— cargando locales —"
+   para siempre, sin aviso y sin salida: desde el taller eso se ve como
+   que la app se colgó. Con la señal del local pasa. Ahora hay un
+   límite de espera y un botón para reintentar. */
+var LOGIN_INTENTO=0;
+function loginFallo(msg){
+  var c=document.getElementById('loginSede');
+  if(c)c.innerHTML='<option value="">— no se pudieron cargar —</option>';
+  var dg=document.getElementById('loginDiag');
+  if(!dg)return;
+  dg.innerHTML='<b style="color:var(--rojo)">No pude cargar la lista de locales.</b><br>'+
+    (msg?esc(msg)+'<br>':'')+
+    'Revisa la señal y vuelve a intentar.'+
+    '<div style="margin-top:9px"><button class="btn chico" onclick="cargarLogin()">Reintentar</button></div>';
+}
 function cargarLogin(){
   var dg=document.getElementById('loginDiag');
   if(!sb){if(dg)dg.textContent='Sin conexión con la base.';return}
-  Promise.all([
+  LOGIN_INTENTO++;
+  var miIntento=LOGIN_INTENTO;
+  if(dg)dg.textContent='Cargando locales…';
+  var reloj=null;
+  var espera=new Promise(function(_,rechaza){
+    reloj=setTimeout(function(){
+      rechaza(new Error('La base no respondió en 12 segundos.'));
+    },12000);
+  });
+  var consulta=Promise.all([
     sb.from('sedes').select('id,nombre').order('nombre'),
     sb.from('v_usuarios_login').select('usuario,nombre,rol,sede_id').order('nombre')
-  ]).then(function(r){
+  ]);
+  Promise.race([consulta,espera]).then(function(r){
+    clearTimeout(reloj);
+    /* una respuesta de un intento anterior ya no manda */
+    if(miIntento!==LOGIN_INTENTO)return;
     if(r[1].error){
       if(dg)dg.innerHTML='No pude leer los usuarios: '+r[1].error.message+
         '<br>Falta correr el paso 22.';
@@ -2512,7 +2549,11 @@ function cargarLogin(){
     if(g&&LOGIN_SEDES.filter(function(s){return String(s.id)===g}).length)c.value=g;
     pintarUsuarios();
     if(dg)dg.textContent='';
-  },function(){ if(dg)dg.textContent='No se pudo conectar con la base.' });
+  },function(e){
+    clearTimeout(reloj);
+    if(miIntento!==LOGIN_INTENTO)return;
+    loginFallo(e&&e.message);
+  });
 }
 /* El equipo del taller lo usa siempre la misma persona, así que vale
    la pena saltarse el paso de elegir el nombre. Se guarda solo el
@@ -2670,7 +2711,9 @@ function guardarSesion(){
 }
 function diag(txt){
   var d=document.getElementById('loginDiag');
-  if(d)d.innerHTML=txt;
+  /* Si la carga de locales dejó un error ahí, ese importa más: este
+     aviso es solo informativo y antes lo tapaba. */
+  if(d&&d.innerHTML.indexOf('No pude cargar')<0)d.innerHTML=txt;
   try{console.log('[sesión]',txt)}catch(e){}
 }
 function restaurarSesion(){
@@ -13007,7 +13050,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=200;
+var APP_VER=201;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
