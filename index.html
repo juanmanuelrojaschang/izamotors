@@ -1,4 +1,4 @@
-<!--IZAV:208-->
+<!--IZAV:209-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -389,10 +389,24 @@ body.sinScroll{overflow:hidden}
 .atajo:active{border-color:var(--rojo);color:var(--rojo)}
 .atajos .favEt{flex:0 0 auto;align-self:center;font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;color:var(--mudo);font-weight:700;padding-right:3px}
-.atajo.fav{border-color:var(--tinta);font-weight:700}
+.atajo.fav{border-color:var(--tinta);font-weight:700;transition:background .12s,color .12s}
 .atajo.fav::before{content:'+';margin-right:5px;color:var(--rojo);font-weight:700}
 .atajo.fav:active{background:var(--rojo);border-color:var(--rojo);color:#fff}
 .atajo.fav:active::before{color:#fff}
+/* ya está en la orden */
+.atajo.fav.puesto{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.atajo.fav.puesto::before{content:'✓';color:#fff}
+.atajo.fav .n{display:inline-block;margin-left:6px;min-width:17px;padding:0 4px;
+  border-radius:9px;background:rgba(255,255,255,.2);font-family:ui-monospace,monospace;
+  font-size:11px;line-height:17px;text-align:center}
+/* parpadeo del que se acaba de tocar */
+@keyframes favJusto{
+  0%{transform:scale(1)}
+  25%{transform:scale(1.08);background:var(--verde);border-color:var(--verde)}
+  100%{transform:scale(1)}
+}
+.atajo.fav.justo{animation:favJusto .55s ease-out}
+@media(prefers-reduced-motion:reduce){ .atajo.fav.justo{animation:none;background:var(--verde);border-color:var(--verde)} }
 .invRes.pantalla .invLista{padding:0 6px 24px}
 .invRes.pantalla .invBloque>.invGrupo{position:sticky;top:0;z-index:2}
 .invRes.on{display:block}
@@ -2913,8 +2927,7 @@ function pintarPresupuesto(){
     pintarPresupuestoLista();
     conex(it.desc+' agregado');
   },'repBusq');
-  pintarFavoritos('atajosRep','rep');
-  pintarFavoritos('atajosSrv','serv');
+  favRefrescar();
   var rb=$('repBusq');
   if(rb)rb.value='';
   pintarPresupuestoLista();
@@ -3599,6 +3612,7 @@ function pintarPresupuestoLista(){
   if(AGREGANDO)LINEAS_SERV.concat(LINEAS_REP).forEach(function(l){
     if(!l.adic&&!l.id_bd)l.adic='PEND';
   });
+  favRefrescar();
   var za=document.getElementById('zonaAceite');
   if(za)za.innerHTML=bloqueAceite();
   var zd=document.getElementById('zonaAdic');
@@ -4161,17 +4175,43 @@ var FAVS_REP=[
   {t:'Arandela',p:2}
 ];
 function favLista(cual){ return (cual==='serv')?FAVS_SERV:FAVS_REP }
+function favZona(cual){ return (cual==='serv')?'atajosSrv':'atajosRep' }
+/* Cuántos hay de ese favorito en la OT ahora mismo. */
+function favCant(cual,f){
+  var lista=(cual==='serv')?LINEAS_SERV:LINEAS_REP,cod=favCodigo(cual,f);
+  var l=lista.filter(function(x){return x.codigo===cod})[0];
+  return l?(Number(l.cant)||1):0;
+}
 function favCodigo(cual,f){
   return (cual==='serv'?'FAV-S-':'FAV-R-')+
     mmLlano(f.t).replace(/\s+/g,'-');
 }
+/* El botón dice si eso ya está en la orden y cuántos van. Sin eso, el
+   jefe de taller tocaba y no sabía si había pasado algo. */
 function pintarFavoritos(zonaId,cual){
   var z=document.getElementById(zonaId);if(!z)return;
   z.innerHTML='<span class="favEt">Favoritos</span>'+
     favLista(cual).map(function(f,i){
-      return '<button type="button" class="atajo fav" '+
-        'onclick="favAgregar(&quot;'+cual+'&quot;,'+i+')">'+esc(f.t)+'</button>';
+      var n=favCant(cual,f);
+      return '<button type="button" class="atajo fav'+(n?' puesto':'')+'" '+
+        'id="fav-'+cual+'-'+i+'" '+
+        (n?'title="Ya está en la orden · tócalo otra vez para sumar" ':'')+
+        'onclick="favAgregar(&quot;'+cual+'&quot;,'+i+')">'+esc(f.t)+
+        (n?'<b class="n">'+n+'</b>':'')+'</button>';
     }).join('');
+}
+function favRefrescar(){
+  if(document.getElementById('atajosSrv'))pintarFavoritos('atajosSrv','serv');
+  if(document.getElementById('atajosRep'))pintarFavoritos('atajosRep','rep');
+}
+/* Un parpadeo corto en el botón que se tocó: avisa sin tapar nada. */
+function favDestello(cual,i){
+  var b=document.getElementById('fav-'+cual+'-'+i);
+  if(!b)return;
+  b.classList.remove('justo');
+  void b.offsetWidth;            /* reinicia la animación */
+  b.classList.add('justo');
+  setTimeout(function(){ if(b)b.classList.remove('justo') },900);
 }
 function favAgregar(cual,i){
   var f=favLista(cual)[i];
@@ -4184,7 +4224,8 @@ function favAgregar(cual,i){
   if(ya){
     ya.cant=(Number(ya.cant)||1)+1;
     pintarPresupuestoLista();
-    conex(f.t+' · '+ya.cant);
+    favDestello(cual,i);
+    conex(f.t+' · ahora van '+ya.cant);
     return;
   }
   if(cual==='serv'){
@@ -4196,7 +4237,8 @@ function favAgregar(cual,i){
       marca:'',modelo:'',ubicacion:''});
   }
   pintarPresupuestoLista();
-  conex(f.t+' agregado'+(f.p>0?' · '+S(f.p):''));
+  favDestello(cual,i);
+  conex('✓ '+f.t+' agregado'+(f.p>0?' · '+S(f.p):' · sin costo'));
 }
 function invTeclea(contId,valor){
   var z=document.getElementById(contId);
@@ -13323,7 +13365,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=208;
+var APP_VER=209;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
