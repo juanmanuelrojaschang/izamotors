@@ -1,4 +1,4 @@
-<!--IZAV:213-->
+<!--IZAV:214-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -112,6 +112,9 @@ main{max-width:1180px;margin:0 auto;padding:20px 16px 90px}
 .punto.mal{font-size:18px}
 .punto.mal{border:2px solid var(--rojo);background:var(--rojo);color:#fff;border-style:solid}
 .punto.ok{border:2px solid var(--verde);background:#E7F5EE;color:var(--verde);border-style:solid}
+.regFotos{display:flex;gap:8px;margin-top:12px}
+.regFotos img{flex:1 1 0;min-width:0;height:88px;object-fit:cover;border-radius:9px;
+  border:1px solid var(--borde);background:var(--gris)}
 
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{padding:11px 15px;border-radius:24px;border:1.5px solid var(--borde);background:var(--blanco);color:var(--mudo);font-size:14px;font-weight:600;min-height:44px}
@@ -1128,6 +1131,14 @@ tr.sel td{background:var(--rojo-cl)}
     <div id="pregTxt" style="font-size:14px;line-height:1.5;color:var(--tinta)"></div>
     <div id="pregExtra" style="margin-top:12px"></div>
     <div id="pregBtns" style="display:flex;flex-direction:column;gap:9px;margin-top:16px"></div>
+  </div>
+</div>
+<div class="drawer" id="modalReg" onclick="if(event.target===this)cerrarRegistro()">
+  <div class="panel" style="right:auto;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:430px;max-width:94vw;max-height:88vh;border-radius:14px">
+    <div class="cabd"><h3 class="sinbar" style="font-size:18px;margin:0">Registro de la recepción</h3>
+      <button class="cerrar" onclick="cerrarRegistro()">✕</button></div>
+    <div id="regCuerpo"></div>
+    <button class="btn sec full" style="margin-top:14px" onclick="cerrarRegistro()">Cerrar</button>
   </div>
 </div>
 <div class="drawer" id="modalRet" onclick="if(event.target===this)cerrarMotivoRet()">
@@ -5993,6 +6004,14 @@ function guardarOrden(){
     bit:BITACORA,minis:FOTOS_MINI.slice(0,3),total:totalesV2().tot,
     km:Number(ORD.km)||kmNum('gKm')||0,
     modo:MODO_REC,
+    /* Lo que se registró al recibir el auto. Antes no se guardaba:
+       al reabrir la orden, el paso Registro leía los campos de la
+       pantalla —vacíos— y siempre decía "ninguno" y "—". */
+    reg:{danos:danosLista(),accs:accesoriosLista(),
+         cmb:($('cmb')?$('cmb').textContent:''),
+         zonas:JSON.parse(JSON.stringify(estadoZ||{})),
+         nfotos:FOTOS.length||0,
+         hora:HITOS['T_REGISTRO']||''},
     info:($('gInfo')?$('gInfo').innerHTML:''),
     creada:ORD.creada||Date.now(),act:Date.now()
   });
@@ -6008,6 +6027,7 @@ function abrirOrden(ot){
        km:Number(d.km)||0};
   SEL={};(d.sel||[]).forEach(function(i){SEL[i]=true});
   BITACORA=d.bit||{};FOTOS_MINI=d.minis||[];
+  REG=d.reg||null;
   EST_TALLER=d.estado_taller||'RECIBIDO';EST_OT_ACT=d.estado_ot||'';HITOS=d.hitos||{};
   PRELIM_REV=d.prelim_rev||0;TIENE_P2=!!d.tiene_p2;EDITANDO_OT=false;AGREGANDO=false;armarFOT();
   LINEAS_SERV=d.lineas_serv||[];LINEAS_REP=d.lineas_rep||[];LIN_BD_IDS=[];
@@ -6633,6 +6653,9 @@ function fotoCam(){
     .catch(function(){fotosDemo()});
 }
 var FOTOS_MINI=[];
+/* La recepción tal como quedó registrada. Null mientras se está
+   haciendo: ahí mandan los campos de la pantalla. */
+var REG=null;
 function miniatura(video,ancho){
   var c=document.createElement('canvas');
   var w=video.videoWidth||640,hh=video.videoHeight||400;
@@ -7558,9 +7581,53 @@ function tocaCompletar(){
          ['RECIBIDO','EN_DIAGNOSTICO','EN_PROCESO'].indexOf(EST_TALLER)>-1;
 }
 function bloqueCompletar(){
-  if(!tocaCompletar())return '';
-  return '<button class="btn full" style="margin-top:12px" '+
-    'onclick="completarRecepcion()">Registrar recepción completa</button>';
+  return '<button class="btn sec full" style="margin-top:12px" '+
+      'onclick="verRegistro()">Ver registro</button>'+
+    (tocaCompletar()
+      ? '<button class="btn full" style="margin-top:9px" '+
+        'onclick="completarRecepcion()">Registrar recepción completa</button>'
+      : '');
+}
+/* El muñeco del auto con los daños marcados, las fotos y el detalle,
+   tal como quedó al recibir. */
+function verRegistro(){
+  var g=registroDeLaOrden(),d=datosOrden();
+  var z=document.getElementById('regCuerpo');
+  if(!z)return;
+  var marcadas=[];
+  Object.keys(g.zonas||{}).forEach(function(i){
+    if(Number(g.zonas[i])===2&&ZONAS[i])marcadas.push(Number(i));
+  });
+  var svg='';
+  var orig=document.querySelector('#autoWrap svg');
+  if(orig)svg=orig.outerHTML;
+  var puntos=ZONAS.map(function(zz,i){
+    var mal=marcadas.indexOf(i)>-1;
+    return '<div class="punto'+(mal?' mal':'')+'" style="left:'+zz[1]+'%;top:'+zz[2]+'%;cursor:default">'+
+      (mal?'✕':etiquetaZona(zz[0]))+'</div>';
+  }).join('');
+  function ln(a,b){ return '<div class="dato-l"><span>'+a+'</span><span>'+(b||'—')+'</span></div>' }
+  var fotos=(FOTOS_MINI||[]).slice(0,3);
+  z.innerHTML=
+    '<div class="auto-wrap" style="margin:0 0 14px">'+svg+puntos+'</div>'+
+    ln('Placa',esc(d.placa||''))+ln('Vehículo',esc(d.veh||''))+
+    ln('Cliente',esc(d.cliente||''))+ln('Hora de recepción',esc(g.hora||''))+
+    ln('Km de ingreso',kmFicha())+ln('Combustible',esc(g.cmb||''))+
+    ln('Daños',(g.danos&&g.danos.length?esc(g.danos.join(', ')):'ninguno'))+
+    ln('Accesorios',(g.accs&&g.accs.length?esc(g.accs.join(', ')):'—'))+
+    ln('Fotos',String(g.nfotos||0))+
+    (fotos.length
+      ? '<div class="regFotos">'+fotos.map(function(f){
+          return '<img src="'+f+'" alt="foto de la recepción">'}).join('')+'</div>'
+      : '<div class="hint" style="margin-top:10px">'+
+        (g.nfotos
+          ? 'Se tomaron '+g.nfotos+', pero las miniaturas no están guardadas en este equipo.'
+          : 'No se tomaron fotos en la recepción.')+'</div>');
+  document.getElementById('modalReg').classList.add('on');
+}
+function cerrarRegistro(){
+  var m=document.getElementById('modalReg');
+  if(m)m.classList.remove('on');
 }
 function completarRecepcion(){
   if(!OT_NUM){aviso('No hay una orden abierta.');return}
@@ -7572,6 +7639,7 @@ function completarRecepcion(){
 }
 function completarRecepcionYa(){
   COMPLETANDO=false;
+  REG=null;        /* manda lo que se acaba de marcar en pantalla */
   var v=ACTUAL||{};
   var kmIng=kmNum('kmIngreso')||Number(ORD&&ORD.km)||0;
   if(ORD)ORD.km=kmIng;
@@ -8193,18 +8261,28 @@ function kmFicha(){
   return k?k.toLocaleString('es-PE'):'—';
 }
 /* lo que quedó guardado en cada etapa ya cumplida */
+/* Lo registrado al recibir: de la orden guardada si se está mirando
+   una orden vieja, o de la pantalla si la recepción es de ahora. */
+function registroDeLaOrden(){
+  if(REG)return REG;
+  return {danos:danosLista(),accs:accesoriosLista(),
+          cmb:($('cmb')?$('cmb').textContent:''),
+          zonas:estadoZ||{},nfotos:FOTOS.length||0,
+          hora:HITOS['T_REGISTRO']||''};
+}
 function datosDelPaso(f,k,paso){
   var d=datosOrden(),hh=HITOS[(f==='taller'?'T_':'O_')+k]||'—';
   var filas='';
   function fila(a,b){return '<div class="dato-l"><span>'+a+'</span><span>'+(b||'—')+'</span></div>'}
 
   if(k==='REGISTRO'){
+    var g=registroDeLaOrden();
     filas=fila('Placa',d.placa)+fila('Vehículo',d.veh)+fila('Cliente',d.cliente)+
       fila('Teléfono',d.tel)+fila('Km de ingreso',kmFicha())+
-      fila('Combustible',$('cmb')?$('cmb').textContent:'—')+
-      fila('Daños marcados',(danosLista().length?danosLista().join(', '):'ninguno'))+
-      fila('Accesorios',(accesoriosLista().length?accesoriosLista().join(', '):'—'))+
-      fila('Fotos',FOTOS.length||0);
+      fila('Combustible',g.cmb||'—')+
+      fila('Daños marcados',(g.danos&&g.danos.length?esc(g.danos.join(', ')):'ninguno'))+
+      fila('Accesorios',(g.accs&&g.accs.length?esc(g.accs.join(', ')):'—'))+
+      fila('Fotos',g.nfotos||0);
   }
   else if(k==='RECIBIDO'){
     filas=fila('Hora de recepción',hh)+fila('Recibido por',SESION?SESION.nombre:'—')+
@@ -8969,7 +9047,7 @@ function limpiarOrdenEnMemoria(){
   LINEAS_SERV=[];LINEAS_REP=[];LINEAS_CARGADAS=false;LIN_BD_IDS=[];
   DET_PIDIENDO='';DET_PENDIENTE=false;
   SEL={};SEL_SERV={};BITACORA={};estadoZ={};
-  FOTOS=[];FOTOS_MINI=[];
+  FOTOS=[];FOTOS_MINI=[];REG=null;
   PANEL_SEL=null;
   ['sintoma','gKm','gRuc','placa'].forEach(function(id){
     var e=document.getElementById(id); if(e)e.value='';
@@ -13531,7 +13609,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=213;
+var APP_VER=214;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
