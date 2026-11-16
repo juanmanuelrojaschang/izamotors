@@ -1,4 +1,4 @@
-<!--IZAV:209-->
+<!--IZAV:213-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -383,6 +383,9 @@ body.sinScroll{overflow:hidden}
 .bloque-pres .cantBox input{background:transparent;color:#fff}
 .bloque-pres .cantBox .cmas{background:rgba(255,255,255,.1);color:#fff}
 .atajos{display:flex;gap:7px;overflow-x:auto;padding:0 0 9px;-webkit-overflow-scrolling:touch}
+/* con aire arriba y abajo: pegados al botón o al texto se tocaban sin querer */
+.atajos.arriba{padding:9px 0 15px}
+#atajosRep{padding-top:9px;padding-bottom:15px}
 .atajos::-webkit-scrollbar{display:none}
 .atajo{flex:0 0 auto;background:#fff;border:1px solid var(--borde);border-radius:999px;
   padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--tinta);white-space:nowrap;min-height:36px}
@@ -1330,12 +1333,13 @@ tr.sel td{background:var(--rojo-cl)}
           <div style="flex:1;min-width:170px">
             <div style="display:flex;align-items:center;gap:7px">
               <span class="num" style="color:var(--mudo);font-weight:700">+51</span>
-              <input id="waNum" value="944255192" maxlength="9" inputmode="numeric" style="font-size:17px">
+              <input id="waNum" maxlength="9" inputmode="numeric" placeholder="944 255 192" style="font-size:17px">
             </div>
           </div>
           <button class="btn chico" style="flex:0 0 auto"
                   onclick="enviarWA('recepcion')">Enviar constancia</button>
         </div>
+        <div class="hint" id="waNumQuien"></div>
         <div class="hint" id="waHint">Se abre WhatsApp con el mensaje listo.</div>
         <button class="btn full" style="margin-top:14px" onclick="paso(5)">Continuar a la gestión de la orden</button>
       </div>
@@ -1380,6 +1384,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="hint" id="porque" style="margin:-4px 0 14px"></div>
 
         <label>1 · Servicios del taller</label>
+        <div class="atajos arriba" id="atajosSrv"></div>
         <div class="srvBox" style="margin-bottom:16px">
           <div class="fila" style="align-items:flex-end">
             <div style="flex:1;min-width:170px">
@@ -1408,6 +1413,7 @@ tr.sel td{background:var(--rojo-cl)}
         <div class="invBox" style="margin-bottom:10px">
           <input id="repBusq" placeholder="Escribe una o más letras: descripción, marca, modelo o código"
                  oninput="invTeclea('repRes',this.value)" onfocus="invFoco('repRes')"
+                 onkeydown="invTecla(event,'repRes',this.value)"
                  onblur="invCerrar('repRes')">
           <div class="invRes" id="repRes"></div>
         </div>
@@ -2568,7 +2574,12 @@ function cargarLogin(){
   });
   var consulta=Promise.all([
     sb.from('sedes').select('id,nombre').order('nombre'),
-    sb.from('v_usuarios_login').select('usuario,nombre,rol,sede_id').order('nombre')
+    sb.from('v_usuarios_login').select('id,usuario,nombre,rol,sede_id').order('nombre')
+      .then(function(r){
+        /* la vista puede no exponer el id: se reintenta sin él */
+        if(!r.error)return r;
+        return sb.from('v_usuarios_login').select('usuario,nombre,rol,sede_id').order('nombre');
+      })
   ]);
   Promise.race([consulta,espera]).then(function(r){
     clearTimeout(reloj);
@@ -2845,7 +2856,7 @@ function buscarBD(placa){
         .then(function(o){
           var hist=(o.data||[]).map(function(x){
             return {f:new Date(x.ingreso).toLocaleDateString('es-PE'),
-                    t:x.estado,km:'',sede:(x.sede_id===2?'Óvalo':'Las Américas'),
+                    t:x.estado,km:'',sede:sedeNombrePorId(x.sede_id),
                     m:Number(x.total_cobrado||x.total_taller||0)};
           });
           return {placa:v.placa,marca:v.marca,modelo:v.modelo,anio:v.anio,color:v.color,
@@ -2915,8 +2926,7 @@ function pintarPresupuesto(){
       else DET_PIDIENDO='';
     },function(){ DET_PIDIENDO='' });
   }
-  var wp=$('waNumPre');
-  if(wp&&!wp.value)wp.value=String((ORD&&ORD.tel)||(ACTUAL&&ACTUAL.tel)||'').replace(/\D/g,'');
+  ponerTelCliente();
   srvPintarFamilias();
   srvPintarLista($('servFam')?$('servFam').value:'');
   invMontar('repRes',function(it){
@@ -2993,9 +3003,10 @@ function srvPintarFamilias(){
 var SRV_ABIERTA=false;
 function srvPintarLista(fam,filtro){
   var dl=$('servLista');if(!dl)return;
-  var q=String(filtro||'').trim().toLowerCase();
+  /* sin tildes de los dos lados: "diagnostico" encuentra Diagnóstico */
+  var q=mmLlano(filtro);
   var l=srvDeFamilia(fam).filter(function(s){
-    return !q||String(s.descripcion).toLowerCase().indexOf(q)>-1;
+    return !q||mmLlano(s.descripcion).indexOf(q)>-1;
   });
   dl.innerHTML=l.length
     ? l.map(function(s){
@@ -3101,10 +3112,10 @@ function srvFamilia(fam){
 /* Al escribir: si lo tecleado coincide con un servicio, se fija
    la selección y se rellena la familia hacia arriba. */
 function srvEscribe(v){
-  var t=String(v||'').trim().toLowerCase();
-  var s=SERVICIOS.filter(function(x){return String(x.descripcion).toLowerCase()===t})[0];
+  var t=mmLlano(v);
+  var s=SERVICIOS.filter(function(x){return mmLlano(x.descripcion)===t})[0];
   if(!s){
-    var cand=SERVICIOS.filter(function(x){return String(x.descripcion).toLowerCase().indexOf(t)===0});
+    var cand=SERVICIOS.filter(function(x){return mmLlano(x.descripcion).indexOf(t)===0});
     if(t.length>2&&cand.length===1)s=cand[0];
   }
   SRV_SEL=s||null;
@@ -3657,6 +3668,15 @@ function pintarPresupuestoLista(){
    Cada resultado trae su stock y ubicación por local.
    ============================================================ */
 var INV_SEDES=[],INV_CACHE={},INV_TIMER=null;
+/* Columna "busca" del catálogo: la descripción sin tildes ni ñ, que
+   deja el paso 56. Mientras no exista, se busca sobre descripcion. */
+var HAY_BUSCA=null;
+function probarBusca(cb){
+  if(HAY_BUSCA!==null||!sb){cb&&cb();return}
+  sb.from('catalogo').select('busca').limit(1).then(function(r){
+    HAY_BUSCA=!r.error;cb&&cb();
+  },function(){ HAY_BUSCA=false;cb&&cb() });
+}
 /* Lo que se trae de cada repuesto. La cantidad es una sola: el
    almacén dejó de llevarse por local. */
 var INV_CAMPOS='id,codigo,codigo2,descripcion,marca,modelo,categoria,unidad,precio,prec1,stock';
@@ -3704,6 +3724,11 @@ function invSede(sid){
 }
 function invBuscar(ctx,texto,familia,dentroDe,reintento){
   var cont=document.getElementById(ctx.cont);if(!cont)return;
+  /* una sola vez por sesión: ¿existe la columna sin tildes? */
+  if(HAY_BUSCA===null&&sb){
+    probarBusca(function(){ invBuscar(ctx,texto,familia,dentroDe,reintento) });
+    return;
+  }
   var pal=invPalabras(texto);
   if(!familia&&(!pal.length||limpiarBusq(texto).length<2)){
     invMsg(cont,'<div class="invVacio">'+
@@ -3722,12 +3747,16 @@ function invBuscar(ctx,texto,familia,dentroDe,reintento){
      no contiene todas, en vez de traer 250 alfabéticas y filtrarlas
      después (que era lo que dejaba fuera a los FILTRO DE AIRE). */
   function patron(ps){ return '%'+ps.join('%')+'%' }
+  /* Nadie escribe tildes desde el celular y el catálogo sí las tiene
+     (MUÑON, CIGÜEÑAL). Con el paso 56 corrido se busca sobre "busca",
+     la descripción sin tildes ni ñ: ahí "munon" encuentra MUÑON. */
   function condFrase(ps,conCategoria){
-    var a=patron(ps), b=patron(ps.slice().reverse()),
-        c=['descripcion.ilike.'+a,'marca.ilike.'+a,'modelo.ilike.'+a,
+    var a=patron(ps), b=patron(ps.slice().reverse());
+    var cd=HAY_BUSCA?'busca':'descripcion';
+    var c=[cd+'.ilike.'+a,'marca.ilike.'+a,'modelo.ilike.'+a,
            'codigo.ilike.'+a,'codigo2.ilike.'+a];
     if(conCategoria)c.push('categoria.ilike.'+a);
-    if(b!==a)c.push('descripcion.ilike.'+b);
+    if(b!==a)c.push(cd+'.ilike.'+b);
     return c.join(',');
   }
   var TOPE=familia?600:500;
@@ -3908,9 +3937,11 @@ function invRefinar(cont,txt){
   if(orig)orig.value=txt;
   INV_SUB[cont]='';INV_MARCA[cont]='';
   clearTimeout(INV_TIMER);
+  invEsperando(cont,true);
   INV_TIMER=setTimeout(function(){
+    invEsperando(cont,false);
     invBuscar(ctx,String(txt||'').trim());
-  },380);
+  },INV_ESPERA);
 }
 function invMarcaDe(it){ return (it.marca||'').trim()||'Sin marca' }
 function invFiltrarMarca(cont,m){
@@ -4093,7 +4124,8 @@ function invBarra(cont){
   return '<div class="invTop">'+
     '<input class="qq" id="'+cont+'-q" value="'+esc(q).replace(/"/g,'&quot;')+'" '+
       'autocomplete="off" placeholder="Escribe para acotar…" '+
-      'oninput="invRefinar(&quot;'+cont+'&quot;,this.value)">'+
+      'oninput="invRefinar(&quot;'+cont+'&quot;,this.value)" '+
+      'onkeydown="invTecla(event,&quot;'+cont+'&quot;,this.value)">'+
     '<button class="cx" onclick="invCerrarYa(&quot;'+cont+'&quot;)">✕</button>'+
   '</div>';
 }
@@ -4240,15 +4272,40 @@ function favAgregar(cual,i){
   favDestello(cual,i);
   conex('✓ '+f.t+' agregado'+(f.p>0?' · '+S(f.p):' · sin costo'));
 }
+/* Cuánto se espera después de la última letra. Con 5.000 repuestos,
+   buscar en cada tecla trababa el teclado: ahora se escribe entero y
+   la lista sale al parar. Enter busca en el acto. */
+var INV_ESPERA=3000;
 function invTeclea(contId,valor){
   var z=document.getElementById(contId);
-  if(z&&!String(valor||'').trim().length)invCerrarYa(contId);
+  if(z&&!String(valor||'').trim().length){ invCerrarYa(contId); return }
   clearTimeout(INV_TIMER);
-  /* 450 ms de pausa: deja escribir de corrido y la lista sale al soltar */
+  invEsperando(contId,true);
   INV_TIMER=setTimeout(function(){
+    invEsperando(contId,false);
     var ctx=INV_CTX[contId];if(!ctx)return;
     invBuscar(ctx,String(valor||'').trim());
-  },450);
+  },INV_ESPERA);
+}
+/* Enter no espera. */
+function invYa(contId,valor){
+  clearTimeout(INV_TIMER);
+  invEsperando(contId,false);
+  var ctx=INV_CTX[contId];if(!ctx)return;
+  invBuscar(ctx,String(valor||'').trim());
+}
+function invTecla(e,contId,valor){
+  if(e&&(e.key==='Enter'||e.keyCode===13)){
+    if(e.preventDefault)e.preventDefault();
+    invYa(contId,valor);
+  }
+}
+/* Mientras se escribe, el panel avisa que está esperando. */
+function invEsperando(contId,si){
+  var z=document.getElementById(contId);
+  if(z)z.classList.toggle('tecleando',!!si);
+  var e=document.getElementById(contId+'-esp');
+  if(e)e.style.display=si?'':'none';
 }
 function toggleServicio(cod,el){
   SEL_SERV[cod]=!SEL_SERV[cod];
@@ -5935,6 +5992,7 @@ function guardarOrden(){
     lineas_serv:LINEAS_SERV,lineas_rep:LINEAS_REP,
     bit:BITACORA,minis:FOTOS_MINI.slice(0,3),total:totalesV2().tot,
     km:Number(ORD.km)||kmNum('gKm')||0,
+    modo:MODO_REC,
     info:($('gInfo')?$('gInfo').innerHTML:''),
     creada:ORD.creada||Date.now(),act:Date.now()
   });
@@ -6464,6 +6522,26 @@ function elegirModoRecepcion(m){
   recibir();
 }
 function esExpress(){return MODO_REC==='espera'}
+/* El número de WhatsApp sale SIEMPRE de la ficha del cliente. Antes el
+   campo de la constancia venía con un número fijo escrito en el
+   código: si nadie lo cambiaba, la constancia del cliente llegaba a
+   ese teléfono. Error mío. */
+function telCliente(){
+  return String((ORD&&ORD.tel)||(ACTUAL&&ACTUAL.tel)||'').replace(/\D/g,'').slice(-9);
+}
+function ponerTelCliente(){
+  var t=telCliente();
+  ['waNum','waNumPre'].forEach(function(id){
+    var e=document.getElementById(id);
+    if(!e)return;
+    if(!e.value&&t)e.value=t;       /* no se pisa lo escrito a mano */
+    var av=document.getElementById(id+'Quien');
+    if(av)av.innerHTML=e.value
+      ? 'Va a <b>'+esc((ORD&&ORD.cliente)||(ACTUAL&&ACTUAL.cliente)||'el cliente')+
+        '</b> · +51 '+esc(e.value)
+      : '<span style="color:var(--rojo)">Este cliente no tiene celular registrado.</span>';
+  });
+}
 
 /* ============ CHECKLIST ============ */
 /* Cada zona: nombre completo (se parte en dos líneas), posición.
@@ -7463,7 +7541,62 @@ var NOMBRE_EST={ANULADO:'ANULADA',RECIBIDO:'RECIBIDO',EN_DIAGNOSTICO:'EN DIAGNÓ
   EN_PROCESO:'EN PROCESO',EN_VENTANILLA:'EN VENTANILLA',CON_ASESOR:'CON ASESOR',
   LISTO:'LISTO',CANCELADO:'CANCELADO · PAGADO',ENTREGADO:'ENTREGADO'};
 
+/* El cliente dijo que esperaba y al final deja el auto. La orden ya
+   existe: no se crea otra, se le completa la recepción —daños, fotos,
+   combustible, accesorios— y se manda la constancia. */
+var COMPLETANDO=false;
+/* La recepción express se completa desde el flujo del vehículo, en el
+   paso "Registro": es donde uno va a mirar lo que se registró, y así
+   la orden no se llena de botones. */
+function tocaCompletar(){
+  var guardada=null;
+  try{ guardada=DB.get(OT_NUM) }catch(e){}
+  /* vale lo guardado con la orden: el botón sigue ahí después de
+     recargar o de volver a abrirla */
+  var express=esExpress()||!!(guardada&&guardada.modo==='espera');
+  return express&&!!OT_NUM&&
+         ['RECIBIDO','EN_DIAGNOSTICO','EN_PROCESO'].indexOf(EST_TALLER)>-1;
+}
+function bloqueCompletar(){
+  if(!tocaCompletar())return '';
+  return '<button class="btn full" style="margin-top:12px" '+
+    'onclick="completarRecepcion()">Registrar recepción completa</button>';
+}
+function completarRecepcion(){
+  if(!OT_NUM){aviso('No hay una orden abierta.');return}
+  COMPLETANDO=true;
+  MODO_REC='deja';
+  auditar('COMPLETA_RECEPCION','orden',OT_NUM,'El cliente dejó el auto');
+  conex('Completa la recepción de la '+OT_NUM);
+  paso(2);
+}
+function completarRecepcionYa(){
+  COMPLETANDO=false;
+  var v=ACTUAL||{};
+  var kmIng=kmNum('kmIngreso')||Number(ORD&&ORD.km)||0;
+  if(ORD)ORD.km=kmIng;
+  if(sb&&kmIng&&v.placa)
+    sb.from('vehiculos').update({km_ultimo:kmIng}).eq('placa',v.placa).then(function(){},function(){});
+  if(sb&&OT_NUM&&kmIng)
+    sb.from('ordenes').update({km_ingreso:kmIng}).eq('numero',OT_NUM).then(function(){},function(){});
+  var g=document.getElementById('gInfo');
+  if(g)g.innerHTML=(ORD?(esc(ORD.veh||'')+' · <b class="num">'+esc(ORD.placa||'')+'</b> · '+
+      esc(ORD.cliente||'')+' · '+esc(ORD.tel||'')):'')+
+    '<br>Daños: <b>'+(danosLista().length?esc(danosLista().join(', ')):'ninguno')+'</b> · Fotos: <b>'+
+    FOTOS.length+'</b> · Combustible: <b>'+esc($('cmb').textContent)+'</b>';
+  HITOS['T_REGISTRO']=selloHora();
+  try{ guardarOrden() }catch(e){}
+  auditar('RECEPCION_COMPLETA','orden',OT_NUM,
+    'Daños: '+(danosLista().join(', ')||'ninguno')+' · Fotos: '+FOTOS.length);
+  ponerTelCliente();
+  renderFlujos();
+  conex('✓ Recepción completa registrada en la '+OT_NUM);
+  /* ya estamos en el paso 4: lo que falta es la constancia */
+  var zc=$('zonaConstancia');
+  if(zc){ zc.style.display='block'; zc.scrollIntoView({behavior:'smooth',block:'start'}) }
+}
 function recibir(){
+  if(COMPLETANDO){ completarRecepcionYa(); return }
   clearInterval(tint);
   var s=Math.floor((Date.now()-t0)/1000);
   $('crono').classList.add('listo');$('cronoL').textContent='Recepción completada';
@@ -8040,7 +8173,11 @@ function renderPanel(){
     if(adic)renderAcciones(true);
     return;
   }
-  if(iSel<iAct){ p.innerHTML=datosDelPaso(sel.f,sel.k,paso); return; }
+  if(iSel<iAct){
+    p.innerHTML=datosDelPaso(sel.f,sel.k,paso)+
+      ((sel.f==='taller'&&sel.k==='REGISTRO')?bloqueCompletar():'');
+    return;
+  }
   /* etapa futura */
   var falta=lista[iAct+1]&&iSel>iAct+1 ? ' Antes viene <b>'+lista[iAct+1].t+'</b>.' : '';
   p.innerHTML='<div class="card"><h3>'+paso.ic+' '+paso.t+'</h3>'+
@@ -9969,6 +10106,7 @@ function rolEs(){ return (SESION&&SESION.rol)||'' }
 function esAdminTaller(){ return rolEs()==='admin_general'||rolEs()==='admin_local' }
 function esVentanilla(){ return rolEs()==='ventanilla' }
 function esJefeTaller(){ return rolEs()==='jefe_taller' }
+function esAsesor(){ return rolEs()==='asesor' }
 /* Pagada es el único estado que no se puede anular. */
 function ordenPagada(est_ot,est_taller){
   return est_ot==='PAGADA'||est_taller==='CANCELADO';
@@ -10168,7 +10306,10 @@ function faltaEnVentanilla(l){
 }
 function revisarAdicVent(){
   if(!sb||!SESION)return;
-  if(!(esVentanilla()||esAdminTaller()))return;
+  /* El adicional lo despacha ventanilla y lo aprueba el asesor con el
+     cliente: son los dos que pueden hacer algo. A los administradores
+     ya no les salta — el aviso del local no es trabajo suyo. */
+  if(!(esVentanilla()||esAsesor()))return;
   cargarAdicVent(function(lista){ pintarAvisoAdic(lista) });
 }
 function nLineasAdic(n){ return n+(n===1?' adicional':' adicionales') }
@@ -10405,6 +10546,18 @@ function avisoPaso30(){
       'por eso siguen apareciendo los vehículos de prueba.</div>'
     : '';
 }
+/* Quién recibió el vehículo. Lo bueno viene del paso 53; si ese paso
+   todavía no corrió, se resuelve con el id de quien registró, que sí
+   se guarda desde siempre. Así el asesor y caja nunca se quedan sin
+   saber a qué jefe de taller preguntarle. */
+function usuarioPorId(id){
+  if(id===null||id===undefined||id==='')return null;
+  var u=null;
+  (LOGIN_USERS||[]).forEach(function(x){ if(Number(x.id)===Number(id))u=x });
+  return u;
+}
+function usuarioNombrePorId(id){ var u=usuarioPorId(id); return u?(u.nombre||''):'' }
+function usuarioCodPorId(id){ var u=usuarioPorId(id); return u?(u.usuario||''):'' }
 function sedeNombrePorId(id){
   var n='';
   SEDES_TODAS.forEach(function(s){ if(Number(s.id)===Number(id))n=s.nombre });
@@ -11129,7 +11282,15 @@ function abrirWhatsApp(num,texto){
 }
 function enviarWA(tipo){
   var num=$('waNum').value.replace(/\D/g,'');
-  if(num.length<9){aviso('Ingresa un número de 9 dígitos.');return}
+  if(num.length<9){
+    aviso('Falta el celular del cliente',
+      'Escribe los 9 dígitos del cliente antes de enviar la constancia. '+
+      'Si el vehículo no tiene teléfono registrado, agrégalo en su ficha.');
+    return;
+  }
+  /* Queda anotado a qué número se mandó: si una constancia llega a
+     quien no debía, el registro lo dice. */
+  auditar('ENVIA_WA','orden',OT_NUM,'A +51 '+num+' · '+tipo);
   var url='https://wa.me/51'+num+'?text='+encodeURIComponent(armarWA(tipo));
   if(tipo==='recepcion'){
     $('waHint').innerHTML='<b style="color:var(--verde)">Constancia marcada como enviada.</b> '+
@@ -11533,7 +11694,7 @@ var COLS_ORDEN='id,numero,sede_id,estado_ot,estado_taller,total_taller,total_cob
    no existen, PostgREST rechaza la consulta entera y el asesor se
    queda sin bandeja. */
 function colsOrden(){
-  return COLS_ORDEN+(HAY_RECEPCION?',recepcion_usuario,recepcion_nombre':'');
+  return COLS_ORDEN+',recepcion_id'+(HAY_RECEPCION?',recepcion_usuario,recepcion_nombre':'');
 }
 function cargarOrdenesBD(estadosOT,cb,sedeOpt){
   if(!sb){cb([]);return}
@@ -11619,10 +11780,12 @@ function fichaOT(o){
   if(o.mec)d.push('<div class="ln"><span>Mecánico</span><b>'+esc(o.mec)+'</b></div>');
   /* Quién recibió el vehículo: el asesor arma el comprobante y tiene
      que saber a qué jefe de taller preguntarle. */
-  if(o.rec||o.rec_cod)
-    d.push('<div class="ln"><span>Recibió</span><b>'+esc(o.rec||o.rec_cod)+
-      (o.rec&&o.rec_cod?' <span style="font-weight:400;color:var(--mudo)">'+
-        esc(o.rec_cod)+'</span>':'')+'</b></div>');
+  d.push('<div class="ln"><span>Recibió</span><b>'+
+    ((o.rec||o.rec_cod)
+      ? esc(o.rec||o.rec_cod)+
+        (o.rec&&o.rec_cod?' <span style="font-weight:400;color:var(--mudo)">'+
+          esc(o.rec_cod)+'</span>':'')
+      : '<span class="falta">sin registrar</span>')+'</b></div>');
   return '<div class="fichaOT">'+
     '<div class="cab"><span class="pl">'+esc(o.placa||'—')+'</span>'+
       '<span class="vh">'+esc(o.veh||'Vehículo sin datos')+'</span></div>'+
@@ -11685,7 +11848,8 @@ function mapearOrden(o){
           doc:[c.tipo_doc,c.num_doc].filter(Boolean).join(' '),
           tipo_doc:c.tipo_doc||'',num_doc:c.num_doc||'',
           km:Number(o.km_ingreso||0),
-          rec:o.recepcion_nombre||'',rec_cod:o.recepcion_usuario||'',
+          rec:o.recepcion_nombre||usuarioNombrePorId(o.recepcion_id),
+          rec_cod:o.recepcion_usuario||usuarioCodPorId(o.recepcion_id),
           estado_ot:o.estado_ot,estado_taller:o.estado_taller,
           total:Number(o.total_taller||0),cobrado:Number(o.total_cobrado||0),
           forma_pago:o.forma_pago||'',voucher:o.voucher_url||'',tarjeta_por:o.pago_tarjeta_por||'',
@@ -12225,7 +12389,8 @@ function ventRender(){
       ? '<div class="invBox" style="margin:10px 0 0">'+
         '<label>Buscar en el inventario</label>'+
         '<input id="ventBusq" placeholder="Descripción, marca, modelo o código" '+
-          'oninput="invTeclea(&quot;ventRes&quot;,this.value)">'+
+          'oninput="invTeclea(&quot;ventRes&quot;,this.value)" '+
+          'onkeydown="invTecla(event,&quot;ventRes&quot;,this.value)">'+
         '<div class="invRes" id="ventRes"></div>'+
         '<div class="fila" style="margin-top:10px;align-items:flex-end;border-top:1px solid var(--borde);padding-top:10px">'+
           '<div style="flex:2;min-width:180px"><label>Otro (fuera de inventario)</label><input id="ventLibre" placeholder="Descripción"></div>'+
@@ -12759,6 +12924,7 @@ function aseRender(){
           '<label>Buscar en el inventario</label>'+
           '<input id="aseBusq" placeholder="Escribe una o más letras" '+
             'oninput="invTeclea(&quot;aseRes&quot;,this.value)" '+
+            'onkeydown="invTecla(event,&quot;aseRes&quot;,this.value)" '+
             'onfocus="invFoco(&quot;aseRes&quot;)" onblur="invCerrar(&quot;aseRes&quot;)">'+
           '<div class="invRes" id="aseRes"></div></div>'
         : ''))+
@@ -13365,7 +13531,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=209;
+var APP_VER=213;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
