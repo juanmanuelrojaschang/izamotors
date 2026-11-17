@@ -1,4 +1,4 @@
-<!--IZAV:219-->
+<!--IZAV:221-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1019,6 +1019,33 @@ tr.sel td{background:var(--rojo-cl)}
 .gb .vv{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
 .gb .ll{font-size:10px;color:var(--mudo);text-align:center;line-height:1.2}
 .meta-lin{position:relative;border-top:2px dashed var(--tinta);margin-top:-1px}
+/* un mes entero no entra en un celular: se desplaza de lado */
+.gbScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.gb.ancho{gap:6px}
+.gb.ancho .vv{font-size:11px}
+.gb.ancho .ll{font-size:9px;line-height:1.15}
+/* la barra del flujo se puede tocar */
+.gb.flujo .col.sel .bar{box-shadow:0 0 0 2px var(--tinta)}
+.gb.flujo .col.sel .vv{color:var(--rojo)}
+/* detalle de un periodo */
+.detPer{border:1px solid var(--borde);border-radius:11px;padding:12px 14px;background:var(--gris)}
+.detPer .cabPer{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.detPer .cabPer b{font-family:'Barlow Condensed',Impact,sans-serif;font-size:19px;
+  text-transform:uppercase;letter-spacing:.02em}
+.detPer .cabPer .cerrar{margin-left:auto;background:none;border:0;font-size:17px;
+  color:var(--mudo);cursor:pointer;padding:0 4px}
+/* ranking de mecánicos, en filas */
+.rkMec{display:flex;flex-direction:column;gap:14px}
+.rkFila{min-width:0}
+.rkTop{display:flex;align-items:baseline;gap:9px}
+.rkTop .pos{font-family:'Barlow Condensed',Impact,sans-serif;font-size:18px;
+  color:var(--mudo);flex:0 0 auto;min-width:16px}
+.rkTop .nom{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.rkTop .mon{flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700}
+.rkBar{height:9px;border-radius:5px;background:var(--gris2);overflow:hidden;margin:5px 0 4px}
+.rkBar i{display:block;height:100%;background:var(--rojo);border-radius:5px}
+.rkPie{font-size:11px;color:var(--mudo)}
 
 /* ===== flujo de estados ===== */
 .modo{display:flex;gap:6px;background:var(--gris2);padding:5px;border-radius:11px;margin-bottom:18px}
@@ -1813,6 +1840,35 @@ tr.sel td{background:var(--rojo-cl)}
   </div>
 </section>
 
+<!-- ================= RANKINGS ================= -->
+<section class="vista" id="v-rankings">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <h3 style="margin:0" id="rkTitulo">Rankings</h3>
+      <div class="modo" style="margin:0 0 0 auto;max-width:380px">
+        <button id="rDia" onclick="setPeriodo('dia')">Hoy</button>
+        <button id="rSemPrev" onclick="setPeriodo('semprev')">Semana pasada</button>
+        <button id="rMes" onclick="setPeriodo('mes')">Mes</button>
+        <button id="rMesPrev" onclick="setPeriodo('mesprev')">Mes pasado</button>
+        <button id="rAnio" class="on" onclick="setPeriodo('anio')">Año</button>
+      </div>
+    </div>
+    <div class="hint" id="rkSub"></div>
+    <div class="modo" style="margin-top:14px;flex-wrap:wrap">
+      <button id="kServ" class="on" onclick="setRanking('serv')">Servicios</button>
+      <button id="kRep" onclick="setRanking('rep')">Repuestos</button>
+      <button id="kAdic" onclick="setRanking('adic')">Adicionales</button>
+      <button id="kCli" onclick="setRanking('cli')">Clientes</button>
+      <button id="kVeh" onclick="setRanking('veh')">Marca y modelo</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3 id="rkCabeza" style="margin:0 0 4px">Servicios</h3>
+    <div class="hint" id="rkPie" style="margin:0 0 14px"></div>
+    <div id="rkCuerpo"></div>
+  </div>
+</section>
+
 <!-- ================= PRODUCTIVIDAD ================= -->
 <section class="vista" id="v-productividad">
   <div class="card">
@@ -1847,20 +1903,12 @@ tr.sel td{background:var(--rojo-cl)}
     </div>
     <div class="kpiFila" id="flujoKpis" style="margin-bottom:12px"></div>
     <div id="grafFlujo"></div>
-    <div class="hint" id="flujoNota" style="margin-top:8px"></div>
-    <div id="flujoTabla" style="margin-top:10px"></div>
+    <div id="flujoDet" style="margin-top:12px"></div>
   </div>
 
   <div class="card">
     <h3 id="tituloTicket" style="margin:0 0 10px">Ticket promedio</h3>
     <div id="grafTicket"></div>
-  </div>
-
-  <div class="card">
-    <h3 id="tituloDemanda" style="margin:0 0 4px">Lo más solicitado</h3>
-    <div class="hint" id="demandaSub" style="margin:0 0 12px"></div>
-    <div id="demandaServ"></div>
-    <div id="demandaRep" style="margin-top:18px"></div>
   </div>
 
   <div class="card">
@@ -1876,7 +1924,6 @@ tr.sel td{background:var(--rojo-cl)}
   <div class="card">
     <h3 id="tituloGraf">Ranking de mecánicos</h3>
     <div id="grafMec"></div>
-    <div id="ranking" style="margin-top:18px"></div>
   </div>
 
   <div class="card" id="cardLocales" style="display:none">
@@ -2107,7 +2154,7 @@ var MODULOS={
     {v:'recepcion',t:'Pendientes del taller',tab:'pendientes'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Flujo en taller'},
+    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Flujo en taller'},{v:'rankings',t:'Rankings'},
     {v:'bitacora',t:'Bitácora y transacciones'},{v:'hoja',t:'Hoja de servicios'}]},
   configuracion:{t:'Configuración',vistas:[
     {v:'usuarios',t:'Usuarios y permisos'},
@@ -2456,7 +2503,7 @@ function ir(v,atras){
 
   window.scrollTo(0,0);
   try{pintarAtras()}catch(e){}
-  if(v==='recepcion')segEntrada();if(v==='bitacora'){cargarAuditoria();if(BIT_TAB==='anul')bitTab('anul');}if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='hoja')abrirHoja();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
+  if(v==='recepcion')segEntrada();if(v==='bitacora'){cargarAuditoria();if(BIT_TAB==='anul')bitTab('anul');}if(v==='usuarios')cargarUsuarios();if(v==='ventanilla')pintarVentanilla();if(v==='asesor')pintarAsesor();if(v==='caja')pintarCaja();if(v==='taller')abrirTaller();if(v==='tienda')abrirTienda();if(v==='productividad')abrirProductividad();if(v==='rankings')abrirRankings();if(v==='hoja')abrirHoja();if(v==='cliente')clienteEntrada();if(v==='importar')impRender();
 }
 function $(i){return document.getElementById(i)}
 function S(n){return 'S/ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0})}
@@ -2472,17 +2519,17 @@ try{ sb=supabase.createClient(SB_URL,SB_KEY); }catch(e){ console.error('Supabase
 
 var ROLES={
   admin_general:{t:'Administrador General', d:'Todos los locales, configuración completa',
-                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','hoja','usuarios','importar']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','rankings','bitacora','hoja','usuarios','importar']},
   admin_local:  {t:'Administrador Local',   d:'Su local completo; edita los usuarios de su local',
-                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','bitacora','hoja','usuarios']},
+                 vistas:['recepcion','taller','tienda','ventanilla','asesor','caja','productividad','rankings','bitacora','hoja','usuarios']},
   jefe_taller:  {t:'Jefe de Taller',        d:'Recepción y piso de su local',
-                 vistas:['recepcion','taller','tienda','productividad','bitacora','hoja']},
+                 vistas:['recepcion','taller','tienda','productividad','rankings','bitacora','hoja']},
   ventanilla:   {t:'Ventanilla',            d:'Valida stock, codifica y arma la OT final',
-                 vistas:['ventanilla','taller','tienda','productividad','bitacora','hoja']},
+                 vistas:['ventanilla','taller','tienda','productividad','rankings','bitacora','hoja']},
   asesor:       {t:'Asesor de Servicio',    d:'Cierra con el cliente y cobra con tarjeta',
-                 vistas:['asesor','taller','tienda','productividad','bitacora','hoja']},
+                 vistas:['asesor','taller','tienda','productividad','rankings','bitacora','hoja']},
   caja:         {t:'Caja',                  d:'Valida el cobro y emite el comprobante',
-                 vistas:['caja','taller','tienda','productividad','bitacora','hoja']}
+                 vistas:['caja','taller','tienda','productividad','rankings','bitacora','hoja']}
 };
 /* los usuarios viven en la base desde el paso 22 */
 var SEDE_ACTIVA=1,SEDE_NOMBRE='Las Américas';
@@ -7846,6 +7893,7 @@ function pregAviso(t){
 /* Guarda el mecánico sin tocar el estado del taller: lo usa el aviso de
    arriba y cualquier asignación tardía. */
 function asignarMecanicoAhora(mec){
+  mec=mecNormalizar(mec);
   var antes=MECANICO_OT;
   MECANICO_OT=mec;
   mecPoner('gMec',mec);
@@ -8733,6 +8781,28 @@ function mecOpciones(tipo,sel){
 var CARGA_MEC={},CARGA_MEC_T=0,CARGA_MEC_SEDE=null;
 /* El mecánico se guarda unas veces como "COD · Nombre" y otras solo
    con el nombre. Para contar, lo que vale es el nombre. */
+/* El campo de mecánico admite texto libre, y así entraron "Carlos
+   Rivas", "JOEL EUSEBIO" y "CHRISTOPHER": sin código y con el formato
+   de cada quien. Antes de guardar se busca al mecánico de verdad y se
+   escribe como los demás, "CT014 · MISAEL POMAHUALLCCA CASTILLO". Si
+   no está en la lista, al menos entra en mayúsculas, para que el
+   ranking no lo parta en dos personas. */
+function mecNormalizar(v){
+  var t=String(v||'').trim();
+  if(!t)return '';
+  var llano=mecClave(t);
+  var hit=null;
+  (MECS||[]).forEach(function(m){
+    if(hit)return;
+    if(mmLlano(m.nombre)===llano||mmLlano(m.codigo)===mmLlano(t))hit=m;
+  });
+  if(!hit)(MECS||[]).forEach(function(m){
+    if(hit)return;
+    if(mmLlano(m.nombre).indexOf(llano)===0&&llano.length>=4)hit=m;
+  });
+  if(hit)return (hit.codigo?hit.codigo+' · ':'')+String(hit.nombre||'').toUpperCase();
+  return t.toUpperCase().replace(/\s+/g,' ');
+}
 function mecClave(v){
   var s=String(v||''),p=s.split('·');
   return mmLlano(p.length>1?p.slice(1).join('·'):s);
@@ -9009,6 +9079,7 @@ function irDiagnostico(){
   if($('kmIngreso'))$('kmIngreso').value=String(km);
   if(sb&&OT_NUM)sb.from('ordenes').update({km_ingreso:km}).eq('numero',OT_NUM).then(function(){},function(){});
   guardarLavador();
+  mec=mecNormalizar(mec);
   var antes=MECANICO_OT;
   MECANICO_OT=mec;
   /* El nombre se graba siempre, no solo la primera vez: antes, cambiar
@@ -10713,14 +10784,18 @@ function prodSedeNombre(id){
   return sedeNombrePorId(id);
 }
 var PROD_BOTON={dia:'mDia',semprev:'mSemPrev',mes:'mMes',mesprev:'mMesPrev',anio:'mAnio'};
+var RANK_BOTON={dia:'rDia',semprev:'rSemPrev',mes:'rMes',mesprev:'rMesPrev',anio:'rAnio'};
 function setPeriodo(p){
   PERIODO=p;
-  for(var x in PROD_BOTON){
-    var b=document.getElementById(PROD_BOTON[x]);
-    if(b)b.classList.toggle('on',x===p);
-  }
+  [PROD_BOTON,RANK_BOTON].forEach(function(M){
+    for(var x in M){
+      var b=document.getElementById(M[x]);
+      if(b)b.classList.toggle('on',x===p);
+    }
+  });
   pintarProd();
   cargarDemanda();
+  pintarRankings();
 }
 function setSerie(s){
   SERIE=s;
@@ -10770,7 +10845,14 @@ function prodFila(o){
           pagSinEntrega:(!!o.ot_pagada&&est!=='ENTREGADO'&&!anulada),
           estado:est,
           monto:Number(o.total_taller||0),
-          mec:(o.mecanico_nombre||'Sin asignar')};
+          mec:(o.mecanico_nombre||'Sin asignar'),
+          cli:((o.clientes||{}).nombre||'Sin cliente'),
+          veh:(function(v){
+            v=v||{};
+            var t=[v.marca,v.modelo].filter(Boolean).join(' ').trim();
+            return t||'Sin registrar';
+          })(o.vehiculos),
+          marca:((o.vehiculos||{}).marca||'Sin registrar')};
 }
 function cargarProdBD(){
   prodFiltro();
@@ -10780,7 +10862,8 @@ function cargarProdBD(){
      filtra en el navegador sobre lo mismo. */
   var ini=new Date(new Date().getFullYear()-2,0,1).toISOString();
   var q=sb.from('ordenes')
-    .select('id,numero,sede_id,ingreso,ot_pagada,entregado_el,estado_taller,total_taller,mecanico_nombre')
+    .select('id,numero,sede_id,ingreso,ot_pagada,entregado_el,estado_taller,total_taller,'+
+            'mecanico_nombre,clientes(nombre),vehiculos(marca,modelo)')
     .gte('ingreso',ini).limit(5000);
   var sid=prodSedeId();
   if(sid!==null)q=q.eq('sede_id',sid);
@@ -10975,33 +11058,16 @@ function pintarFlujo(){
     kpi(S(Math.round(tMonto)),'Facturado')+
     kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket prom.','tinta');
 
-  var nota=document.getElementById('flujoNota');
-  var desfase=tIng-tPag;
-  if(nota)nota.innerHTML=
-    'Un auto que entra hoy suele pagarse hoy o mañana, así que las dos '+
-    'barras van parejas. En esta ventana entraron <b>'+tIng+'</b> y se '+
-    'cobraron <b>'+tPag+'</b>'+
-    (Math.abs(desfase)<=Math.max(5,tIng*0.1)
-      ? ': el taller está al día.'
-      : (desfase>0
-          ? ': <b style="color:var(--rojo)">'+desfase+' más de los que salieron</b>. '+
-            'Parte es el corte del periodo —los de ayer se cobran hoy— y parte, trabajo sin cerrar.'
-          : ': se cobraron '+Math.abs(desfase)+' más de los que entraron, '+
-            'porque venían de días anteriores.'))+
-    '<br><b>'+enTaller+'</b> auto'+(enTaller===1?'':'s')+
-    ' ingresaron en los últimos '+DIAS_EN_TALLER+' días y siguen en el taller.'+
-    (varadas
-      ? ' <b style="color:var(--rojo)">Otros '+varadas+' llevan más de '+DIAS_EN_TALLER+
-        ' días adentro</b> — o el auto está parado, o la orden quedó sin cerrar.'
-      : '');
+  FLUJO_B=B;
 
   z.innerHTML=
     '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:8px">'+
       '<span><i style="display:inline-block;width:11px;height:11px;background:var(--tinta);border-radius:2px"></i> Ingresados</span>'+
       '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Pagados</span>'+
     '</div>'+
-    '<div class="gb flujo" style="height:190px">'+B.map(function(b){
-      return '<div class="col">'+
+    '<div class="gb flujo" style="height:190px">'+B.map(function(b,i){
+      return '<div class="col'+(i===FLUJO_SEL?' sel':'')+'" '+
+        'onclick="flujoTocar('+i+')" style="cursor:pointer">'+
         '<div class="vv">'+(b.ing||b.pag?b.ing+'/'+b.pag:'')+'</div>'+
         '<div class="par">'+
           '<div class="bar ing" style="height:'+Math.round(b.ing/max*100)+'%"></div>'+
@@ -11012,21 +11078,46 @@ function pintarFlujo(){
     '<div class="hint">'+G.t+' · últimos '+B.length+' periodos'+
       ((document.getElementById('flujoGran')||{}).value==='auto'?' · ajustado a la pantalla':'')+'</div>';
 
-  var tb=document.getElementById('flujoTabla');
-  if(tb)tb.innerHTML='<div style="overflow-x:auto"><table class="lista">'+
-    '<tr><th>Periodo</th><th class="der">Ingresados</th><th class="der">Pagados</th>'+
-    '<th class="der">Dif.</th><th class="der">Facturado</th><th class="der">Ticket</th></tr>'+
-    B.slice().reverse().map(function(b){
-      var dif=b.pag-b.ing;
-      return '<tr><td data-l="Periodo">'+b.lab+'</td>'+
-        '<td class="num der" data-l="Ingresados">'+b.ing+'</td>'+
-        '<td class="num der" data-l="Pagados">'+b.pag+'</td>'+
-        '<td class="num der" data-l="Dif." style="color:'+
-          (Math.abs(dif)>Math.max(3,b.ing*0.3)?'var(--rojo)':'var(--mudo)')+'">'+
-          (dif>0?'+':'')+dif+'</td>'+
-        '<td class="num der" data-l="Facturado">'+S(Math.round(b.monto))+'</td>'+
-        '<td class="num der" data-l="Ticket">'+S(b.pag?Math.round(b.monto/b.pag):0)+'</td></tr>';
-    }).join('')+'</table></div>';
+  /* el detalle que estaba siempre a la vista ahora sale al tocar una barra */
+  flujoDetalle(FLUJO_SEL);
+}
+/* ============ DETALLE DE UN PERIODO DEL GRÁFICO ============
+   La tabla completa debajo del gráfico era ruido: siete filas que nadie
+   mira. Se toca la barra del día y se abre solo ese. */
+var FLUJO_B=[],FLUJO_SEL=-1;
+function flujoTocar(i){
+  FLUJO_SEL=(FLUJO_SEL===i)?-1:i;
+  var cols=document.querySelectorAll('#grafFlujo .col');
+  for(var k=0;k<cols.length;k++)cols[k].classList.toggle('sel',k===FLUJO_SEL);
+  flujoDetalle(FLUJO_SEL);
+}
+function flujoDetalle(i){
+  var z=document.getElementById('flujoDet');
+  if(!z)return;
+  var b=FLUJO_B[i];
+  if(!b){
+    z.innerHTML='<div class="hint">Toca una barra para ver el detalle de ese periodo.</div>';
+    return;
+  }
+  var dif=b.pag-b.ing,mal=Math.abs(dif)>Math.max(3,b.ing*0.3);
+  /* cuántos de los que entraron ESE periodo siguen sin cobrar */
+  var siguen=(PROD_ORD||[]).filter(function(o){
+    return o.abierta&&o.ing&&o.ing>=b.ini&&o.ing<b.fin;
+  }).length;
+  function ln(a,v,col){
+    return '<div class="dato-l"><span>'+a+'</span><span'+
+      (col?' style="color:'+col+';font-weight:700"':'')+'>'+v+'</span></div>';
+  }
+  z.innerHTML='<div class="detPer">'+
+    '<div class="cabPer"><b>'+esc(b.lab)+'</b>'+
+      '<button class="cerrar" onclick="flujoTocar('+i+')">✕</button></div>'+
+    ln('Ingresados',b.ing)+
+    ln('Pagados',b.pag)+
+    ln('Diferencia',(dif>0?'+':'')+dif,mal?'var(--rojo)':'')+
+    ln('Siguen en taller',siguen,siguen?'var(--rojo)':'')+
+    ln('Facturado',S(Math.round(b.monto)))+
+    ln('Ticket',S(b.pag?Math.round(b.monto/b.pag):0))+
+  '</div>';
 }
 function pintarEvo(){
   if(!$('grafEvo'))return;
@@ -11036,15 +11127,25 @@ function pintarEvo(){
   else{serie=d.autos.map(function(a,i){return a?Math.round(d.monto[i]/a):0});
        fmt=function(v){return v>=1000?Math.round(v/1000)+'k':v};titulo='Ticket promedio';}
   var max=Math.max.apply(null,serie)||1;
-  var muchos=serie.length>14;
-  $('grafEvo').innerHTML='<div class="gb" style="height:200px'+(muchos?';gap:3px':'')+'">'+serie.map(function(v,i){
-    return '<div class="col"><div class="vv">'+(v?fmt(v):'—')+'</div>'+
+  /* Con un mes entero no entran 30 barras en un celular: el gráfico se
+     desplaza de lado con un ancho fijo por barra, en vez de apretarlas
+     hasta que los números de arriba se montan unos sobre otros. */
+  var muchos=serie.length>12;
+  var ancho=muchos?42:0;
+  $('grafEvo').innerHTML=
+    '<div class="gbScroll">'+
+    '<div class="gb'+(muchos?' ancho':'')+'" style="height:200px'+
+      (muchos?';width:'+(serie.length*ancho)+'px':'')+'">'+
+    serie.map(function(v,i){
+      return '<div class="col"'+(muchos?' style="flex:0 0 '+(ancho-6)+'px"':'')+'>'+
+      '<div class="vv">'+(v?fmt(v):'—')+'</div>'+
       '<div class="bar'+(v===0?' sec':'')+'" style="height:'+Math.round(v/max*100)+'%"></div>'+
-      '<div class="ll"'+(muchos?' style="font-size:8.5px;line-height:1.1"':'')+'>'+
-      (muchos?d.lab[i].replace(' ','<br>'):d.lab[i])+'</div></div>'}).join('')+'</div>'+
+      '<div class="ll">'+String(d.lab[i]).replace(' ','<br>')+'</div></div>';
+    }).join('')+'</div></div>'+
     '<div class="hint">'+titulo+' · '+
     (PERIODO==='dia'?'por hora, de 8 a.m. a 6 p.m.':
-     PERIODO==='anio'?'por mes del año':'por día · '+prodRangoTexto())+'</div>';
+     PERIODO==='anio'?'por mes del año':'por día · '+prodRangoTexto())+
+    (muchos?' · <b>desliza de lado</b> para ver todo':'')+'</div>';
   $('tituloEvo').textContent='Evolución · '+rangoProd().t;
 }
 
@@ -11111,7 +11212,7 @@ function cargarDemanda(){
   if(!sb){DEM=[];DEM_ERR='sin conexión con la base';return pintarDemanda()}
   DEM_CARGANDO=true;DEM_ERR='';pintarDemanda();
   var q=sb.from('orden_detalle')
-    .select('tipo,descripcion,cantidad,precio_taller,anulada,'+
+    .select('tipo,descripcion,cantidad,precio_taller,anulada,adicional,agregado_por,'+
             'ordenes!inner(ingreso,sede_id,estado_taller)')
     .gte('ordenes.ingreso',r.desde.toISOString())
     .lte('ordenes.ingreso',r.hasta.toISOString())
@@ -11149,25 +11250,109 @@ function demBarras(filas,vacio){
     '</div>';
   }).join('')+'</div>';
 }
-function pintarDemanda(){
-  var zs=document.getElementById('demandaServ'), zr=document.getElementById('demandaRep'),
-      sub=document.getElementById('demandaSub'), tt=document.getElementById('tituloDemanda');
-  if(!zs)return;
-  if(tt)tt.textContent='Lo más solicitado · '+rangoProd().t;
-  if(sub)sub.textContent=prodRangoTexto()+' · por cantidad pedida';
-  if(DEM_CARGANDO){zs.innerHTML='<div class="hint">Consultando la base…</div>';zr.innerHTML='';return}
-  if(DEM_ERR){
-    zs.innerHTML='<div class="aviso rojo" style="margin:0">No se pudo leer el detalle: '+esc(DEM_ERR)+'</div>';
-    zr.innerHTML='';return;
-  }
-  if(!DEM){zs.innerHTML='';zr.innerHTML='';return}
-  var serv=DEM.filter(function(l){return l.tipo==='MO'}),
-      reps=DEM.filter(function(l){return l.tipo!=='MO'});
-  zs.innerHTML='<div class="demTit">Servicios</div>'+
-    demBarras(demAgrupar(serv,demFamilia).slice(0,10),'Sin servicios en este periodo');
-  zr.innerHTML='<div class="demTit">Repuestos</div>'+
-    demBarras(demAgrupar(reps,demNombre).slice(0,12),'Sin repuestos en este periodo');
+/* ============ RANKINGS ============
+   Cinco listas sobre el mismo periodo: qué se hace, qué se cambia, qué
+   se vendió de más, quién paga y qué autos entran. Todas con la misma
+   barra, para poder compararlas de un vistazo. */
+var RANKING='serv';
+function setRanking(k){
+  RANKING=k;
+  ['serv','rep','adic','cli','veh'].forEach(function(x){
+    var b=document.getElementById('k'+x.charAt(0).toUpperCase()+x.slice(1));
+    if(b)b.classList.toggle('on',x===k);
+  });
+  pintarRankings();
 }
+function abrirRankings(){
+  cargarProdBD();
+  cargarDemanda();
+  pintarRankings();
+}
+/* Agrupa órdenes por una clave y devuelve cuántas y cuánto. */
+function rkAgrupar(lista,clave){
+  var m={};
+  lista.forEach(function(o){
+    var k=clave(o); if(!k)return;
+    if(!m[k])m[k]={k:k,n:0,monto:0};
+    m[k].n++; m[k].monto+=o.monto;
+  });
+  return Object.keys(m).map(function(k){return m[k]})
+    .sort(function(a,b){return b.monto-a.monto||b.n-a.n});
+}
+function rkBarras(filas,vacio,unidad,porMonto){
+  if(!filas.length)return '<div class="vacio"><b>'+vacio+'</b></div>';
+  var tope=(porMonto?filas[0].monto:filas[0].n)||1;
+  return '<div class="rkMec">'+filas.map(function(f,i){
+    var v=porMonto?f.monto:f.n;
+    return '<div class="rkFila">'+
+      '<div class="rkTop">'+
+        '<span class="pos">'+(i+1)+'</span>'+
+        '<b class="nom">'+esc(f.k)+'</b>'+
+        '<span class="mon">'+S(Math.round(f.monto))+'</span>'+
+      '</div>'+
+      '<div class="rkBar"><i style="width:'+Math.max(2,Math.round(v/tope*100))+'%"></i></div>'+
+      '<div class="rkPie">'+f.n+' '+(f.n===1?unidad[0]:unidad[1])+
+        ' · '+S(Math.round(f.monto/(f.n||1)))+' cada '+unidad[0]+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+function pintarRankings(){
+  var z=document.getElementById('rkCuerpo');
+  if(!z)return;
+  var cab=document.getElementById('rkCabeza'),
+      pie=document.getElementById('rkPie'),
+      sub=document.getElementById('rkSub'),
+      tit=document.getElementById('rkTitulo');
+  if(tit)tit.textContent='Rankings · '+prodSedeNombre();
+  if(sub)sub.textContent=prodRangoTexto();
+
+  var deLineas=(RANKING==='serv'||RANKING==='rep'||RANKING==='adic');
+  if(deLineas){
+    if(DEM_CARGANDO){z.innerHTML='<div class="hint">Consultando la base…</div>';return}
+    if(DEM_ERR){
+      z.innerHTML='<div class="aviso rojo" style="margin:0">No se pudo leer el detalle: '+
+        esc(DEM_ERR)+'</div>';
+      return;
+    }
+    var lin=DEM||[];
+    if(RANKING==='serv'){
+      if(cab)cab.textContent='Servicios · '+rangoProd().t;
+      if(pie)pie.textContent='Lo que más se trabaja, por veces pedido';
+      z.innerHTML=demBarras(demAgrupar(lin.filter(function(l){return l.tipo==='MO'}),
+        demFamilia).slice(0,20),'Sin servicios en este periodo');
+    } else if(RANKING==='rep'){
+      if(cab)cab.textContent='Repuestos · '+rangoProd().t;
+      if(pie)pie.textContent='Lo que más sale del almacén, por cantidad';
+      z.innerHTML=demBarras(demAgrupar(lin.filter(function(l){return l.tipo!=='MO'}),
+        demNombre).slice(0,25),'Sin repuestos en este periodo');
+    } else {
+      /* adicional: lo que el taller agregó sobre una OT ya aprobada */
+      var ad=lin.filter(function(l){ return !!l.adicional||l.agregado_por==='taller_adic' });
+      if(cab)cab.textContent='Adicionales · '+rangoProd().t;
+      if(pie)pie.textContent='Lo que el taller agregó después de aprobada la OT · '+
+        ad.length+' línea'+(ad.length===1?'':'s');
+      z.innerHTML=demBarras(demAgrupar(ad,demNombre).slice(0,25),
+        'Sin adicionales en este periodo');
+    }
+    return;
+  }
+
+  var lista=prodLista();
+  if(PROD_CARGANDO){z.innerHTML='<div class="hint">Consultando la base…</div>';return}
+  if(RANKING==='cli'){
+    if(cab)cab.textContent='Clientes · '+rangoProd().t;
+    if(pie)pie.textContent='Por facturación, sobre órdenes cobradas';
+    z.innerHTML=rkBarras(rkAgrupar(lista,function(o){return o.cli}).slice(0,25),
+      'Sin órdenes cobradas en este periodo',['visita','visitas'],true);
+  } else {
+    if(cab)cab.textContent='Marca y modelo · '+rangoProd().t;
+    if(pie)pie.textContent='Qué autos entran al taller, por facturación';
+    z.innerHTML=rkBarras(rkAgrupar(lista,function(o){return o.veh}).slice(0,25),
+      'Sin órdenes cobradas en este periodo',['auto','autos'],true);
+  }
+}
+/* El detalle alimenta ahora el reporte de Rankings. */
+function pintarDemanda(){ pintarRankings(); }
 function pintarProd(){
   if(!$('kpisProd'))return;
   var tit=$('prodTitulo');
@@ -11191,7 +11376,6 @@ function pintarProd(){
   pintarEvo();
   pintarFlujo();
   pintarTicket();
-  cargarDemanda();
 
   /* ---- ranking de mecánicos ---- */
   var rank=prodAgrupar(lista,function(o){return o.mec}).sort(function(a,b){return b.fac-a.fac});
@@ -11199,33 +11383,25 @@ function pintarProd(){
   if(!rank.length){
     $('grafMec').innerHTML='<div class="vacio"><b>Sin órdenes pagadas '+etq+'</b>'+
       'El ranking aparece cuando caja marque la primera orden como pagada.</div>';
-    $('ranking').innerHTML='';
   } else {
-    var maxFa=Math.max.apply(null,rank.map(function(t){return t.fac}))||1,
-        maxAu=Math.max.apply(null,rank.map(function(t){return t.autos}))||1;
-    $('grafMec').innerHTML=
-      '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:10px">'+
-        '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Monto facturado</span>'+
-        '<span><i style="display:inline-block;width:9px;height:9px;background:var(--tinta);border-radius:2px"></i> Autos atendidos</span></div>'+
-      '<div class="gb" style="height:190px">'+rank.slice(0,12).map(function(t){
-        return '<div class="col"><div class="vv">'+S(Math.round(t.fac))+'</div>'+
-          '<div style="display:flex;gap:4px;align-items:flex-end;width:100%;justify-content:center;height:100%">'+
-            '<div class="bar" style="height:'+Math.round(t.fac/maxFa*100)+'%;max-width:30px"></div>'+
-            '<div class="bar" style="height:'+Math.round(t.autos/maxAu*45)+'%;max-width:14px;background:var(--tinta)"></div>'+
-          '</div>'+
-          '<div class="ll">'+String(t.n).split(' ')[0]+'<br><b>'+t.autos+' autos</b></div></div>';
-      }).join('')+'</div>';
+    /* Una fila por mecánico, con la barra hacia la derecha: los nombres
+       largos entran enteros y la lista crece hacia abajo sin apretarse.
+       Antes eran columnas y los nombres se montaban unos sobre otros. */
     var tope=rank[0].fac||1;
-    $('ranking').innerHTML=rank.map(function(t,i){
-      var pct=Math.round(t.fac/tope*100);
-      return '<div style="margin-bottom:13px"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
-        '<span class="cond" style="font-size:19px;color:var(--mudo)">'+(i+1)+'</span><b>'+t.n+'</b>'+
-        '<span class="num" style="color:var(--mudo);font-size:12px">'+t.autos+' autos</span>'+
-        '<span class="num" style="margin-left:auto;font-weight:700">'+S(Math.round(t.fac))+'</span></div>'+
-        '<div class="barra"><i style="width:'+pct+'%"></i></div>'+
-        '<div class="hint">'+S(Math.round(t.fac/t.autos))+' por auto'+
-        (t.conH?' · '+tiempo(Math.round(t.horas/t.conH*60))+' promedio en taller':'')+'</div></div>';
-    }).join('');
+    $('grafMec').innerHTML='<div class="rkMec">'+rank.map(function(t,i){
+      var pct=Math.max(2,Math.round(t.fac/tope*100));
+      return '<div class="rkFila">'+
+        '<div class="rkTop">'+
+          '<span class="pos">'+(i+1)+'</span>'+
+          '<b class="nom">'+esc(t.n)+'</b>'+
+          '<span class="mon">'+S(Math.round(t.fac))+'</span>'+
+        '</div>'+
+        '<div class="rkBar"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="rkPie">'+t.autos+' auto'+(t.autos===1?'':'s')+
+          ' · '+S(Math.round(t.fac/(t.autos||1)))+' por auto'+
+          (t.conH?' · '+tiempo(Math.round(t.horas/t.conH*60))+' en taller':'')+
+        '</div></div>';
+    }).join('')+'</div>';
   }
 
   /* ---- comparativo por local, solo al mirar todos ---- */
@@ -13674,7 +13850,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=219;
+var APP_VER=221;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
