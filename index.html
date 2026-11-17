@@ -1,4 +1,4 @@
-<!--IZAV:215-->
+<!--IZAV:216-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10878,6 +10878,10 @@ function prodTiempo(lista){
 /* ============ INGRESADOS VS ENTREGADOS ============
    Cada granularidad trae su propia ventana. En automático se elige la
    más fina que entre en el ancho de la pantalla. */
+/* Cuántos días puede llevar un auto en el taller antes de que una orden
+   abierta deje de ser creíble. El promedio real de ingreso a cobro está
+   debajo de un día. */
+var DIAS_EN_TALLER=3;
 var GRANS={
   dia :{t:'Diario',    n:7,  min:7, pasos:function(d,i){var x=new Date(d);x.setDate(x.getDate()-i);x.setHours(0,0,0,0);return x},
         sig:function(x){var y=new Date(x);y.setDate(y.getDate()+1);return y},
@@ -10943,9 +10947,14 @@ function pintarFlujo(){
 
   /* El hueco entre las dos barras NO son los autos que están en el
      taller: una orden abierta hace un mes sigue abierta hoy y no
-     aparece en ninguna barra de esta ventana. El número que se puede
-     mostrar es este, y se cuenta aparte. */
-  var enTaller=(PROD_ORD||[]).filter(function(o){return o.abierta}).length;
+     aparece en ninguna barra de esta ventana.
+     Y "abierta" tampoco significa que el auto esté acá: una orden que
+     nadie cerró queda abierta para siempre. Se separan las dos cosas,
+     porque mezcladas dan un número que no se puede mostrar. */
+  var corte=new Date(); corte.setDate(corte.getDate()-DIAS_EN_TALLER); corte.setHours(0,0,0,0);
+  var abiertas=(PROD_ORD||[]).filter(function(o){return o.abierta});
+  var enTaller=abiertas.filter(function(o){return o.ing&&o.ing>=corte}).length;
+  var varadas=abiertas.length-enTaller;
   var sinMarcar=(PROD_ORD||[]).filter(function(o){
     return !o.abierta&&!o.anulada&&!o.entReal&&o.pag;
   }).length;
@@ -10961,7 +10970,14 @@ function pintarFlujo(){
   if(nota)nota.innerHTML=
     'La diferencia entre las barras no son autos varados: una orden que '+
     'entró antes de esta ventana se entrega dentro de ella, y al revés. '+
-    'Lo que hay en el taller hoy es <b>'+enTaller+'</b>.'+
+    'En el taller hay <b>'+enTaller+'</b> auto'+(enTaller===1?'':'s')+
+    ' (órdenes abiertas que entraron en los últimos '+DIAS_EN_TALLER+' días).'+
+    (varadas
+      ? '<br><b style="color:var(--rojo)">'+varadas+' órdenes llevan más de '+
+        DIAS_EN_TALLER+' días abiertas.</b> Con un promedio de '+
+        '<b>'+prodTiempo((PROD_ORD||[]).filter(function(o){return o.pag}))+'</b> '+
+        'en taller, casi todas ya se entregaron y nadie las cerró: son papeles, no autos.'
+      : '')+
     (sinMarcar
       ? '<br><b>'+sinMarcar+'</b> órdenes se cobraron sin que nadie tocara '+
         '«Entregado»: cuentan como entregadas el día del cobro.'
@@ -13642,7 +13658,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=215;
+var APP_VER=216;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
