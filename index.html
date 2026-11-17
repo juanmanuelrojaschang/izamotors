@@ -1,4 +1,4 @@
-<!--IZAV:225-->
+<!--IZAV:227-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1870,7 +1870,6 @@ tr.sel td{background:var(--rojo-cl)}
     <div class="modo" style="margin-top:14px;flex-wrap:wrap">
       <button id="kServ" class="on" onclick="setRanking('serv')">Servicios</button>
       <button id="kRep" onclick="setRanking('rep')">Repuestos</button>
-      <button id="kAdic" onclick="setRanking('adic')">Adicionales</button>
       <button id="kCli" onclick="setRanking('cli')">Clientes</button>
       <button id="kVeh" onclick="setRanking('veh')">Marca y modelo</button>
     </div>
@@ -3336,12 +3335,21 @@ var ADIC_SEL='';
    El resto —un repuesto del combo 2, un servicio del combo 1— va a su
    propia familia aunque se haya pedido después. */
 var ADIC_SET=null;
-function esDelCombo3(desc){
+/* El combo 3 y el almacén venden lo mismo con el mismo nombre: hay un
+   "AVA MAX 50/50 litro" en el combo y otro en el catálogo de
+   repuestos. Se distinguen por el código: lo del combo entra sin
+   código de almacén, lo del almacén siempre lo lleva. */
+function esDelCombo3(l){
   if(!ADIC_SET){
     ADIC_SET={};
     ADICIONALES.forEach(function(a){ ADIC_SET[mmLlano(a.d)]=true });
   }
-  return !!ADIC_SET[mmLlano(desc)];
+  var esObj=(l&&typeof l==='object'&&l.descripcion!==undefined);
+  var desc=esObj?l.descripcion:l;
+  if(!ADIC_SET[mmLlano(desc)])return false;
+  /* con código de almacén es del combo 2, no del 3 */
+  if(esObj&&String(l.codigo_almacen||'').trim())return false;
+  return true;
 }
 function adicAgregar(){
   var v=document.getElementById('adicSel').value;
@@ -4275,12 +4283,14 @@ function invMontar(contId,onAdd,inputId){
    con su precio; el precio no va escrito en el botón —el mostrador no
    lo necesita a la vista— pero es el que viaja a la boleta.
    Tocarlo otra vez sube la cantidad en vez de repetir la línea. */
+/* Cada favorito nace en la familia que le toca, para que el ranking
+   lo sume donde corresponde y no en "Otros servicios". */
 var FAVS_SERV=[
-  {t:'Frenos',p:60},
-  {t:'Lavado de auto',p:15},
-  {t:'Rectificado de discos',p:40},
-  {t:'Foco',p:15},
-  {t:'RC',p:0}
+  {t:'Frenos',p:60,f:'Frenos'},
+  {t:'Lavado de auto',p:15,f:'Lavado'},
+  {t:'Rectificado de discos',p:40,f:'Frenos'},
+  {t:'Foco',p:15,f:'Otros servicios'},
+  {t:'RC',p:0,f:'Otros servicios'}
 ];
 var FAVS_REP=[
   {t:'Filtro de aire',p:25},
@@ -4311,9 +4321,9 @@ function pintarFavoritos(zonaId,cual){
       var n=favCant(cual,f);
       return '<button type="button" class="atajo fav'+(n?' puesto':'')+'" '+
         'id="fav-'+cual+'-'+i+'" '+
-        (n?'title="Ya está en la orden · tócalo otra vez para sumar" ':'')+
+        (n?'title="Ya está en la orden · quítalo de la lista para volver a usarlo" ':'')+
         'onclick="favAgregar(&quot;'+cual+'&quot;,'+i+')">'+esc(f.t)+
-        (n?'<b class="n">'+n+'</b>':'')+'</button>';
+        (n>1?'<b class="n">'+n+'</b>':'')+'</button>';
     }).join('');
 }
 function favRefrescar(){
@@ -4338,17 +4348,20 @@ function favAgregar(cual,i){
   var cod=favCodigo(cual,f),lista=(cual==='serv')?LINEAS_SERV:LINEAS_REP;
   var ya=lista.filter(function(l){return l.codigo===cod})[0];
   if(ya){
-    ya.cant=(Number(ya.cant)||1)+1;
-    pintarPresupuestoLista();
+    /* Uno y no más: el botón no es un contador. Si hacen falta dos,
+       se cambia la cantidad en la línea; y para quitarlo, se borra la
+       línea y el botón vuelve a quedar libre. */
     favDestello(cual,i);
-    conex(f.t+' · ahora van '+ya.cant);
+    conex(f.t+' ya está en la orden · cámbiale la cantidad en la lista');
     return;
   }
   if(cual==='serv'){
     LINEAS_SERV.push({codigo:cod,codigo2:'',desc:f.t,
-      precio:f.p,precio_base:f.p,cant:1,categoria:'Favoritos'});
+      precio:f.p,precio_base:f.p,cant:1,categoria:f.f||'Otros servicios'});
     SEL_SERV[cod]=true;
   }else{
+    /* los repuestos favoritos son genéricos: sin marca, que es donde
+       el ranking los agrupa */
     LINEAS_REP.push({codigo:cod,codigo2:'',desc:f.t,precio:f.p,cant:1,
       marca:'',modelo:'',ubicacion:''});
   }
@@ -11306,7 +11319,10 @@ var FAM_SERV=[
   {k:'Lavado',              re:/lavado/},
   {k:'Motor',               re:/motor/}
 ];
+/* El combo 3 dejó de ser un ranking aparte: sus servicios son una
+   familia más y sus aditivos caen en repuestos por ser tipo REP. */
 function demFamilia(d){
+  if(esDelCombo3(d))return 'Adicionales';
   var t=hojaLlano(d);
   for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
   return 'Otros servicios';
@@ -11354,6 +11370,22 @@ function demMarca(d){
 function demNombre(d){
   return String(d||'').replace(/\s*·\s*/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
 }
+/* En la boleta el servicio va con su familia o su código adelante
+   ("Mantenimiento · Afinamiento auto", "AF · Afinamiento"), para que
+   el cliente lo entienda. En el ranking eso partía el mismo servicio
+   en varias filas: acá se queda solo el servicio. */
+function demServicio(d){
+  var t=String(d||'').trim();
+  var i=t.indexOf('·');
+  if(i>0){
+    var pre=t.slice(0,i).trim(),res=t.slice(i+1).trim();
+    /* Solo una palabra: la familia ("Mantenimiento") o el código
+       ("AF"). Si son varias es parte del nombre del producto
+       ("AVA MAX 50/50 · litro") y no se toca. */
+    if(res&&pre&&pre.split(/\s+/).length===1)t=res;
+  }
+  return demNombre(t);
+}
 function cargarDemanda(){
   var r=rangoProd(), sid=prodSedeId();
   var clave=PERIODO+'|'+sid+'|'+r.desde.getTime();
@@ -11363,7 +11395,7 @@ function cargarDemanda(){
   DEM_CARGANDO=true;DEM_ERR='';pintarDemanda();
   var q=sb.from('orden_detalle')
     .select('tipo,descripcion,cantidad,precio_taller,anulada,adicional,agregado_por,'+
-            'ordenes!inner(ingreso,sede_id,estado_taller)')
+            'codigo_almacen,ordenes!inner(ingreso,sede_id,estado_taller)')
     .gte('ordenes.ingreso',r.desde.toISOString())
     .lte('ordenes.ingreso',r.hasta.toISOString())
     .not('ordenes.estado_taller','eq','ANULADO');
@@ -11388,7 +11420,11 @@ function demAgrupar(lineas,clave){
     m[k].monto+=(Number(l.precio_taller)||0)*c;
   });
   return Object.keys(m).map(function(k){return m[k]})
-    .sort(function(a,b){return b.n-a.n||b.monto-a.monto});
+    .sort(function(a,b){
+      /* el cajón de sastre va al final, por más grande que sea */
+      var sa=(a.k==='Sin marca')?1:0, sb=(b.k==='Sin marca')?1:0;
+      return sa-sb||b.n-a.n||b.monto-a.monto;
+    });
 }
 function demBarras(filas,vacio,alTocar){
   if(!filas.length)return '<div class="vacio"><b>'+vacio+'</b></div>';
@@ -11414,14 +11450,13 @@ var RANKING='serv';
 var RK_SUBS={
   serv:[['fam','Por familia'],['det','Por servicio']],
   rep:[['marca','Por marca'],['det','Por producto']],
-  adic:[['todo','Todos'],['serv','Servicios'],['rep','Aditivos']],
   cli:[['monto','Por monto'],['veces','Por visitas']],
   veh:[['marca','Por marca'],['det','Marca y modelo']]
 };
-var RK_SUB={serv:'fam',rep:'marca',adic:'todo',cli:'monto',veh:'marca'};
+var RK_SUB={serv:'fam',rep:'marca',cli:'monto',veh:'marca'};
 function setRanking(k){
   RANKING=k;RK_MARCA='';RK_MARCA_V='';
-  ['serv','rep','adic','cli','veh'].forEach(function(x){
+  ['serv','rep','cli','veh'].forEach(function(x){
     var b=document.getElementById('k'+x.charAt(0).toUpperCase()+x.slice(1));
     if(b)b.classList.toggle('on',x===k);
   });
@@ -11488,7 +11523,7 @@ function pintarRankings(){
   if(tit)tit.textContent='Rankings · '+prodSedeNombre();
   if(sub)sub.textContent=prodRangoTexto();
 
-  var deLineas=(RANKING==='serv'||RANKING==='rep'||RANKING==='adic');
+  var deLineas=(RANKING==='serv'||RANKING==='rep');
   if(deLineas){
     if(DEM_CARGANDO){z.innerHTML='<div class="hint">Consultando la base…</div>';return}
     if(DEM_ERR){
@@ -11502,7 +11537,7 @@ function pintarRankings(){
       if(cab)cab.textContent='Servicios · '+rangoProd().t;
       if(pie)pie.textContent=(sub==='fam'?'Agrupados por familia':'Uno por uno')+
         ' · veces pedido y precio promedio';
-      z.innerHTML=demBarras(demAgrupar(sv,sub==='fam'?demFamilia:demNombre).slice(0,30),
+      z.innerHTML=demBarras(demAgrupar(sv,sub==='fam'?demFamilia:demServicio).slice(0,30),
         'Sin servicios en este periodo');
     } else if(RANKING==='rep'){
       var rp=lin.filter(function(l){return l.tipo!=='MO'});
@@ -11523,19 +11558,6 @@ function pintarRankings(){
         z.innerHTML=demBarras(demAgrupar(rp,demNombre).slice(0,30),
           'Sin repuestos en este periodo');
       }
-    } else {
-      /* Adicionales es el combo 3 y nada más. Un repuesto del combo 2
-         o un servicio del combo 1 pedidos después siguen siendo
-         repuesto y servicio: van a su familia, no acá. */
-      var ad=lin.filter(function(l){ return esDelCombo3(l.descripcion) });
-      if(sub==='serv')ad=ad.filter(function(l){return l.tipo==='MO'});
-      if(sub==='rep')ad=ad.filter(function(l){return l.tipo!=='MO'});
-      if(cab)cab.textContent='Adicionales · '+rangoProd().t;
-      if(pie)pie.textContent='Los del combo 3, que se ofrecen con cualquier servicio · '+
-        ad.length+' línea'+(ad.length===1?'':'s')+
-        (sub==='todo'?' · servicios y aditivos juntos':'');
-      z.innerHTML=demBarras(demAgrupar(ad,demNombre).slice(0,30),
-        'Sin adicionales en este periodo');
     }
     return;
   }
@@ -14089,7 +14111,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=225;
+var APP_VER=227;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
