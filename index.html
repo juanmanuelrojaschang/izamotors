@@ -1,4 +1,4 @@
-<!--IZAV:227-->
+<!--IZAV:228-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11321,8 +11321,21 @@ var FAM_SERV=[
 ];
 /* El combo 3 dejó de ser un ranking aparte: sus servicios son una
    familia más y sus aditivos caen en repuestos por ser tipo REP. */
+/* La familia que el jefe de taller eligió viaja al inicio de la
+   descripción ("Mantenimiento · Afinamiento auto"). Si está, esa es
+   la buena: vale más que adivinarla con palabras sueltas. */
+function famDelTexto(d){
+  var t=String(d||'').trim(),i=t.indexOf('·');
+  if(i<=0)return '';
+  var pre=t.slice(0,i).trim();
+  /* una sola palabra y no un código de dos o tres letras */
+  if(pre.split(/\s+/).length!==1||pre.length<=3)return '';
+  return famBonita(pre);
+}
 function demFamilia(d){
   if(esDelCombo3(d))return 'Adicionales';
+  var pre=famDelTexto(d);
+  if(pre)return pre;
   var t=hojaLlano(d);
   for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
   return 'Otros servicios';
@@ -11421,8 +11434,9 @@ function demAgrupar(lineas,clave){
   });
   return Object.keys(m).map(function(k){return m[k]})
     .sort(function(a,b){
-      /* el cajón de sastre va al final, por más grande que sea */
-      var sa=(a.k==='Sin marca')?1:0, sb=(b.k==='Sin marca')?1:0;
+      /* los cajones de sastre van al final, por más grandes que sean */
+      var cajon={'Sin marca':1,'Otros servicios':1};
+      var sa=cajon[a.k]?1:0, sb=cajon[b.k]?1:0;
       return sa-sb||b.n-a.n||b.monto-a.monto;
     });
 }
@@ -11455,7 +11469,7 @@ var RK_SUBS={
 };
 var RK_SUB={serv:'fam',rep:'marca',cli:'monto',veh:'marca'};
 function setRanking(k){
-  RANKING=k;RK_MARCA='';RK_MARCA_V='';
+  RANKING=k;RK_MARCA='';RK_MARCA_V='';RK_FAM='';
   ['serv','rep','cli','veh'].forEach(function(x){
     var b=document.getElementById('k'+x.charAt(0).toUpperCase()+x.slice(1));
     if(b)b.classList.toggle('on',x===k);
@@ -11464,7 +11478,7 @@ function setRanking(k){
   pintarRankings();
 }
 function setRkSub(v){
-  RK_SUB[RANKING]=v; RK_MARCA='';RK_MARCA_V='';
+  RK_SUB[RANKING]=v; RK_MARCA='';RK_MARCA_V='';RK_FAM='';
   pintarSubOp(); pintarRankings();
 }
 function pintarSubOp(){
@@ -11537,8 +11551,19 @@ function pintarRankings(){
       if(cab)cab.textContent='Servicios · '+rangoProd().t;
       if(pie)pie.textContent=(sub==='fam'?'Agrupados por familia':'Uno por uno')+
         ' · veces pedido y precio promedio';
-      z.innerHTML=demBarras(demAgrupar(sv,sub==='fam'?demFamilia:demServicio).slice(0,30),
-        'Sin servicios en este periodo');
+      if(sub==='fam'&&RK_FAM){
+        var deEsa0=sv.filter(function(l){return demFamilia(l.descripcion)===RK_FAM});
+        z.innerHTML='<button class="btn sec chico" style="margin-bottom:12px" '+
+            'onclick="rkVolverFam()">← Todas las familias</button>'+
+          '<div class="demTit">'+esc(RK_FAM)+'</div>'+
+          demBarras(demAgrupar(deEsa0,demServicio).slice(0,40),'Sin servicios en esa familia');
+      } else if(sub==='fam'){
+        z.innerHTML=demBarras(demAgrupar(sv,demFamilia).slice(0,30),
+          'Sin servicios en este periodo','rkFam');
+      } else {
+        z.innerHTML=demBarras(demAgrupar(sv,demServicio).slice(0,30),
+          'Sin servicios en este periodo');
+      }
     } else if(RANKING==='rep'){
       var rp=lin.filter(function(l){return l.tipo!=='MO'});
       if(cab)cab.textContent='Repuestos · '+rangoProd().t;
@@ -11594,9 +11619,11 @@ function pintarRankings(){
   }
 }
 /* Entrar y salir del detalle de una marca. */
-var RK_MARCA='',RK_MARCA_V='';
+var RK_MARCA='',RK_MARCA_V='',RK_FAM='';
 function rkMarca(k){ RK_MARCA=decodeURIComponent(k); pintarRankings() }
 function rkVolverMarca(){ RK_MARCA=''; pintarRankings() }
+function rkFam(k){ RK_FAM=decodeURIComponent(k); pintarRankings() }
+function rkVolverFam(){ RK_FAM=''; pintarRankings() }
 function rkMarcaV(k){ RK_MARCA_V=decodeURIComponent(k); pintarRankings() }
 function rkVolverMarcaV(){ RK_MARCA_V=''; pintarRankings() }
 /* El detalle alimenta ahora el reporte de Rankings. */
@@ -14111,7 +14138,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=227;
+var APP_VER=228;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
