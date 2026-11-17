@@ -1,4 +1,4 @@
-<!--IZAV:224-->
+<!--IZAV:225-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3332,6 +3332,17 @@ function bloqueAceite(){
 
 /* ---- servicios adicionales: solo con mantenimiento o cambio de aceite ---- */
 var ADIC_SEL='';
+/* Lo del combo 3, para poder reconocerlo después en la reportería.
+   El resto —un repuesto del combo 2, un servicio del combo 1— va a su
+   propia familia aunque se haya pedido después. */
+var ADIC_SET=null;
+function esDelCombo3(desc){
+  if(!ADIC_SET){
+    ADIC_SET={};
+    ADICIONALES.forEach(function(a){ ADIC_SET[mmLlano(a.d)]=true });
+  }
+  return !!ADIC_SET[mmLlano(desc)];
+}
 function adicAgregar(){
   var v=document.getElementById('adicSel').value;
   if(v===''){aviso('Elige un servicio adicional.');return}
@@ -7907,6 +7918,15 @@ function pregAviso(t){
 /* Guarda el mecánico sin tocar el estado del taller: lo usa el aviso de
    arriba y cualquier asignación tardía. */
 function asignarMecanicoAhora(mec){
+  /* El mecánico tiene que ser uno de la lista. Antes se guardaba lo
+     que estuviera escrito y así entraron "Carlos Rivas" o
+     "CHRISTOPHER", sin código y en cualquier formato. */
+  if(mec&&!mecDeLista(mec)){
+    aviso('Ese mecánico no está en la lista',
+      'Escribe las primeras letras y elígelo del desplegable. '+
+      'Si es nuevo, agrégalo antes en Datos maestros → Mecánicos.');
+    return;
+  }
   mec=mecNormalizar(mec);
   var antes=MECANICO_OT;
   MECANICO_OT=mec;
@@ -8857,11 +8877,12 @@ function mecParecido(a,b){
          (ra.indexOf(rb)>-1||rb.indexOf(ra)>-1||
           ra.replace(/h/gi,'')===rb.replace(/h/gi,''));
 }
-function mecNormalizar(v){
+/* Devuelve al mecánico de la lista que corresponde a ese texto, o
+   null. No inventa: si nadie encaja, no hay mecánico. */
+function mecDeLista(v){
   var t=String(v||'').trim();
-  if(!t)return '';
-  var llano=mecClave(t);
-  var hit=null;
+  if(!t)return null;
+  var llano=mecClave(t),hit=null;
   (MECS||[]).forEach(function(m){
     if(hit)return;
     if(mmLlano(m.nombre)===llano||mmLlano(m.codigo)===mmLlano(t))hit=m;
@@ -8870,8 +8891,22 @@ function mecNormalizar(v){
     if(hit)return;
     if(mmLlano(m.nombre).indexOf(llano)===0&&llano.length>=4)hit=m;
   });
-  if(hit)return (hit.codigo?hit.codigo+' · ':'')+String(hit.nombre||'').toUpperCase();
-  return t.toUpperCase().replace(/\s+/g,' ');
+  /* las variantes de escritura también cuentan: CRISTIAN/CHRISTIAN */
+  if(!hit)(MECS||[]).forEach(function(m){
+    if(hit)return;
+    if(mecParecido(mmLlano(m.nombre),llano))hit=m;
+  });
+  return hit;
+}
+function mecNormalizar(v){
+  var t=String(v||'').trim();
+  if(!t)return '';
+  var hit=mecDeLista(t);
+  /* Si no está en la lista se devuelve tal cual: lo que hay en las
+     órdenes viejas se respeta para poder leerlo, pero guardar uno
+     nuevo fuera de la lista ya no se permite. */
+  if(!hit)return t;
+  return (hit.codigo?hit.codigo+' · ':'')+String(hit.nombre||'').toUpperCase();
 }
 function mecClave(v){
   var s=String(v||''),p=s.split('·');
@@ -9037,7 +9072,7 @@ function mecValidar(base){
 /* Para el código que ya existía y hacía $('gMec').value = … */
 function mecPoner(base,val){
   if(!MC[base]){ var h=$(base); if(h)h.value=val||''; return }
-  var m=mecPorValor(MC[base].tipo,val);
+  var m=mecPorValor(MC[base].tipo,val)||mecDeLista(val);
   mecFijar(base,m?mecValor(m):String(val||''));
 }
 
@@ -9149,6 +9184,12 @@ function irDiagnostico(){
   if($('kmIngreso'))$('kmIngreso').value=String(km);
   if(sb&&OT_NUM)sb.from('ordenes').update({km_ingreso:km}).eq('numero',OT_NUM).then(function(){},function(){});
   guardarLavador();
+  if(mec&&!mecDeLista(mec)){
+    aviso('Ese mecánico no está en la lista',
+      'Escribe las primeras letras y elígelo del desplegable. '+
+      'Si es nuevo, agrégalo antes en Datos maestros → Mecánicos.');
+    return;
+  }
   mec=mecNormalizar(mec);
   var antes=MECANICO_OT;
   MECANICO_OT=mec;
@@ -11373,7 +11414,7 @@ var RANKING='serv';
 var RK_SUBS={
   serv:[['fam','Por familia'],['det','Por servicio']],
   rep:[['marca','Por marca'],['det','Por producto']],
-  adic:[['todo','Todos'],['serv','Servicios'],['rep','Repuestos']],
+  adic:[['todo','Todos'],['serv','Servicios'],['rep','Aditivos']],
   cli:[['monto','Por monto'],['veces','Por visitas']],
   veh:[['marca','Por marca'],['det','Marca y modelo']]
 };
@@ -11483,16 +11524,16 @@ function pintarRankings(){
           'Sin repuestos en este periodo');
       }
     } else {
-      /* Adicional es lo que el taller agregó con la OT ya aprobada, y
-         mezcla servicios con repuestos: por eso salían aceites junto a
-         rectificados. Ahora se pueden separar. */
-      var ad=lin.filter(function(l){ return !!l.adicional||l.agregado_por==='taller_adic' });
+      /* Adicionales es el combo 3 y nada más. Un repuesto del combo 2
+         o un servicio del combo 1 pedidos después siguen siendo
+         repuesto y servicio: van a su familia, no acá. */
+      var ad=lin.filter(function(l){ return esDelCombo3(l.descripcion) });
       if(sub==='serv')ad=ad.filter(function(l){return l.tipo==='MO'});
       if(sub==='rep')ad=ad.filter(function(l){return l.tipo!=='MO'});
       if(cab)cab.textContent='Adicionales · '+rangoProd().t;
-      if(pie)pie.textContent='Lo que el taller agregó con la OT ya aprobada · '+
+      if(pie)pie.textContent='Los del combo 3, que se ofrecen con cualquier servicio · '+
         ad.length+' línea'+(ad.length===1?'':'s')+
-        (sub==='todo'?' · servicios y repuestos juntos':'');
+        (sub==='todo'?' · servicios y aditivos juntos':'');
       z.innerHTML=demBarras(demAgrupar(ad,demNombre).slice(0,30),
         'Sin adicionales en este periodo');
     }
@@ -14048,7 +14089,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=224;
+var APP_VER=225;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
