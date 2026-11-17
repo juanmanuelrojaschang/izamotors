@@ -1,4 +1,4 @@
-<!--IZAV:221-->
+<!--IZAV:224-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -186,6 +186,9 @@ td{padding:11px 7px;border-bottom:1px solid var(--gris2)}
 .demT span{flex:0 0 auto;color:var(--mudo);font-size:11px}
 .demB{height:7px;background:var(--gris2);border-radius:4px;overflow:hidden}
 .demB i{display:block;height:100%;background:var(--rojo);border-radius:4px}
+.demP{font-size:10.5px;color:var(--mudo);margin-top:3px}
+.demF.tocable:active{opacity:.6}
+.modo.chica button{font-size:11.5px;padding:7px 10px}
 /* Lista de usuarios: cabe en el celular y se abre al tocarla */
 .usrFila{border:1px solid var(--gris2);border-radius:10px;margin-bottom:7px;overflow:hidden}
 .usrFila.enEdicion{border-color:var(--rojo)}
@@ -1046,6 +1049,16 @@ tr.sel td{background:var(--rojo-cl)}
 .rkBar{height:9px;border-radius:5px;background:var(--gris2);overflow:hidden;margin:5px 0 4px}
 .rkBar i{display:block;height:100%;background:var(--rojo);border-radius:5px}
 .rkPie{font-size:11px;color:var(--mudo)}
+.rkFila.abierta .rkBar i{background:var(--tinta)}
+.mcDet{display:flex;gap:8px;margin-top:9px}
+.mcCol{flex:1;border:1px solid var(--borde);border-radius:9px;padding:8px 6px;
+  text-align:center;background:var(--gris)}
+.mcCol span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--mudo);font-weight:700}
+.mcCol b{display:block;font-family:'Barlow Condensed',Impact,sans-serif;font-size:22px;
+  line-height:1.1}
+.mcCol i{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;
+  font-style:normal;color:var(--mudo)}
 
 /* ===== flujo de estados ===== */
 .modo{display:flex;gap:6px;background:var(--gris2);padding:5px;border-radius:11px;margin-bottom:18px}
@@ -1861,6 +1874,7 @@ tr.sel td{background:var(--rojo-cl)}
       <button id="kCli" onclick="setRanking('cli')">Clientes</button>
       <button id="kVeh" onclick="setRanking('veh')">Marca y modelo</button>
     </div>
+    <div class="modo chica" id="rkSubOp" style="margin-top:9px;flex-wrap:wrap"></div>
   </div>
   <div class="card">
     <h3 id="rkCabeza" style="margin:0 0 4px">Servicios</h3>
@@ -1931,10 +1945,6 @@ tr.sel td{background:var(--rojo-cl)}
     <div style="overflow-x:auto"><table id="tablaLocales"></table></div>
   </div>
 
-  <div class="card">
-    <h3>Detalle por mecánico · día, mes y año</h3>
-    <div style="overflow-x:auto"><table id="tablaTec"></table></div>
-  </div>
 </section>
 
 <!-- ================= HOJA DE SERVICIOS ================= -->
@@ -2154,8 +2164,12 @@ var MODULOS={
     {v:'recepcion',t:'Pendientes del taller',tab:'pendientes'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Flujo en taller'},{v:'rankings',t:'Rankings'},
-    {v:'bitacora',t:'Bitácora y transacciones'},{v:'hoja',t:'Hoja de servicios'}]},
+    {v:'rankings',t:'Rankings'},
+    {v:'productividad',t:'Flujo en taller'},
+    {v:'taller',t:'Estado del taller'},
+    {v:'tienda',t:'Estado de ventanilla'},
+    {v:'bitacora',t:'Bitácora y transacciones'},
+    {v:'hoja',t:'Hoja de servicios'}]},
   configuracion:{t:'Configuración',vistas:[
     {v:'usuarios',t:'Usuarios y permisos'},
     {v:'importar',t:'Datos maestros'}]}
@@ -8787,6 +8801,62 @@ var CARGA_MEC={},CARGA_MEC_T=0,CARGA_MEC_SEDE=null;
    escribe como los demás, "CT014 · MISAEL POMAHUALLCCA CASTILLO". Si
    no está en la lista, al menos entra en mayúsculas, para que el
    ranking no lo parta en dos personas. */
+/* La persona detrás del texto: quita el código, las tildes y las
+   variantes de escritura, y devuelve el nombre como está en la lista
+   de mecánicos. Es lo que permite unir "RAMOS QUISPE CRISTIAN" con
+   "CG003 · RAMOS QUISPE CHRISTIAN". */
+var MEC_ALIAS={};
+/* Dos vueltas: en la primera se ven todos los nombres y se arma el
+   mapa (la versión con código gana), en la segunda ya se agrupa bien.
+   Con una sola vuelta, el primero en aparecer se quedaba con su
+   escritura y el ranking lo partía en dos filas. */
+function mecPrecalentar(lista){
+  (lista||[]).forEach(function(o){ mecPersona(o.mec) });
+}
+function mecPersona(v){
+  var t=String(v||'').trim();
+  if(!t)return 'Sin asignar';
+  if(MEC_ALIAS[t])return MEC_ALIAS[t];
+  var n=mecNormalizar(t);
+  /* dos escrituras del mismo nombre (CRISTIAN/CHRISTIAN, con o sin
+     segundo apellido) se juntan por sus iniciales y apellidos */
+  var llano=mecClave(n);
+  var hit=null;
+  Object.keys(MEC_ALIAS).forEach(function(k){
+    if(hit)return;
+    var o=MEC_ALIAS[k];
+    if(mecParecido(mecClave(o),llano))hit=o;
+  });
+  if(hit){
+    /* de las dos escrituras gana la que trae código */
+    if(n.indexOf('·')>-1&&hit.indexOf('·')<0){
+      Object.keys(MEC_ALIAS).forEach(function(k){
+        if(MEC_ALIAS[k]===hit)MEC_ALIAS[k]=n;
+      });
+      hit=n;
+    }
+  }
+  MEC_ALIAS[t]=hit||n;
+  return MEC_ALIAS[t];
+}
+/* Mismo apellido y mismo nombre de pila salvo la escritura. */
+function mecParecido(a,b){
+  if(a===b)return true;
+  var pa=a.split(/\s+/).filter(Boolean),pb=b.split(/\s+/).filter(Boolean);
+  if(pa.length<2||pb.length<2)return false;
+  if(pa[0]!==pb[0]||pa[1]!==pb[1])return false;   /* los dos apellidos mandan */
+  /* solo el primer nombre de pila: el segundo puede faltar
+     ("RAMOS QUISPE CRISTIAN" vs "RAMOS QUISPE CHRISTIAN GERMAN") */
+  var ra=pa[2]||'',rb=pb[2]||'';
+  if(!ra||!rb)return true;
+  /* CRISTIAN vs CHRISTIAN: misma inicial y pocas letras de diferencia */
+  if(ra.charAt(0)!==rb.charAt(0))return false;
+  /* mmLlano devuelve MAYÚSCULAS: la H hay que quitarla sin distinguir
+     caja, o CRISTIAN y CHRISTIAN nunca se encuentran */
+  return Math.abs(ra.length-rb.length)<=2&&
+         (ra.indexOf(rb)>-1||rb.indexOf(ra)>-1||
+          ra.replace(/h/gi,'')===rb.replace(/h/gi,''));
+}
 function mecNormalizar(v){
   var t=String(v||'').trim();
   if(!t)return '';
@@ -11200,6 +11270,45 @@ function demFamilia(d){
   for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
   return 'Otros servicios';
 }
+/* La marca del repuesto, para poder consolidar: todos los AVA juntos,
+   todos los LIQUI MOLY juntos. Primero se busca en el catálogo (que
+   trae la columna marca) y, si no está, en las primeras palabras de la
+   descripción contra la lista de marcas conocidas. */
+var MARCAS_REP=['LIQUI MOLY','AVA POWER','AVA MAX','AVA','SHELL','MOBIL','VISTONY',
+  'CASTROL','TOTAL','REPSOL','VALVOLINE','PENNZOIL','HYUNDAI','MOBIS','KIA','TOYOTA',
+  'NISSAN','SUZUKI','CHEVROLET','DAEWOO','MAZDA','HONDA','MITSUBISHI','FOTON','CHERY',
+  'CHANGAN','DFSK','MG','MAHINDRA','VOLKSWAGEN','WOLKSWAGEN','FORD','RENAULT','FIAT',
+  'BOSCH','NGK','DENSO','NOMIS','DHB','DNPS','CAT','SPEEDMATE','HI-Q','GM','AUTOVARD',
+  'LAINA','BAQUELITA','SAKURA','MANN','MAHLE','WIX','FRAM','GATES','SKF','TIMKEN'];
+function demMarca(d){
+  var t=demNombre(d);
+  var hit='';
+  MARCAS_REP.forEach(function(m){
+    if(hit)return;
+    /* la marca tiene que ser una palabra entera, no un pedazo */
+    var re=new RegExp('(^|[^A-Z0-9])'+m.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^A-Z0-9]|$)');
+    if(re.test(t))hit=m;
+  });
+  return hit||'Sin marca';
+}
+/* La marca del repuesto, para consolidar: todos los AVA juntos, todos
+   los LIQUI MOLY juntos. Se busca en las palabras de la descripción
+   contra la lista de marcas conocidas. */
+var MARCAS_REP=['LIQUI MOLY','AVA POWER','AVA MAX','AVA','SHELL','MOBIL','VISTONY',
+  'CASTROL','TOTAL','REPSOL','VALVOLINE','PENNZOIL','HYUNDAI','MOBIS','KIA','TOYOTA',
+  'NISSAN','SUZUKI','CHEVROLET','DAEWOO','MAZDA','HONDA','MITSUBISHI','FOTON','CHERY',
+  'CHANGAN','DFSK','MG','MAHINDRA','VOLKSWAGEN','WOLKSWAGEN','FORD','RENAULT','FIAT',
+  'BOSCH','NGK','DENSO','NOMIS','DHB','DNPS','CAT','SPEEDMATE','HI-Q','GM','AUTOVARD',
+  'SAKURA','MANN','MAHLE','WIX','FRAM','GATES','SKF','TIMKEN'];
+function demMarca(d){
+  var t=' '+demNombre(d)+' ',hit='';
+  MARCAS_REP.forEach(function(m){
+    if(hit)return;
+    /* palabra entera: "CAT" no puede salir de "CATALIZADOR" */
+    if(t.indexOf(' '+m+' ')>-1||t.indexOf(' '+m+',')>-1)hit=m;
+  });
+  return hit||'Sin marca';
+}
 /* "MOBIL 5W30 · 4/4" y "Mobil 5w30 4/4" son el mismo producto */
 function demNombre(d){
   return String(d||'').replace(/\s*·\s*/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
@@ -11240,13 +11349,17 @@ function demAgrupar(lineas,clave){
   return Object.keys(m).map(function(k){return m[k]})
     .sort(function(a,b){return b.n-a.n||b.monto-a.monto});
 }
-function demBarras(filas,vacio){
+function demBarras(filas,vacio,alTocar){
   if(!filas.length)return '<div class="vacio"><b>'+vacio+'</b></div>';
   var max=filas[0].n||1;
   return '<div class="demLista">'+filas.map(function(f){
-    return '<div class="demF">'+
+    var prom=Math.round(f.monto/(f.n||1));
+    return '<div class="demF'+(alTocar?' tocable':'')+'"'+
+      (alTocar?' onclick="'+alTocar+'(\''+encodeURIComponent(f.k).replace(/'/g,'%27')+
+        '\')" style="cursor:pointer"':'')+'>'+
       '<div class="demT"><b>'+esc(f.k)+'</b><span>'+f.n+' · '+S(Math.round(f.monto))+'</span></div>'+
       '<div class="demB"><i style="width:'+Math.max(3,Math.round(f.n/max*100))+'%"></i></div>'+
+      '<div class="demP">'+S(prom)+' promedio'+(alTocar?' · toca para ver el detalle':'')+'</div>'+
     '</div>';
   }).join('')+'</div>';
 }
@@ -11255,17 +11368,42 @@ function demBarras(filas,vacio){
    se vendió de más, quién paga y qué autos entran. Todas con la misma
    barra, para poder compararlas de un vistazo. */
 var RANKING='serv';
+/* Cada ranking tiene su propia segunda vuelta: la marca o el detalle,
+   el monto o las veces. Se recuerda la que eligió para cada uno. */
+var RK_SUBS={
+  serv:[['fam','Por familia'],['det','Por servicio']],
+  rep:[['marca','Por marca'],['det','Por producto']],
+  adic:[['todo','Todos'],['serv','Servicios'],['rep','Repuestos']],
+  cli:[['monto','Por monto'],['veces','Por visitas']],
+  veh:[['marca','Por marca'],['det','Marca y modelo']]
+};
+var RK_SUB={serv:'fam',rep:'marca',adic:'todo',cli:'monto',veh:'marca'};
 function setRanking(k){
-  RANKING=k;
+  RANKING=k;RK_MARCA='';RK_MARCA_V='';
   ['serv','rep','adic','cli','veh'].forEach(function(x){
     var b=document.getElementById('k'+x.charAt(0).toUpperCase()+x.slice(1));
     if(b)b.classList.toggle('on',x===k);
   });
+  pintarSubOp();
   pintarRankings();
+}
+function setRkSub(v){
+  RK_SUB[RANKING]=v; RK_MARCA='';RK_MARCA_V='';
+  pintarSubOp(); pintarRankings();
+}
+function pintarSubOp(){
+  var z=document.getElementById('rkSubOp');
+  if(!z)return;
+  var subs=RK_SUBS[RANKING]||[];
+  z.innerHTML=subs.map(function(x){
+    return '<button class="'+(RK_SUB[RANKING]===x[0]?'on':'')+'" '+
+      'onclick="setRkSub(\''+x[0]+'\')">'+x[1]+'</button>';
+  }).join('');
 }
 function abrirRankings(){
   cargarProdBD();
   cargarDemanda();
+  pintarSubOp();
   pintarRankings();
 }
 /* Agrupa órdenes por una clave y devuelve cuántas y cuánto. */
@@ -11279,12 +11417,14 @@ function rkAgrupar(lista,clave){
   return Object.keys(m).map(function(k){return m[k]})
     .sort(function(a,b){return b.monto-a.monto||b.n-a.n});
 }
-function rkBarras(filas,vacio,unidad,porMonto){
+function rkBarras(filas,vacio,unidad,porMonto,alTocar){
   if(!filas.length)return '<div class="vacio"><b>'+vacio+'</b></div>';
   var tope=(porMonto?filas[0].monto:filas[0].n)||1;
   return '<div class="rkMec">'+filas.map(function(f,i){
     var v=porMonto?f.monto:f.n;
-    return '<div class="rkFila">'+
+    return '<div class="rkFila"'+
+      (alTocar?' onclick="'+alTocar+'(\''+encodeURIComponent(f.k).replace(/'/g,'%27')+
+        '\')" style="cursor:pointer"':'')+'>'+
       '<div class="rkTop">'+
         '<span class="pos">'+(i+1)+'</span>'+
         '<b class="nom">'+esc(f.k)+'</b>'+
@@ -11292,7 +11432,8 @@ function rkBarras(filas,vacio,unidad,porMonto){
       '</div>'+
       '<div class="rkBar"><i style="width:'+Math.max(2,Math.round(v/tope*100))+'%"></i></div>'+
       '<div class="rkPie">'+f.n+' '+(f.n===1?unidad[0]:unidad[1])+
-        ' · '+S(Math.round(f.monto/(f.n||1)))+' cada '+unidad[0]+'</div>'+
+        ' · '+S(Math.round(f.monto/(f.n||1)))+' cada '+unidad[0]+
+        (alTocar?' · toca para ver el detalle':'')+'</div>'+
     '</div>';
   }).join('')+'</div>';
 }
@@ -11314,43 +11455,87 @@ function pintarRankings(){
         esc(DEM_ERR)+'</div>';
       return;
     }
-    var lin=DEM||[];
+    var lin=DEM||[],sub=RK_SUB[RANKING];
     if(RANKING==='serv'){
+      var sv=lin.filter(function(l){return l.tipo==='MO'});
       if(cab)cab.textContent='Servicios · '+rangoProd().t;
-      if(pie)pie.textContent='Lo que más se trabaja, por veces pedido';
-      z.innerHTML=demBarras(demAgrupar(lin.filter(function(l){return l.tipo==='MO'}),
-        demFamilia).slice(0,20),'Sin servicios en este periodo');
+      if(pie)pie.textContent=(sub==='fam'?'Agrupados por familia':'Uno por uno')+
+        ' · veces pedido y precio promedio';
+      z.innerHTML=demBarras(demAgrupar(sv,sub==='fam'?demFamilia:demNombre).slice(0,30),
+        'Sin servicios en este periodo');
     } else if(RANKING==='rep'){
+      var rp=lin.filter(function(l){return l.tipo!=='MO'});
       if(cab)cab.textContent='Repuestos · '+rangoProd().t;
-      if(pie)pie.textContent='Lo que más sale del almacén, por cantidad';
-      z.innerHTML=demBarras(demAgrupar(lin.filter(function(l){return l.tipo!=='MO'}),
-        demNombre).slice(0,25),'Sin repuestos en este periodo');
+      if(pie)pie.textContent=(sub==='marca'
+        ? 'Consolidados por marca · toca una para ver sus productos'
+        : 'Producto por producto')+' · cantidad y precio promedio';
+      if(sub==='marca'&&RK_MARCA){
+        var deEsa=rp.filter(function(l){return demMarca(l.descripcion)===RK_MARCA});
+        z.innerHTML='<button class="btn sec chico" style="margin-bottom:12px" '+
+            'onclick="rkVolverMarca()">← Todas las marcas</button>'+
+          '<div class="demTit">'+esc(RK_MARCA)+'</div>'+
+          demBarras(demAgrupar(deEsa,demNombre).slice(0,30),'Sin productos de esa marca');
+      } else if(sub==='marca'){
+        z.innerHTML=demBarras(demAgrupar(rp,demMarca).slice(0,30),
+          'Sin repuestos en este periodo','rkMarca');
+      } else {
+        z.innerHTML=demBarras(demAgrupar(rp,demNombre).slice(0,30),
+          'Sin repuestos en este periodo');
+      }
     } else {
-      /* adicional: lo que el taller agregó sobre una OT ya aprobada */
+      /* Adicional es lo que el taller agregó con la OT ya aprobada, y
+         mezcla servicios con repuestos: por eso salían aceites junto a
+         rectificados. Ahora se pueden separar. */
       var ad=lin.filter(function(l){ return !!l.adicional||l.agregado_por==='taller_adic' });
+      if(sub==='serv')ad=ad.filter(function(l){return l.tipo==='MO'});
+      if(sub==='rep')ad=ad.filter(function(l){return l.tipo!=='MO'});
       if(cab)cab.textContent='Adicionales · '+rangoProd().t;
-      if(pie)pie.textContent='Lo que el taller agregó después de aprobada la OT · '+
-        ad.length+' línea'+(ad.length===1?'':'s');
-      z.innerHTML=demBarras(demAgrupar(ad,demNombre).slice(0,25),
+      if(pie)pie.textContent='Lo que el taller agregó con la OT ya aprobada · '+
+        ad.length+' línea'+(ad.length===1?'':'s')+
+        (sub==='todo'?' · servicios y repuestos juntos':'');
+      z.innerHTML=demBarras(demAgrupar(ad,demNombre).slice(0,30),
         'Sin adicionales en este periodo');
     }
     return;
   }
 
-  var lista=prodLista();
+  var lista=prodLista(),sb2=RK_SUB[RANKING];
   if(PROD_CARGANDO){z.innerHTML='<div class="hint">Consultando la base…</div>';return}
   if(RANKING==='cli'){
+    var porMonto=(sb2==='monto');
     if(cab)cab.textContent='Clientes · '+rangoProd().t;
-    if(pie)pie.textContent='Por facturación, sobre órdenes cobradas';
-    z.innerHTML=rkBarras(rkAgrupar(lista,function(o){return o.cli}).slice(0,25),
-      'Sin órdenes cobradas en este periodo',['visita','visitas'],true);
+    if(pie)pie.textContent=porMonto?'Por facturación':'Por número de visitas';
+    var fc=rkAgrupar(lista,function(o){return o.cli});
+    if(!porMonto)fc.sort(function(a,b){return b.n-a.n||b.monto-a.monto});
+    z.innerHTML=rkBarras(fc.slice(0,30),'Sin órdenes cobradas en este periodo',
+      ['visita','visitas'],porMonto);
   } else {
-    if(cab)cab.textContent='Marca y modelo · '+rangoProd().t;
-    if(pie)pie.textContent='Qué autos entran al taller, por facturación';
-    z.innerHTML=rkBarras(rkAgrupar(lista,function(o){return o.veh}).slice(0,25),
-      'Sin órdenes cobradas en este periodo',['auto','autos'],true);
+    var porMarca=(sb2==='marca');
+    if(cab)cab.textContent=(porMarca?'Marca':'Marca y modelo')+' · '+rangoProd().t;
+    if(pie)pie.textContent=porMarca
+      ? 'Consolidado por marca · toca una para ver sus modelos'
+      : 'Cada modelo por separado';
+    if(porMarca&&RK_MARCA_V){
+      var deEsa2=lista.filter(function(o){return o.marca===RK_MARCA_V});
+      z.innerHTML='<button class="btn sec chico" style="margin-bottom:12px" '+
+          'onclick="rkVolverMarcaV()">← Todas las marcas</button>'+
+        '<div class="demTit">'+esc(RK_MARCA_V)+'</div>'+
+        rkBarras(rkAgrupar(deEsa2,function(o){return o.veh}).slice(0,30),
+          'Sin modelos de esa marca',['auto','autos'],true);
+    } else {
+      z.innerHTML=rkBarras(rkAgrupar(lista,
+        function(o){return porMarca?o.marca:o.veh}).slice(0,30),
+        'Sin órdenes cobradas en este periodo',['auto','autos'],true,
+        porMarca?'rkMarcaV':'');
+    }
   }
 }
+/* Entrar y salir del detalle de una marca. */
+var RK_MARCA='',RK_MARCA_V='';
+function rkMarca(k){ RK_MARCA=decodeURIComponent(k); pintarRankings() }
+function rkVolverMarca(){ RK_MARCA=''; pintarRankings() }
+function rkMarcaV(k){ RK_MARCA_V=decodeURIComponent(k); pintarRankings() }
+function rkVolverMarcaV(){ RK_MARCA_V=''; pintarRankings() }
 /* El detalle alimenta ahora el reporte de Rankings. */
 function pintarDemanda(){ pintarRankings(); }
 function pintarProd(){
@@ -11377,8 +11562,13 @@ function pintarProd(){
   pintarFlujo();
   pintarTicket();
 
-  /* ---- ranking de mecánicos ---- */
-  var rank=prodAgrupar(lista,function(o){return o.mec}).sort(function(a,b){return b.fac-a.fac});
+  /* ---- ranking de mecánicos ----
+     Las órdenes viejas guardaron el nombre suelto y las nuevas con
+     código, así que el mismo mecánico salía dos veces. Se agrupa por
+     la persona, no por el texto, y se muestra con su código. */
+  mecPrecalentar(lista);
+  var rank=prodAgrupar(lista,function(o){return mecPersona(o.mec)})
+    .sort(function(a,b){return b.fac-a.fac});
   $('tituloGraf').textContent='Ranking de mecánicos por facturación · '+rangoProd().t;
   if(!rank.length){
     $('grafMec').innerHTML='<div class="vacio"><b>Sin órdenes pagadas '+etq+'</b>'+
@@ -11390,7 +11580,10 @@ function pintarProd(){
     var tope=rank[0].fac||1;
     $('grafMec').innerHTML='<div class="rkMec">'+rank.map(function(t,i){
       var pct=Math.max(2,Math.round(t.fac/tope*100));
-      return '<div class="rkFila">'+
+      var ab=(MEC_ABIERTO===t.n);
+      return '<div class="rkFila'+(ab?' abierta':'')+'" '+
+        'onclick="mecTocar(\''+encodeURIComponent(t.n).replace(/'/g,'%27')+'\')" '+
+        'style="cursor:pointer">'+
         '<div class="rkTop">'+
           '<span class="pos">'+(i+1)+'</span>'+
           '<b class="nom">'+esc(t.n)+'</b>'+
@@ -11400,7 +11593,7 @@ function pintarProd(){
         '<div class="rkPie">'+t.autos+' auto'+(t.autos===1?'':'s')+
           ' · '+S(Math.round(t.fac/(t.autos||1)))+' por auto'+
           (t.conH?' · '+tiempo(Math.round(t.horas/t.conH*60))+' en taller':'')+
-        '</div></div>';
+        '</div>'+mecDetalle(t.n)+'</div>';
     }).join('')+'</div>';
   }
 
@@ -11431,7 +11624,11 @@ function pintarProd(){
 
   /* ---- detalle por mecánico: día, mes y año a la vez ---- */
   var dia={},mes={},anio={};
-  function acum(m,o){ m[o.mec]=m[o.mec]||{autos:0,fac:0}; m[o.mec].autos++; m[o.mec].fac+=o.monto }
+  mecPrecalentar(PROD_ORD||[]);
+  function acum(m,o){
+    var k=mecPersona(o.mec);
+    m[k]=m[k]||{autos:0,fac:0}; m[k].autos++; m[k].fac+=o.monto;
+  }
   (PROD_ORD||[]).forEach(function(o){
     if(prodEnPeriodo(o.pag,'anio')){
       acum(anio,o);
@@ -11439,24 +11636,25 @@ function pintarProd(){
         if(prodEnPeriodo(o.pag,'dia'))acum(dia,o); }
     }
   });
-  var nombres=Object.keys(anio).sort(function(a,b){return anio[b].fac-anio[a].fac});
+  MEC_DIA=dia;MEC_MES=mes;MEC_ANIO=anio;
+}
+/* El día, el mes y el año de un mecánico salían en una tabla aparte
+   que repetía los nombres. Ahora se abren tocando su fila. */
+var MEC_DIA={},MEC_MES={},MEC_ANIO={},MEC_ABIERTO='';
+function mecTocar(k){
+  k=decodeURIComponent(k);
+  MEC_ABIERTO=(MEC_ABIERTO===k)?'':k;
+  pintarProd();
+}
+function mecDetalle(k){
+  if(MEC_ABIERTO!==k)return '';
   var cero={autos:0,fac:0};
-  $('tablaTec').innerHTML=
-   '<tr><th>Mecánico</th><th class="der">Autos hoy</th><th class="der">Facturado hoy</th>'+
-   '<th class="der">Autos mes</th><th class="der">Facturado mes</th>'+
-   '<th class="der">Autos año</th><th class="der">Facturado año</th></tr>'+
-   (nombres.length?nombres.map(function(n){
-     var d=dia[n]||cero,m=mes[n]||cero,a=anio[n]||cero;
-     return '<tr><td data-l="Mecánico">'+n+'</td>'+
-       '<td class="num der" data-l="Autos hoy">'+d.autos+'</td>'+
-       '<td class="num der" data-l="Facturado hoy">'+S(Math.round(d.fac))+'</td>'+
-       '<td class="num der" data-l="Autos mes">'+m.autos+'</td>'+
-       '<td class="num der" data-l="Facturado mes">'+S(Math.round(m.fac))+'</td>'+
-       '<td class="num der" data-l="Autos año">'+a.autos+'</td>'+
-       '<td class="num der" data-l="Facturado año"><b>'+S(Math.round(a.fac))+'</b></td></tr>';
-   }).join('')
-   :'<tr><td colspan="7" class="vacio"><b>Todavía no hay órdenes pagadas este año</b>'+
-    'La reportería se llena sola a medida que caja vaya cobrando.</td></tr>');
+  var d=MEC_DIA[k]||cero,m=MEC_MES[k]||cero,a=MEC_ANIO[k]||cero;
+  function col(t,v){
+    return '<div class="mcCol"><span>'+t+'</span><b>'+v.autos+'</b>'+
+      '<i>'+S(Math.round(v.fac))+'</i></div>';
+  }
+  return '<div class="mcDet">'+col('Hoy',d)+col('Mes',m)+col('Año',a)+'</div>';
 }
 
 function linkCliente(fase){
@@ -13850,7 +14048,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=221;
+var APP_VER=224;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
