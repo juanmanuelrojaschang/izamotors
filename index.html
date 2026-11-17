@@ -1,4 +1,4 @@
-<!--IZAV:216-->
+<!--IZAV:219-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1817,7 +1817,7 @@ tr.sel td{background:var(--rojo-cl)}
 <section class="vista" id="v-productividad">
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-      <h3 style="margin:0" id="prodTitulo">Productividad</h3>
+      <h3 style="margin:0" id="prodTitulo">Flujo en taller</h3>
       <div class="modo" style="margin:0 0 0 auto;max-width:380px">
         <button id="mDia" onclick="setPeriodo('dia')">Hoy</button>
         <button id="mSemPrev" onclick="setPeriodo('semprev')">Semana pasada</button>
@@ -1833,7 +1833,7 @@ tr.sel td{background:var(--rojo-cl)}
 
   <div class="card">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-      <h3 style="margin:0">Ingresados vs entregados</h3>
+      <h3 style="margin:0">Ingresados vs pagados</h3>
       <div style="margin-left:auto;min-width:150px">
         <select id="flujoGran" onchange="pintarFlujo()">
           <option value="auto" selected>Automático</option>
@@ -2107,7 +2107,7 @@ var MODULOS={
     {v:'recepcion',t:'Pendientes del taller',tab:'pendientes'},
     {v:'asesor',t:'Asesor'},{v:'caja',t:'Caja'}]},
   reporteria:{t:'Reportería',vistas:[
-    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Productividad'},
+    {v:'taller',t:'Taller'},{v:'tienda',t:'Ventanilla'},{v:'productividad',t:'Flujo en taller'},
     {v:'bitacora',t:'Bitácora y transacciones'},{v:'hoja',t:'Hoja de servicios'}]},
   configuracion:{t:'Configuración',vistas:[
     {v:'usuarios',t:'Usuarios y permisos'},
@@ -10753,13 +10753,21 @@ function prodFila(o){
      roja solo contaba a quien se acordó de tocar "Entregado", y el
      gráfico mostraba un hueco de autos que no están en el taller. */
   if(!ent&&o.ot_pagada)ent=new Date(o.ot_pagada);
+  var anulada=(est==='ANULADO');
+  /* "Ocupa el taller" NO es lo mismo que "el estado no dice ENTREGADO".
+     Los dos estados son independientes: cobrar pone estado_ot=PAGADA
+     pero no toca estado_taller, que lo avanza alguien a mano cuando el
+     cliente se lleva el auto. Una OT cobrada cuyo estado de taller
+     nadie movió es un auto que ya se fue. Contarlas como ocupadas es
+     lo que inflaba el número a 206. */
   return {sede:o.sede_id,
           ing:o.ingreso?new Date(o.ingreso):null,
           pag:o.ot_pagada?new Date(o.ot_pagada):null,
           ent:ent,
           entReal:!!o.entregado_el,
-          anulada:(est==='ANULADO'),
-          abierta:(est!=='ENTREGADO'&&est!=='ANULADO'),
+          anulada:anulada,
+          abierta:(est!=='ENTREGADO'&&!anulada&&!o.ot_pagada),
+          pagSinEntrega:(!!o.ot_pagada&&est!=='ENTREGADO'&&!anulada),
           estado:est,
           monto:Number(o.total_taller||0),
           mec:(o.mecanico_nombre||'Sin asignar')};
@@ -10943,7 +10951,11 @@ function pintarFlujo(){
   var g=flujoGranularidad(),B=flujoDatos(g),G=GRANS[g];
   var tIng=0,tEnt=0,tMonto=0,tPag=0;
   B.forEach(function(b){tIng+=b.ing;tEnt+=b.ent;tMonto+=b.monto;tPag+=b.pag});
-  var max=Math.max(1,Math.max.apply(null,B.map(function(b){return Math.max(b.ing,b.ent)})));
+  /* Se comparan ingresos contra COBROS, no contra entregas. El cobro
+     es un hecho de caja que nadie puede olvidar; la entrega es un clic
+     que casi siempre se olvida. Día a día las dos barras tienen que ir
+     parejas, y si no, ahí hay algo que mirar. */
+  var max=Math.max(1,Math.max.apply(null,B.map(function(b){return Math.max(b.ing,b.pag)})));
 
   /* El hueco entre las dos barras NO son los autos que están en el
      taller: una orden abierta hace un mes sigue abierta hoy y no
@@ -10955,45 +10967,45 @@ function pintarFlujo(){
   var abiertas=(PROD_ORD||[]).filter(function(o){return o.abierta});
   var enTaller=abiertas.filter(function(o){return o.ing&&o.ing>=corte}).length;
   var varadas=abiertas.length-enTaller;
-  var sinMarcar=(PROD_ORD||[]).filter(function(o){
-    return !o.abierta&&!o.anulada&&!o.entReal&&o.pag;
-  }).length;
 
   var k=document.getElementById('flujoKpis');
   if(k)k.innerHTML=
-    kpi(tIng+' / '+tEnt,'Ingres. / entreg.','tinta')+
+    kpi(tIng+' / '+tPag,'Ingres. / pagados','tinta')+
     kpi(enTaller,'En taller ahora','rojo')+
     kpi(S(Math.round(tMonto)),'Facturado')+
     kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket prom.','tinta');
 
   var nota=document.getElementById('flujoNota');
+  var desfase=tIng-tPag;
   if(nota)nota.innerHTML=
-    'La diferencia entre las barras no son autos varados: una orden que '+
-    'entró antes de esta ventana se entrega dentro de ella, y al revés. '+
-    'En el taller hay <b>'+enTaller+'</b> auto'+(enTaller===1?'':'s')+
-    ' (órdenes abiertas que entraron en los últimos '+DIAS_EN_TALLER+' días).'+
+    'Un auto que entra hoy suele pagarse hoy o mañana, así que las dos '+
+    'barras van parejas. En esta ventana entraron <b>'+tIng+'</b> y se '+
+    'cobraron <b>'+tPag+'</b>'+
+    (Math.abs(desfase)<=Math.max(5,tIng*0.1)
+      ? ': el taller está al día.'
+      : (desfase>0
+          ? ': <b style="color:var(--rojo)">'+desfase+' más de los que salieron</b>. '+
+            'Parte es el corte del periodo —los de ayer se cobran hoy— y parte, trabajo sin cerrar.'
+          : ': se cobraron '+Math.abs(desfase)+' más de los que entraron, '+
+            'porque venían de días anteriores.'))+
+    '<br><b>'+enTaller+'</b> auto'+(enTaller===1?'':'s')+
+    ' ingresaron en los últimos '+DIAS_EN_TALLER+' días y siguen en el taller.'+
     (varadas
-      ? '<br><b style="color:var(--rojo)">'+varadas+' órdenes llevan más de '+
-        DIAS_EN_TALLER+' días abiertas.</b> Con un promedio de '+
-        '<b>'+prodTiempo((PROD_ORD||[]).filter(function(o){return o.pag}))+'</b> '+
-        'en taller, casi todas ya se entregaron y nadie las cerró: son papeles, no autos.'
-      : '')+
-    (sinMarcar
-      ? '<br><b>'+sinMarcar+'</b> órdenes se cobraron sin que nadie tocara '+
-        '«Entregado»: cuentan como entregadas el día del cobro.'
+      ? ' <b style="color:var(--rojo)">Otros '+varadas+' llevan más de '+DIAS_EN_TALLER+
+        ' días adentro</b> — o el auto está parado, o la orden quedó sin cerrar.'
       : '');
 
   z.innerHTML=
     '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:8px">'+
       '<span><i style="display:inline-block;width:11px;height:11px;background:var(--tinta);border-radius:2px"></i> Ingresados</span>'+
-      '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Entregados</span>'+
+      '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Pagados</span>'+
     '</div>'+
     '<div class="gb flujo" style="height:190px">'+B.map(function(b){
       return '<div class="col">'+
-        '<div class="vv">'+(b.ing||b.ent?b.ing+'/'+b.ent:'')+'</div>'+
+        '<div class="vv">'+(b.ing||b.pag?b.ing+'/'+b.pag:'')+'</div>'+
         '<div class="par">'+
           '<div class="bar ing" style="height:'+Math.round(b.ing/max*100)+'%"></div>'+
-          '<div class="bar ent" style="height:'+Math.round(b.ent/max*100)+'%"></div>'+
+          '<div class="bar ent" style="height:'+Math.round(b.pag/max*100)+'%"></div>'+
         '</div>'+
         '<div class="ll">'+b.lab+'</div></div>';
     }).join('')+'</div>'+
@@ -11002,12 +11014,16 @@ function pintarFlujo(){
 
   var tb=document.getElementById('flujoTabla');
   if(tb)tb.innerHTML='<div style="overflow-x:auto"><table class="lista">'+
-    '<tr><th>Periodo</th><th class="der">Ingresados</th><th class="der">Entregados</th>'+
-    '<th class="der">Facturado</th><th class="der">Ticket</th></tr>'+
+    '<tr><th>Periodo</th><th class="der">Ingresados</th><th class="der">Pagados</th>'+
+    '<th class="der">Dif.</th><th class="der">Facturado</th><th class="der">Ticket</th></tr>'+
     B.slice().reverse().map(function(b){
+      var dif=b.pag-b.ing;
       return '<tr><td data-l="Periodo">'+b.lab+'</td>'+
         '<td class="num der" data-l="Ingresados">'+b.ing+'</td>'+
-        '<td class="num der" data-l="Entregados">'+b.ent+'</td>'+
+        '<td class="num der" data-l="Pagados">'+b.pag+'</td>'+
+        '<td class="num der" data-l="Dif." style="color:'+
+          (Math.abs(dif)>Math.max(3,b.ing*0.3)?'var(--rojo)':'var(--mudo)')+'">'+
+          (dif>0?'+':'')+dif+'</td>'+
         '<td class="num der" data-l="Facturado">'+S(Math.round(b.monto))+'</td>'+
         '<td class="num der" data-l="Ticket">'+S(b.pag?Math.round(b.monto/b.pag):0)+'</td></tr>';
     }).join('')+'</table></div>';
@@ -11155,7 +11171,7 @@ function pintarDemanda(){
 function pintarProd(){
   if(!$('kpisProd'))return;
   var tit=$('prodTitulo');
-  if(tit)tit.textContent='Productividad · '+prodSedeNombre();
+  if(tit)tit.textContent='Flujo en taller · '+prodSedeNombre();
   var av=$('prodAviso');
   if(av)av.innerHTML = (PROD_ERR
     ? '<div class="aviso rojo" style="margin-top:12px">No se pudo traer la información: '+PROD_ERR+'</div>'
@@ -13658,7 +13674,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=216;
+var APP_VER=219;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
