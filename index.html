@@ -1,4 +1,4 @@
-<!--IZAV:214-->
+<!--IZAV:215-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1847,6 +1847,7 @@ tr.sel td{background:var(--rojo-cl)}
     </div>
     <div class="kpiFila" id="flujoKpis" style="margin-bottom:12px"></div>
     <div id="grafFlujo"></div>
+    <div class="hint" id="flujoNota" style="margin-top:8px"></div>
     <div id="flujoTabla" style="margin-top:10px"></div>
   </div>
 
@@ -10745,11 +10746,21 @@ function prodFiltro(){
     '<div style="flex:0 0 auto"><button class="btn chico sec" onclick="cargarProdBD()">Actualizar</button></div>');
 }
 function prodFila(o){
+  var est=o.estado_taller||'';
+  var ent=o.entregado_el?new Date(o.entregado_el):null;
+  /* Un auto cobrado ya salió del taller, lo hayan marcado o no: si
+     falta la fecha de entrega vale la del cobro. Sin esto, la barra
+     roja solo contaba a quien se acordó de tocar "Entregado", y el
+     gráfico mostraba un hueco de autos que no están en el taller. */
+  if(!ent&&o.ot_pagada)ent=new Date(o.ot_pagada);
   return {sede:o.sede_id,
           ing:o.ingreso?new Date(o.ingreso):null,
           pag:o.ot_pagada?new Date(o.ot_pagada):null,
-          ent:o.entregado_el?new Date(o.entregado_el):null,
-          estado:o.estado_taller||'',
+          ent:ent,
+          entReal:!!o.entregado_el,
+          anulada:(est==='ANULADO'),
+          abierta:(est!=='ENTREGADO'&&est!=='ANULADO'),
+          estado:est,
           monto:Number(o.total_taller||0),
           mec:(o.mecanico_nombre||'Sin asignar')};
 }
@@ -10912,6 +10923,8 @@ function flujoDatos(g){
     buckets.push({ini:ini,fin:G.sig(ini),lab:G.lab(ini),ing:0,ent:0,monto:0,pag:0});
   }
   (PROD_ORD||[]).forEach(function(o){
+    /* Una orden anulada no es un auto que ingresó. */
+    if(o.anulada)return;
     buckets.forEach(function(b){
       if(o.ing&&o.ing>=b.ini&&o.ing<b.fin)b.ing++;
       if(o.ent&&o.ent>=b.ini&&o.ent<b.fin)b.ent++;
@@ -10928,11 +10941,31 @@ function pintarFlujo(){
   B.forEach(function(b){tIng+=b.ing;tEnt+=b.ent;tMonto+=b.monto;tPag+=b.pag});
   var max=Math.max(1,Math.max.apply(null,B.map(function(b){return Math.max(b.ing,b.ent)})));
 
+  /* El hueco entre las dos barras NO son los autos que están en el
+     taller: una orden abierta hace un mes sigue abierta hoy y no
+     aparece en ninguna barra de esta ventana. El número que se puede
+     mostrar es este, y se cuenta aparte. */
+  var enTaller=(PROD_ORD||[]).filter(function(o){return o.abierta}).length;
+  var sinMarcar=(PROD_ORD||[]).filter(function(o){
+    return !o.abierta&&!o.anulada&&!o.entReal&&o.pag;
+  }).length;
+
   var k=document.getElementById('flujoKpis');
   if(k)k.innerHTML=
     kpi(tIng+' / '+tEnt,'Ingres. / entreg.','tinta')+
+    kpi(enTaller,'En taller ahora','rojo')+
     kpi(S(Math.round(tMonto)),'Facturado')+
     kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket prom.','tinta');
+
+  var nota=document.getElementById('flujoNota');
+  if(nota)nota.innerHTML=
+    'La diferencia entre las barras no son autos varados: una orden que '+
+    'entró antes de esta ventana se entrega dentro de ella, y al revés. '+
+    'Lo que hay en el taller hoy es <b>'+enTaller+'</b>.'+
+    (sinMarcar
+      ? '<br><b>'+sinMarcar+'</b> órdenes se cobraron sin que nadie tocara '+
+        '«Entregado»: cuentan como entregadas el día del cobro.'
+      : '');
 
   z.innerHTML=
     '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:8px">'+
@@ -13609,7 +13642,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=214;
+var APP_VER=215;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
