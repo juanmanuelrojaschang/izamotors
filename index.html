@@ -1,4 +1,4 @@
-<!--IZAV:233-->
+<!--IZAV:234-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4300,7 +4300,8 @@ var FAVS_SERV=[
   {t:'Lavado de auto',p:15,f:'Lavado'},
   {t:'Rectificado de discos',p:40,f:'Frenos'},
   {t:'Foco',p:15,f:FAM_OTROS},
-  {t:'RC',p:0,f:FAM_OTROS}
+  {t:'RC',p:0,f:FAM_OTROS},
+  {t:'Mano de obra',p:0,f:FAM_OTROS}
 ];
 var FAVS_REP=[
   {t:'Filtro de aire',p:25},
@@ -10245,6 +10246,9 @@ function fichaOrden(mod,o,todos,campos,criterio,acciones){
    teléfono cuando alguien llega por primera vez. Si no aparece nada,
    se sigue escribiendo normal. */
 var PAD_T=null,PAD_CAMPO='',PAD_RES=[];
+/* el documento se busca al dejar de escribir, y solo contesta la
+   última búsqueda: si no, un RUC de 11 dígitos dispara cuatro */
+var PAD_DOC_T=null,PAD_DOC_N=0;
 function sinTildes(s){
   s=(s||'').toUpperCase();
   try{ s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') }catch(e){}
@@ -10252,14 +10256,16 @@ function sinTildes(s){
 }
 /* Por documento: coincidencia exacta, completa todo de una */
 function padronPorDoc(doc,cb){
-  if(!sb||!doc)return;
+  if(!sb||!doc)return cb(null,'sin conexión');
   var ors=[];
   docsEquivalentes(doc).forEach(function(d){
     ors.push('num_doc.eq.'+d);
     ors.push('dni_derivado.eq.'+d);
   });
   sb.from('padron_clientes').select('*').or(ors.join(',')).limit(1)
-    .then(function(r){ cb((r.data||[])[0]||null) },function(){ cb(null) });
+    .then(function(r){
+      cb((r.data||[])[0]||null, r.error?(r.error.message||'falló la consulta'):'');
+    },function(e){ cb(null,(e&&e.message)||'falló la consulta') });
 }
 function padronDoc(el){
   var crudo=(el.value||'').replace(/\D/g,'');
@@ -10270,12 +10276,26 @@ function padronDoc(el){
   limitarDoc(el);
   toggleTipoDoc('nv');
   var d=(el.value||'').replace(/\D/g,'');
+  clearTimeout(PAD_DOC_T);
   if(d.length<8){padronCerrar();return}
-  padronPorDoc(d,function(p){
-    if(!p)return;
-    padronAplicar(p,true);
-    conex('Datos traídos del padrón · revísalos antes de guardar');
-  });
+  /* el documento ya está entero: 8 dígitos un DNI, 11 un RUC */
+  var completo=(tp&&tp.value==='RUC')?(d.length===11):(d.length===8);
+  var mio=++PAD_DOC_N;
+  PAD_DOC_T=setTimeout(function(){
+    padronPorDoc(d,function(p,err){
+      if(mio!==PAD_DOC_N)return;          /* siguieron escribiendo */
+      if(p){
+        padronAplicar(p,true);
+        conex('Datos traídos del padrón · revísalos antes de guardar');
+        return;
+      }
+      /* Buscar y no encontrar no es lo mismo que no buscar: el padrón
+         es una lista fija, no RENIEC, y hay que decirlo. */
+      if(!completo)return;
+      conex(err?'No se pudo consultar el padrón · escribe el nombre'
+              :'Ese documento no está en el padrón · escribe el nombre');
+    });
+  },350);
 }
 /* Por nombre o apellido: sugerencias a partir de dos letras */
 function padronTeclea(campo,el){
@@ -14230,7 +14250,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=233;
+var APP_VER=234;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
