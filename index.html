@@ -1,4 +1,4 @@
-<!--IZAV:229-->
+<!--IZAV:232-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -769,6 +769,9 @@ body.sinScroll{overflow:hidden}
 .gb.flujo .col .par{display:flex;gap:2px;align-items:flex-end;justify-content:center;
   width:100%;height:100%}
 .gb.flujo .col .par .bar{max-width:13px;min-height:2px}
+.gb.flujo.ancho .col .par{gap:4px}
+.gb.flujo.ancho .col .par .bar{max-width:20px}
+.gb.flujo.ancho .col .vv{font-size:10.5px}
 .gb.flujo .col .par .bar.ing{background:var(--tinta)}
 .gb.flujo .col .par .bar.ent{background:var(--rojo)}
 .gb.flujo .col .vv{font-size:9.5px}
@@ -4287,14 +4290,17 @@ function invMontar(contId,onAdd,inputId){
    con su precio; el precio no va escrito en el botón —el mostrador no
    lo necesita a la vista— pero es el que viaja a la boleta.
    Tocarlo otra vez sube la cantidad en vez de repetir la línea. */
+/* Lo que no encaja en ninguna familia del catálogo es mano de obra
+   suelta: el cajón se llama por su nombre en vez de "otros". */
+var FAM_OTROS='Mano de obra';
 /* Cada favorito nace en la familia que le toca, para que el ranking
-   lo sume donde corresponde y no en "Otros servicios". */
+   lo sume donde corresponde y no en el cajón de mano de obra. */
 var FAVS_SERV=[
   {t:'Frenos',p:60,f:'Frenos'},
   {t:'Lavado de auto',p:15,f:'Lavado'},
   {t:'Rectificado de discos',p:40,f:'Frenos'},
-  {t:'Foco',p:15,f:'Otros servicios'},
-  {t:'RC',p:0,f:'Otros servicios'}
+  {t:'Foco',p:15,f:FAM_OTROS},
+  {t:'RC',p:0,f:FAM_OTROS}
 ];
 var FAVS_REP=[
   {t:'Filtro de aire',p:25},
@@ -4361,7 +4367,7 @@ function favAgregar(cual,i){
   }
   if(cual==='serv'){
     LINEAS_SERV.push({codigo:cod,codigo2:'',desc:f.t,
-      precio:f.p,precio_base:f.p,cant:1,categoria:f.f||'Otros servicios'});
+      precio:f.p,precio_base:f.p,cant:1,categoria:f.f||FAM_OTROS});
     SEL_SERV[cod]=true;
   }else{
     /* los repuestos favoritos son genéricos: sin marca, que es donde
@@ -11187,25 +11193,33 @@ function pintarFlujo(){
     kpi(S(tPag?Math.round(tMonto/tPag):0),'Ticket prom.','tinta');
 
   FLUJO_B=B;
+  var muchos=B.length>7;
 
   z.innerHTML=
     '<div style="display:flex;gap:16px;font-size:11.5px;color:var(--mudo);margin-bottom:8px">'+
       '<span><i style="display:inline-block;width:11px;height:11px;background:var(--tinta);border-radius:2px"></i> Ingresados</span>'+
       '<span><i style="display:inline-block;width:11px;height:11px;background:var(--rojo);border-radius:2px"></i> Pagados</span>'+
     '</div>'+
-    '<div class="gb flujo" style="height:190px">'+B.map(function(b,i){
+    /* dos barras y un rótulo "232/280" por periodo no entran en un
+       celular: a partir de 7 se ensancha y se desliza de lado. */
+    '<div class="gbScroll">'+
+    '<div class="gb flujo'+(muchos?' ancho':'')+'" style="height:190px'+
+      (muchos?';width:'+(B.length*FLUJO_ANCHO)+'px':'')+'">'+B.map(function(b,i){
       return '<div class="col'+(i===FLUJO_SEL?' sel':'')+'" '+
-        'onclick="flujoTocar('+i+')" style="cursor:pointer">'+
+        'onclick="flujoTocar('+i+')" style="cursor:pointer'+
+        (muchos?';flex:0 0 '+(FLUJO_ANCHO-6)+'px':'')+'">'+
         '<div class="vv">'+(b.ing||b.pag?b.ing+'/'+b.pag:'')+'</div>'+
         '<div class="par">'+
           '<div class="bar ing" style="height:'+Math.round(b.ing/max*100)+'%"></div>'+
           '<div class="bar ent" style="height:'+Math.round(b.pag/max*100)+'%"></div>'+
         '</div>'+
         '<div class="ll">'+b.lab+'</div></div>';
-    }).join('')+'</div>'+
+    }).join('')+'</div></div>'+
     '<div class="hint">'+G.t+' · últimos '+B.length+' periodos'+
-      ((document.getElementById('flujoGran')||{}).value==='auto'?' · ajustado a la pantalla':'')+'</div>';
+      ((document.getElementById('flujoGran')||{}).value==='auto'?' · ajustado a la pantalla':'')+
+      (muchos?' · <b>desliza de lado</b> para ver todo':'')+'</div>';
 
+  if(muchos)gbAlFinal('grafFlujo');
   /* el detalle que estaba siempre a la vista ahora sale al tocar una barra */
   flujoDetalle(FLUJO_SEL);
 }
@@ -11213,6 +11227,17 @@ function pintarFlujo(){
    La tabla completa debajo del gráfico era ruido: siete filas que nadie
    mira. Se toca la barra del día y se abre solo ese. */
 var FLUJO_B=[],FLUJO_SEL=-1;
+/* lo que mide cada periodo cuando hay que deslizar: dos barras,
+   el rótulo "232/280" arriba y la fecha abajo */
+var FLUJO_ANCHO=58;
+/* Un gráfico que se desliza arranca en lo último, que es lo que se
+   mira; lo viejo queda a la izquierda para el que lo busque. */
+function gbAlFinal(id){
+  var c=document.getElementById(id);
+  if(!c)return;
+  var z=c.querySelector('.gbScroll');
+  if(z)z.scrollLeft=z.scrollWidth;
+}
 function flujoTocar(i){
   FLUJO_SEL=(FLUJO_SEL===i)?-1:i;
   var cols=document.querySelectorAll('#grafFlujo .col');
@@ -11274,6 +11299,7 @@ function pintarEvo(){
     (PERIODO==='dia'?'por hora, de 8 a.m. a 6 p.m.':
      PERIODO==='anio'?'por mes del año':'por día · '+prodRangoTexto())+
     (muchos?' · <b>desliza de lado</b> para ver todo':'')+'</div>';
+  if(muchos)gbAlFinal('grafEvo');
   $('tituloEvo').textContent='Evolución · '+rangoProd().t;
 }
 
@@ -11349,24 +11375,35 @@ function famCatalogo(){
 }
 /* La familia que el jefe de taller eligió viaja al inicio de la
    descripción ("Gas GLP / GNV · Certificación anual GNV"). */
-function famDelTexto(d){
+function famPartes(d){
   var t=String(d||'').trim(),i=t.indexOf('·');
-  if(i<=0)return '';
-  var pre=t.slice(0,i).trim();
-  if(!pre)return '';
+  if(i<=0)return {pre:'',resto:t,todo:t};
+  return {pre:t.slice(0,i).trim(),resto:t.slice(i+1).trim(),todo:t};
+}
+/* "Frecuentes" es un atajo del combo para no buscar, no una familia:
+   el servicio que está ahí tiene la suya propia en el catálogo. */
+function famEsAtajo(pre){ return /frecuent/i.test(pre||'') }
+function famDelTexto(d){
+  var x=famPartes(d);
+  if(!x.pre||!x.resto)return '';
+  if(famEsAtajo(x.pre))return '';
   /* si es una familia del catálogo, no hay nada que adivinar */
-  var cat=famCatalogo()[mmLlano(pre)];
+  var cat=famCatalogo()[mmLlano(x.pre)];
   if(cat)return famRotulo(cat);
   /* sin catálogo a mano: un código corto o algo con números no es familia */
-  if(pre.length<=3||/[0-9]/.test(pre))return '';
-  if(pre.split(/\s+/).length>4)return '';
-  return famRotulo(pre);
+  if(x.pre.length<=3||/[0-9]/.test(x.pre))return '';
+  if(x.pre.split(/\s+/).length>4)return '';
+  return famRotulo(x.pre);
 }
-/* La descripción sin la familia de adelante, para buscarla en el catálogo. */
+/* ¿lo de adelante sobra en el nombre del servicio? */
+function famSobra(x){
+  if(!x.pre||!x.resto)return false;
+  return famEsAtajo(x.pre)||x.pre.length<=3||!!famDelTexto(x.todo);
+}
+/* La descripción sin la familia ni el atajo de adelante. */
 function famSinPrefijo(d){
-  var t=String(d||'').trim(),i=t.indexOf('·');
-  if(i<=0)return t;
-  return famDelTexto(d)?t.slice(i+1).trim():t;
+  var x=famPartes(d);
+  return famSobra(x)?x.resto:x.todo;
 }
 function demFamilia(d){
   if(esDelCombo3(d))return 'Adicionales';
@@ -11378,7 +11415,7 @@ function demFamilia(d){
   if(ex)return famRotulo(ex);
   var t=hojaLlano(d);
   for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
-  return 'Otros servicios';
+  return FAM_OTROS;
 }
 /* La marca del repuesto, para poder consolidar: todos los AVA juntos,
    todos los LIQUI MOLY juntos. Primero se busca en el catálogo (que
@@ -11428,17 +11465,10 @@ function demNombre(d){
    el cliente lo entienda. En el ranking eso partía el mismo servicio
    en varias filas: acá se queda solo el servicio. */
 function demServicio(d){
-  var t=String(d||'').trim();
-  var i=t.indexOf('·');
-  if(i>0){
-    var pre=t.slice(0,i).trim(),res=t.slice(i+1).trim();
-    /* Se quita lo de adelante solo si es una familia del catálogo
-       ("Gas GLP / GNV") o un código corto ("AF"). Si es parte del
-       nombre del producto ("AVA MAX 50/50 · litro") no se toca. */
-    var esFam=!!famDelTexto(t), esCod=(pre.length<=3);
-    if(res&&pre&&(esFam||esCod))t=res;
-  }
-  return demNombre(t);
+  /* Se quita lo de adelante si es una familia del catálogo
+     ("Gas GLP / GNV"), el atajo "Frecuentes" o un código corto
+     ("AF"). Si es parte del nombre ("AVA MAX 50/50 · litro") no. */
+  return demNombre(famSinPrefijo(d));
 }
 function cargarDemanda(){
   var r=rangoProd(), sid=prodSedeId();
@@ -11476,7 +11506,7 @@ function demAgrupar(lineas,clave){
   return Object.keys(m).map(function(k){return m[k]})
     .sort(function(a,b){
       /* los cajones de sastre van al final, por más grandes que sean */
-      var cajon={'Sin marca':1,'Otros servicios':1};
+      var cajon={'Sin marca':1};cajon[FAM_OTROS]=1;
       var sa=cajon[a.k]?1:0, sb=cajon[b.k]?1:0;
       return sa-sb||b.n-a.n||b.monto-a.monto;
     });
@@ -14181,7 +14211,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=229;
+var APP_VER=232;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
