@@ -1,4 +1,4 @@
-<!--IZAV:228-->
+<!--IZAV:229-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2967,6 +2967,10 @@ function cargarCatalogoV2(){
         if(r){c.value=r;srvPintarLista(r)}
       }else{srvPintarFamilias();srvPintarLista(c.value)}
     }
+    /* si el ranking ya estaba en pantalla, ahora sí sabe las familias */
+    FAM_CAT=null;
+    var vr=document.getElementById('v-rankings');
+    if(vr&&vr.classList.contains('on')){try{pintarRankings()}catch(e){}}
   },function(r){conex('No se pudo cargar el catálogo'+((r&&r.message)?': '+r.message:''),true)});
 }
 var LINEAS_SERV=[];
@@ -11321,21 +11325,57 @@ var FAM_SERV=[
 ];
 /* El combo 3 dejó de ser un ranking aparte: sus servicios son una
    familia más y sus aditivos caen en repuestos por ser tipo REP. */
+/* Las familias de verdad son las del catálogo ("Gas GLP / GNV",
+   "Mantenimiento mayor"). Se arman una vez y se refrescan solas
+   cuando el catálogo cambia de tamaño. */
+var FAM_CAT=null,FAM_CAT_N=-1,FAM_SRV_IDX=null;
+/* "MANTENIMIENTO" viene a gritos del Excel y hay que bajarlo, pero
+   "Gas GLP / GNV" ya está bien escrito y famBonita lo arruinaría. */
+function famRotulo(f){
+  var t=String(f||'').trim();
+  return (t&&t===t.toUpperCase())?famBonita(t):t;
+}
+function famCatalogo(){
+  if(FAM_CAT&&FAM_CAT_N===SERVICIOS.length)return FAM_CAT;
+  FAM_CAT={};FAM_SRV_IDX={};FAM_CAT_N=SERVICIOS.length;
+  SERVICIOS.forEach(function(s){
+    var f=String(s.categoria||'').trim();
+    if(f)FAM_CAT[mmLlano(f)]=f;
+    /* la descripción sola también sabe a qué familia pertenece */
+    var d=mmLlano(s.descripcion);
+    if(d&&f&&!FAM_SRV_IDX[d])FAM_SRV_IDX[d]=f;
+  });
+  return FAM_CAT;
+}
 /* La familia que el jefe de taller eligió viaja al inicio de la
-   descripción ("Mantenimiento · Afinamiento auto"). Si está, esa es
-   la buena: vale más que adivinarla con palabras sueltas. */
+   descripción ("Gas GLP / GNV · Certificación anual GNV"). */
 function famDelTexto(d){
   var t=String(d||'').trim(),i=t.indexOf('·');
   if(i<=0)return '';
   var pre=t.slice(0,i).trim();
-  /* una sola palabra y no un código de dos o tres letras */
-  if(pre.split(/\s+/).length!==1||pre.length<=3)return '';
-  return famBonita(pre);
+  if(!pre)return '';
+  /* si es una familia del catálogo, no hay nada que adivinar */
+  var cat=famCatalogo()[mmLlano(pre)];
+  if(cat)return famRotulo(cat);
+  /* sin catálogo a mano: un código corto o algo con números no es familia */
+  if(pre.length<=3||/[0-9]/.test(pre))return '';
+  if(pre.split(/\s+/).length>4)return '';
+  return famRotulo(pre);
+}
+/* La descripción sin la familia de adelante, para buscarla en el catálogo. */
+function famSinPrefijo(d){
+  var t=String(d||'').trim(),i=t.indexOf('·');
+  if(i<=0)return t;
+  return famDelTexto(d)?t.slice(i+1).trim():t;
 }
 function demFamilia(d){
   if(esDelCombo3(d))return 'Adicionales';
   var pre=famDelTexto(d);
   if(pre)return pre;
+  /* lo viejo se guardó sin la familia adelante: se le pregunta al catálogo */
+  famCatalogo();
+  var ex=FAM_SRV_IDX[mmLlano(famSinPrefijo(d))];
+  if(ex)return famRotulo(ex);
   var t=hojaLlano(d);
   for(var i=0;i<FAM_SERV.length;i++) if(FAM_SERV[i].re.test(t))return FAM_SERV[i].k;
   return 'Otros servicios';
@@ -11392,10 +11432,11 @@ function demServicio(d){
   var i=t.indexOf('·');
   if(i>0){
     var pre=t.slice(0,i).trim(),res=t.slice(i+1).trim();
-    /* Solo una palabra: la familia ("Mantenimiento") o el código
-       ("AF"). Si son varias es parte del nombre del producto
-       ("AVA MAX 50/50 · litro") y no se toca. */
-    if(res&&pre&&pre.split(/\s+/).length===1)t=res;
+    /* Se quita lo de adelante solo si es una familia del catálogo
+       ("Gas GLP / GNV") o un código corto ("AF"). Si es parte del
+       nombre del producto ("AVA MAX 50/50 · litro") no se toca. */
+    var esFam=!!famDelTexto(t), esCod=(pre.length<=3);
+    if(res&&pre&&(esFam||esCod))t=res;
   }
   return demNombre(t);
 }
@@ -11491,6 +11532,8 @@ function pintarSubOp(){
   }).join('');
 }
 function abrirRankings(){
+  /* sin catálogo no hay familias: el ranking caería todo en "Otros" */
+  if(!SERVICIOS.length)cargarCatalogoV2();
   cargarProdBD();
   cargarDemanda();
   pintarSubOp();
@@ -14138,7 +14181,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=228;
+var APP_VER=229;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
