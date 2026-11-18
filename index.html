@@ -1,4 +1,4 @@
-<!--IZAV:232-->
+<!--IZAV:233-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11364,12 +11364,24 @@ function famRotulo(f){
 function famCatalogo(){
   if(FAM_CAT&&FAM_CAT_N===SERVICIOS.length)return FAM_CAT;
   FAM_CAT={};FAM_SRV_IDX={};FAM_CAT_N=SERVICIOS.length;
+  /* primera vuelta: el nombre completo manda */
   SERVICIOS.forEach(function(s){
     var f=String(s.categoria||'').trim();
     if(f)FAM_CAT[mmLlano(f)]=f;
-    /* la descripción sola también sabe a qué familia pertenece */
     var d=mmLlano(s.descripcion);
     if(d&&f&&!FAM_SRV_IDX[d])FAM_SRV_IDX[d]=f;
+  });
+  /* segunda vuelta: el catálogo lleva el código pegado ("CA · Cambio
+     de Aceite") y la orden guardó solo el nombre. Se indexa también
+     sin el código, para que se reconozcan. */
+  SERVICIOS.forEach(function(s){
+    var f=String(s.categoria||'').trim();
+    if(!f)return;
+    var t=String(s.descripcion||''),i=t.indexOf('·');
+    if(i<=0)return;
+    if(t.slice(0,i).trim().length>3)return;      /* no es un código */
+    var d=mmLlano(t.slice(i+1));
+    if(d&&!FAM_SRV_IDX[d])FAM_SRV_IDX[d]=f;
   });
   return FAM_CAT;
 }
@@ -11400,10 +11412,17 @@ function famSobra(x){
   if(!x.pre||!x.resto)return false;
   return famEsAtajo(x.pre)||x.pre.length<=3||!!famDelTexto(x.todo);
 }
-/* La descripción sin la familia ni el atajo de adelante. */
+/* La descripción sin la familia ni el atajo de adelante. Puede
+   traer dos ("Frecuentes · CA · Cambio de Aceite"), así que se
+   pela hasta que lo que queda es el nombre. */
 function famSinPrefijo(d){
-  var x=famPartes(d);
-  return famSobra(x)?x.resto:x.todo;
+  var t=String(d||'').trim();
+  for(var n=0;n<3;n++){
+    var x=famPartes(t);
+    if(!famSobra(x))break;
+    t=x.resto;
+  }
+  return t;
 }
 function demFamilia(d){
   if(esDelCombo3(d))return 'Adicionales';
@@ -14211,7 +14230,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=232;
+var APP_VER=233;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
