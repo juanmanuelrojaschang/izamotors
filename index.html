@@ -1,4 +1,4 @@
-<!--IZAV:234-->
+<!--IZAV:235-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2388,7 +2388,10 @@ function segFila(d,txt,fE){
     '<td class="der"><button class="btn chico sec" style="min-height:34px;padding:0 10px" '+
       'onclick="'+ir+'">Continuar</button>'+
       (d.solo_local
-        ? ' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
+        ? ' <button class="btn chico" style="min-height:34px;padding:0 10px" '+
+          'onclick="registrarLocal(&quot;'+d.ot+'&quot;)" '+
+          'title="Darle su número de orden definitivo">Registrar</button>'+
+          ' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
           'onclick="olvidarLocal(&quot;'+d.ot+'&quot;)" title="Quitarla de este equipo">Descartar</button>'
         : (esAdmin?' <button class="btn chico sec" style="min-height:34px;padding:0 10px;color:var(--rojo)" '+
           'onclick="anularDesdeLista(&quot;'+d.ot+'&quot;)">Anular</button>':''))+
@@ -2939,6 +2942,8 @@ function buscarBD(placa){
             tel:c.telefono||'',email:c.email||'',desde:c.cliente_desde?new Date(c.cliente_desde).getFullYear():'—',
             visitas:hist.length,autos:1,puntos:c.puntos||0,nivel:c.nivel||'Bronce',
             proxKm:Math.max(0,5000-((v.km_ultimo||0)%5000)),hist:hist,
+            flota_id:c.flota_id||null,flota_vence_el:c.flota_vence_el||null,
+            flota_foto_url:c.flota_foto_url||null,
             _id:v.id,_cliente_id:c.id};
         });
     });
@@ -5334,6 +5339,45 @@ function guardarCorreccion(){
 }
 /* La copia local hace que una orden borrada de la base reaparezca
    marcada como "solo en este equipo". Esto la borra del navegador. */
+/* Un borrador que se quedó sin número porque la base no contestó.
+   Acá recién toma su correlativo de verdad, el que sigue a todos. */
+function registrarLocal(ot){
+  var d=DB.get(ot);
+  if(!d){aviso('Ese borrador ya no está en este equipo.');return}
+  if(!sb){aviso('Sin conexión con la base. Intenta cuando vuelva.');return}
+  conex('Registrando '+otCorto(ot)+'…');
+  sb.from('vehiculos').select('id,cliente_id').eq('placa',d.placa).maybeSingle()
+    .then(function(rv){
+      if(rv.error||!rv.data){
+        aviso('No encuentro la placa '+esc(d.placa)+' en la base. '+
+              'Tiene que existir el vehículo antes de registrar la orden.');return;
+      }
+      sb.rpc('nuevo_numero_ot').then(function(rn){
+        if(!rn||!rn.data||rn.error){
+          aviso('La base no entregó número. Intenta de nuevo en un momento.');return;
+        }
+        registrarLocalYa(d,rn.data,rv.data);
+      },function(){ aviso('La base no entregó número. Intenta de nuevo en un momento.') });
+    },function(e){ aviso('No se pudo consultar la placa: '+((e&&e.message)||'sin respuesta')) });
+}
+function registrarLocalYa(d,num,veh){
+  var reg=d.reg||{};
+  sb.from('ordenes').insert({
+    numero:num,sede_id:SEDE_ACTIVA,vehiculo_id:veh.id,cliente_id:veh.cliente_id||null,
+    estado:'RECIBIDO',estado_taller:d.estado_taller||'RECIBIDO',estado_ot:d.estado_ot||null,
+    km_ingreso:Number(d.km)||0,combustible:reg.cmb||'',
+    danos:reg.danos||[],accesorios:reg.accs||[],
+    recepcion_id:SESION?SESION.id:null,es_prueba:esAdminGeneral()
+  }).select('id').then(function(r){
+    if(r.error){ aviso('No se pudo registrar: '+r.error.message); return }
+    var viejo=d.ot;
+    try{ var o=DB.leer(); delete o[viejo]; d.ot=num; o[num]=d; DB.guardar(o) }catch(e){}
+    if(OT_NUM===viejo)ponerOT(num);
+    auditar('CREA_OT','orden',num,d.placa+' · registrada desde el borrador '+viejo);
+    conex('Registrada como '+otCorto(num));
+    segLista();
+  },function(e){ aviso('No se pudo registrar: '+((e&&e.message)||'sin respuesta')) });
+}
 function olvidarLocal(ot){
   confirmar('La orden '+ot+' no está en la base: solo quedó guardada en este equipo.\n\n'+
      '¿Quitarla de esta lista? No afecta a nadie más.',function(){ olvidarLocalYa(ot) },'Quitar de la lista');
@@ -6194,7 +6238,7 @@ function cargarLineasOrden(ordenId,cb){
   });
 }
 function sincronizarDesdeBase(){
-  if(!sb||!OT_NUM)return;
+  if(!sb||!OT_NUM||OT_PROV)return;
   sb.from('ordenes').select('*')
     .eq('numero',OT_NUM).maybeSingle().then(function(r){
       if(r.error){conex('No se pudo leer la orden: '+r.error.message,true);return}
@@ -6301,8 +6345,9 @@ var PASO_ACTUAL=1,SESION_ACT=false,ORD=null;   /* recepción en curso · distint
    barra de arriba. La barra se escribía una sola vez, al entrar al
    paso 5, y la base devuelve el número definitivo un segundo después:
    quedaba mostrando el número de la orden anterior. */
-function ponerOT(n){
+function ponerOT(n,prov){
   OT_NUM=n;
+  OT_PROV=!!prov;
   var g=document.getElementById('gOT'); if(g)g.textContent=n;
   if(ORD)ORD.num=n;
   var d=document.getElementById('dondeEstoy');
@@ -7656,6 +7701,11 @@ function pintarResumenIngreso(){
 
 /* ============ MÁQUINA DE ESTADOS DE LA ORDEN ============ */
 var OT_EST='',OT_NUM='OT-2026-00184',OT_CREANDO=false;
+/* El correlativo de verdad lo da la secuencia de la base. El número
+   local es solo una etiqueta para el borrador de este equipo, y
+   mientras esté puesto NADA se escribe en ordenes: así es como
+   aparecieron OT 185 y OT 482 cuando ya íbamos por la 851. */
+var OT_PROV=false;
 var CHIP={ANULADO:'e1',RECIBIDO:'e1',EN_DIAGNOSTICO:'e2',POR_APROBAR:'e3',EN_PROCESO:'e3',EN_VENTANILLA:'e2',CON_ASESOR:'e3',LISTO:'e4',CANCELADO:'e4',ENTREGADO:'e1'};
 var NOMBRE_EST={ANULADO:'ANULADA',RECIBIDO:'RECIBIDO',EN_DIAGNOSTICO:'EN DIAGNÓSTICO',POR_APROBAR:'POR APROBAR',
   EN_PROCESO:'EN PROCESO',EN_VENTANILLA:'EN VENTANILLA',CON_ASESOR:'CON ASESOR',
@@ -7676,6 +7726,46 @@ function tocaCompletar(){
   var express=esExpress()||!!(guardada&&guardada.modo==='espera');
   return express&&!!OT_NUM&&
          ['RECIBIDO','EN_DIAGNOSTICO','EN_PROCESO'].indexOf(EST_TALLER)>-1;
+}
+/* El cliente suele decir que maneja para una flota cuando el auto ya
+   está en el elevador. Marcarlo acá evita tener que anular la orden:
+   es dato del cliente, no de la orden, y se guarda al elegirlo. */
+function bloqueFlotaCliente(){
+  if(!ACTUAL||!ACTUAL._cliente_id)return '';
+  return '<div class="card" style="margin-top:12px">'+
+    '<label>Flota del cliente</label>'+
+    '<select id="regFlota" onchange="regFlotaGuardar()">'+
+      optFlotas(ACTUAL.flota_id||'')+'</select>'+
+    '<div class="hint" id="regFlotaMsg" style="margin-top:7px">'+
+      regFlotaPie(ACTUAL.flota_id)+'</div></div>';
+}
+function regFlotaPie(id){
+  if(!id)return 'Si el cliente avisa que maneja para una flota, márcalo acá. Se guarda solo.';
+  var e=estadoFlota(ACTUAL||{});
+  return 'Guardado en la ficha del cliente'+
+    (e.k==='sinval'?' · falta la foto de validación':'')+'.';
+}
+function regFlotaGuardar(){
+  var s=document.getElementById('regFlota'),m=document.getElementById('regFlotaMsg');
+  if(!s||!ACTUAL||!ACTUAL._cliente_id)return;
+  if(s.value==='__nueva'){
+    s.value=String(ACTUAL.flota_id||'');
+    if(m)m.textContent='Las flotas nuevas se crean desde la ficha del cliente.';
+    return;
+  }
+  var v=s.value?Number(s.value):null;
+  if(!sb){ if(m)m.textContent='Sin conexión: no se pudo guardar.'; return }
+  if(m)m.textContent='Guardando…';
+  sb.from('clientes').update({flota_id:v}).eq('id',ACTUAL._cliente_id).then(function(r){
+    if(r&&r.error){ if(m)m.textContent='No se pudo guardar: '+r.error.message; return }
+    ACTUAL.flota_id=v;
+    if(!v)ACTUAL.flota_vence_el=null;
+    if(m)m.innerHTML=v?('<b>'+esc(nombreFlota(v))+'</b> · '+regFlotaPie(v))
+                     :'Queda como particular, sin flota.';
+    auditar('EDITA_CLIENTE','cliente',ACTUAL.cliente||'',
+            v?('Flota: '+nombreFlota(v)+' · marcada desde el registro de la '+OT_NUM)
+             :('Sin flota · quitada desde el registro de la '+OT_NUM));
+  },function(){ if(m)m.textContent='No se pudo guardar.' });
 }
 function bloqueCompletar(){
   return '<button class="btn sec full" style="margin-top:12px" '+
@@ -7766,7 +7856,7 @@ function recibir(){
   var s=Math.floor((Date.now()-t0)/1000);
   $('crono').classList.add('listo');$('cronoL').textContent='Recepción completada';
   var v=ACTUAL||VEH['CTS009'];
-  ponerOT(DB.correlativo());  /* provisional hasta que responda la base */
+  ponerOT(DB.correlativo(),true);  /* etiqueta local hasta que responda la base */
   var kmIng=kmNum('kmIngreso')||Number(v.km)||0;
   ORD={num:OT_NUM,placa:v.placa,veh:[v.marca,v.modelo,v.anio].filter(Boolean).join(' '),
        cliente:v.cliente,tel:v.tel,km:kmIng,creada:Date.now()};
@@ -7791,11 +7881,27 @@ function recibir(){
   if(sb&&v._id){
     OT_CREANDO=true;
     ordenAbiertaDe(v._id,function(abierta){
-      function nueva(){
+      function nueva(){ pedirNumero(2) }
+      function pedirNumero(quedan){
         sb.rpc('nuevo_numero_ot').then(function(rn){
-          if(rn.data)ponerOT(rn.data);
-          crearOrdenBD(v,kmIng);
-        },function(){ crearOrdenBD(v,kmIng); });
+          if(rn&&rn.data&&!rn.error){
+            ponerOT(rn.data);
+            crearOrdenBD(v,kmIng);
+            return;
+          }
+          otraVez(quedan,(rn&&rn.error&&rn.error.message)||'la base no devolvió número');
+        },function(e){ otraVez(quedan,(e&&e.message)||'la base no respondió') });
+      }
+      function otraVez(quedan,por){
+        if(quedan>1){ setTimeout(function(){ pedirNumero(quedan-1) },1200); return }
+        /* Inventar el número es peor que no tenerlo: rompe el
+           correlativo de todos los locales. La orden queda acá. */
+        OT_CREANDO=false;
+        aviso('La recepción quedó guardada SOLO en este equipo.\n\n'+
+              'El número de orden lo entrega la base y no contestó ('+por+').\n\n'+
+              'Cuando vuelva la conexión, búscala en Clientes y órdenes y toca '+
+              '«Registrar» para que tome su número definitivo.',
+              'Sin número de orden');
       }
       function seguir(){
         ponerOT(abierta.numero);
@@ -8011,6 +8117,8 @@ function ordenAbiertaDe(vehId,cb){
     .then(function(r){ cb((r.data||[])[0]||null) },function(){ cb(null) });
 }
 function crearOrdenBD(v,kmIng){
+  /* segundo cinturón: nunca con la etiqueta local */
+  if(OT_PROV){ OT_CREANDO=false; return }
   sb.from('ordenes').insert({
     numero:OT_NUM,sede_id:SEDE_ACTIVA,vehiculo_id:v._id,cliente_id:v._cliente_id||null,
     estado:'RECIBIDO',estado_taller:'RECIBIDO',estado_ot:null,km_ingreso:kmIng,
@@ -8037,8 +8145,9 @@ function guardarFlujos(){
     if(d){d.estado_taller=EST_TALLER;d.estado_ot=EST_OT_ACT;d.hitos=HITOS;DB.set(d)}
     else guardarOrden();   /* si el número cambió, la entrada local se crea acá */
   }catch(e){}
-  /* Si la orden se está creando, el estado se guardará al terminar. */
-  if(sb&&OT_NUM&&!OT_CREANDO){
+  /* Si la orden se está creando, el estado se guardará al terminar.
+     Y con la etiqueta local no hay fila que actualizar. */
+  if(sb&&OT_NUM&&!OT_CREANDO&&!OT_PROV){
     var p={estado_taller:EST_TALLER,estado_ot:EST_OT_ACT||null,prelim_rev:PRELIM_REV,tiene_prelim2:TIENE_P2};
     if(EST_OT_ACT==='PRELIM_ENVIADA')p.ot_prelim_enviada=new Date().toISOString();
     if(EST_OT_ACT==='DEF_ENVIADA')p.ot_def_enviada=new Date().toISOString();
@@ -8350,7 +8459,7 @@ function renderPanel(){
   }
   if(iSel<iAct){
     p.innerHTML=datosDelPaso(sel.f,sel.k,paso)+
-      ((sel.f==='taller'&&sel.k==='REGISTRO')?bloqueCompletar():'');
+      ((sel.f==='taller'&&sel.k==='REGISTRO')?bloqueFlotaCliente()+bloqueCompletar():'');
     return;
   }
   /* etapa futura */
@@ -12225,7 +12334,7 @@ function cliDevolverYa(m){
    se corre al terminar. */
 var DET_EN_VUELO=false,DET_PENDIENTE=false;
 function guardarDetalleBD(){
-  if(!sb||!OT_NUM)return;
+  if(!sb||!OT_NUM||OT_PROV)return;
   /* Sin orden abierta no hay nada que guardar, y OT_NUM puede haber
      quedado apuntando a la orden anterior. */
   if(!ORD)return;
@@ -14250,7 +14359,7 @@ $('lightbox').onclick=function(){this.classList.remove('on')};
    mayor que la suya, se recarga con un parámetro nuevo y trae
    el código fresco. Nadie tiene que enterarse de nada.
    ============================================================ */
-var APP_VER=234;
+var APP_VER=235;
 /* El número se escribe solo: cuando estaba a mano en el HTML se quedó
    clavado en 164 mientras el código ya iba por la 171. */
 try{
